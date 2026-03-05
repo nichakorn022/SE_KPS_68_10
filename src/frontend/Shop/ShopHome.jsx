@@ -1,0 +1,485 @@
+import {useState, useEffect, useCallback} from "react";
+import { Link } from 'react-router-dom';
+const API_BASE = "http://localhost:5000/api";
+const api = {
+    getProducts: () => fetch(`${API_BASE}/products`).then(r => {
+        if (!r.ok) {
+            throw new Error(`Products ${r.status}`);
+        }
+        return r.json();
+    }),
+    getShops: () => fetch(`${API_BASE}/shops`).then(r => {
+        if (!r.ok) {
+            throw new Error(`Shops ${r.status}`);
+        }
+        return r.json();
+    }),
+    getProduct: (id) => fetch(`${API_BASE}/products/${id}`).then(r => {
+        if (!r.ok) {
+            throw new Error(`Product ${id} ${r.status}`);
+        }
+        return r.json();
+    })
+};
+
+const TAB = ["All", "New Arrivals", "Best Sellers", "On Sale"];
+const CATEGORY = ["Green Tea", "Black Tea", "Oolong Tea", "White Tea", "Herbal Tea"];
+
+function filterProducts(products, {search, activeTab, activeCategory}) {
+    const q = search.toLowerCase();
+    return products.filter(p => {
+        const matchSearch   = !q || p.name?.toLowerCase().includes(q) || p.shop?.toLowerCase().includes(q);
+        const matchCategory = !activeCategory || p.tag === activeCategory;
+        const matchTab = 
+            activeTab === "All" ||
+            (activeTab === "New Arrivals" && p.isNew) ||
+            (activeTab === "Best Sellers" && p.isBestSeller) ||
+            (activeTab === "On Sale" && p.isOnSale);
+        return matchSearch && matchCategory && matchTab;
+    });
+}
+
+function Navbar({ cartCount, onCartClick }) {
+    return (
+    <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
+      <div className="flex items-center justify-start h-16 w-32 md:w-40">
+        <img src="./Pictrue/Logo.png" alt="ATC Logo" className="h-full w-auto object-contain drop-shadow-sm" />
+      </div>
+      <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4">
+        <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline">Home</Link>
+        <Link to="/shop" className="hover:text-black transition-colors underline-offset-4 hover:underline text-[#485B3B] font-bold">Shop</Link>
+        <a href="#" className="hover:text-black transition-colors underline-offset-4 hover:underline">Event</a>
+        <button
+          onClick={onCartClick}
+          className="relative hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6"
+        >
+          🛒
+          {cartCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-[#485B3B] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+              {cartCount}
+            </span>
+          )}
+        </button>
+        <a href="#" className="hover:text-black transition-colors underline-offset-4 hover:underline">Login</a>
+      </div>
+    </nav>
+  );
+}
+
+function SearchBar({ value, onChange }) {
+  return (
+    <div className="relative max-w-md w-full">
+      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-lg">🔍</span>
+      <input
+        type="text"
+        placeholder="ค้นหาสินค้า หรือร้านค้า..."
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="w-full pl-11 pr-4 py-3 rounded-full border border-[#AEBC9F] bg-white text-[15px] focus:outline-none focus:ring-2 focus:ring-[#485B3B]/30 shadow-sm"
+      />
+    </div>
+  );
+}
+
+function TabBar({ tabs, active, onSelect }) {
+  return (
+    <div className="flex gap-2 flex-wrap">
+      {tabs.map(tab => (
+        <button
+          key={tab}
+          onClick={() => onSelect(tab)}
+          className={`px-6 py-2 rounded-full text-sm font-bold transition-all shadow-sm ${
+            active === tab
+              ? "bg-[#485B3B] text-white shadow-md"
+              : "bg-white text-[#485B3B] border border-[#485B3B]/30 hover:bg-[#485B3B]/10"
+          }`}
+        >
+          {tab}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function CategoryBar({ categories, active, onSelect }) {
+  return (
+    <div className="flex gap-2 flex-wrap">
+      <button
+        onClick={() => onSelect(null)}
+        className={`px-5 py-1.5 rounded-full text-sm font-medium transition-all ${
+          !active
+            ? "bg-[#AEBC9F] text-white"
+            : "bg-white text-gray-500 border border-gray-200 hover:border-[#AEBC9F]"
+        }`}
+      >
+        ทั้งหมด
+      </button>
+      {categories.map(cat => (
+        <button
+          key={cat}
+          onClick={() => onSelect(cat === active ? null : cat)}
+          className={`px-5 py-1.5 rounded-full text-sm font-medium transition-all ${
+            active === cat
+              ? "bg-[#AEBC9F] text-white"
+              : "bg-white text-gray-500 border border-gray-200 hover:border-[#AEBC9F]"
+          }`}
+        >
+          {cat}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ProductCard({ product, onAddToCart }) {
+  const discountedPrice = product.discount
+    ? Math.round(product.price * (1 - product.discount / 100))
+    : null;
+
+  return (
+    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all hover:-translate-y-0.5 group">
+      {/* Image */}
+      <div className="relative h-44 overflow-hidden bg-[#F5F3E9]">
+        {product.img ? (
+          <img
+            src={product.img}
+            alt={product.name}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-5xl">🍵</div>
+        )}
+        {product.badge && (
+          <span className="absolute top-3 left-3 bg-[#485B3B] text-white text-[11px] font-bold px-3 py-1 rounded-full shadow">
+            {product.badge}
+          </span>
+        )}
+        {product.isNew && (
+          <span className="absolute top-3 right-3 bg-[#AEBC9F] text-white text-[11px] font-bold px-3 py-1 rounded-full shadow">
+            ใหม่
+          </span>
+        )}
+        {product.discount > 0 && (
+          <span className="absolute bottom-3 right-3 bg-red-400 text-white text-[11px] font-bold px-3 py-1 rounded-full shadow">
+            -{product.discount}%
+          </span>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="p-4">
+        <p className="text-[12px] text-[#AEBC9F] font-medium mb-1">{product.shop || "ATC Shop"}</p>
+        <h3 className="text-[15px] font-bold text-gray-800 mb-1 leading-snug line-clamp-2">{product.name}</h3>
+        {product.tag && (
+          <span className="inline-block text-[11px] text-[#485B3B] border border-[#AEBC9F] px-2 py-0.5 rounded-full mb-3">
+            {product.tag}
+          </span>
+        )}
+
+        <div className="flex items-end justify-between mt-auto pt-2">
+          <div>
+            {discountedPrice ? (
+              <>
+                <span className="text-gray-400 line-through text-[13px]">฿{product.price?.toLocaleString()}</span>
+                <span className="block text-[18px] font-bold text-[#485B3B]">฿{discountedPrice.toLocaleString()}</span>
+              </>
+            ) : (
+              <span className="text-[18px] font-bold text-[#485B3B]">฿{product.price?.toLocaleString() ?? "–"}</span>
+            )}
+          </div>
+          <button
+            onClick={() => onAddToCart(product)}
+            className="bg-[#485B3B] text-white text-[12px] font-bold px-4 py-2 rounded-full hover:bg-[#3a4a2f] transition-all active:scale-95 shadow-sm"
+          >
+            + ใส่ตะกร้า
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ShopCard({ shop }) {
+  return (
+    <div className="bg-white rounded-3xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-all">
+      <div className="w-14 h-14 rounded-2xl overflow-hidden bg-[#F5F3E9] flex-shrink-0">
+        {shop.img ? (
+          <img src={shop.img} alt={shop.name} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-2xl">🏪</div>
+        )}
+      </div>
+      <div className="min-w-0">
+        <h4 className="font-bold text-gray-800 text-[15px] truncate">{shop.name}</h4>
+        <p className="text-[12px] text-gray-400 truncate">{shop.location || "ร้านชาออนไลน์"}</p>
+        {shop.rating && (
+          <p className="text-[12px] text-[#AEBC9F] font-medium">⭐ {shop.rating}</p>
+        )}
+      </div>
+      <button className="ml-auto flex-shrink-0 border border-[#485B3B] text-[#485B3B] text-[12px] font-bold px-4 py-1.5 rounded-full hover:bg-[#485B3B] hover:text-white transition-all">
+        ดูร้าน
+      </button>
+    </div>
+  );
+}
+
+function CartDrawer({ cart, onClose, onRemove, onUpdateQty }) {
+  const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      <div className="w-full max-w-sm bg-[#F5F3E9] h-full shadow-2xl flex flex-col">
+        <div className="p-6 bg-[#AEBC9F] flex items-center justify-between">
+          <h2 className="text-[20px] font-bold text-white">ตะกร้าสินค้า 🛒</h2>
+          <button onClick={onClose} className="text-white text-2xl hover:opacity-70">×</button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+          {cart.length === 0 ? (
+            <div className="text-center text-gray-400 py-16">
+              <p className="text-4xl mb-3">🍵</p>
+              <p>ยังไม่มีสินค้าในตะกร้า</p>
+            </div>
+          ) : cart.map(item => (
+            <div key={item.id} className="bg-white rounded-2xl p-4 flex items-center gap-3 shadow-sm">
+              <div className="w-12 h-12 rounded-xl overflow-hidden bg-[#F5F3E9] flex-shrink-0">
+                {item.img ? <img src={item.img} alt={item.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center">🍵</div>}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-[13px] text-gray-800 truncate">{item.name}</p>
+                <p className="text-[#485B3B] font-medium text-[13px]">฿{item.price?.toLocaleString()}</p>
+              </div>
+              <div className="flex items-center gap-1">
+                <button onClick={() => onUpdateQty(item.id, item.qty - 1)} className="w-7 h-7 rounded-full bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 flex items-center justify-center">−</button>
+                <span className="w-6 text-center text-[14px] font-bold">{item.qty}</span>
+                <button onClick={() => onUpdateQty(item.id, item.qty + 1)} className="w-7 h-7 rounded-full bg-[#AEBC9F] text-white font-bold hover:brightness-95 flex items-center justify-center">+</button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {cart.length > 0 && (
+          <div className="p-6 border-t border-[#AEBC9F]/30">
+            <div className="flex justify-between mb-4">
+              <span className="font-medium text-gray-600">รวมทั้งหมด</span>
+              <span className="font-bold text-[20px] text-[#485B3B]">฿{total.toLocaleString()}</span>
+            </div>
+            <button className="w-full bg-[#485B3B] text-white py-3 rounded-full font-bold hover:bg-[#3a4a2f] transition-all shadow-lg active:scale-95">
+              ชำระเงิน
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="bg-white rounded-3xl overflow-hidden shadow-sm animate-pulse">
+          <div className="h-44 bg-[#AEBC9F]/20" />
+          <div className="p-4 space-y-2">
+            <div className="h-3 bg-gray-100 rounded-full w-1/2" />
+            <div className="h-4 bg-gray-100 rounded-full w-3/4" />
+            <div className="h-4 bg-gray-100 rounded-full w-1/3 mt-4" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
+//  MAIN COMPONENT
+// ============================================================
+export default function ShopHome() {
+  const [products, setProducts]           = useState([]);
+  const [shops, setShops]                 = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState(null);
+  const [search, setSearch]               = useState("");
+  const [activeTab, setActiveTab]         = useState(TAB[0]);
+  const [activeCategory, setActiveCategory] = useState(null);
+  const [cart, setCart]                   = useState([]);
+  const [cartOpen, setCartOpen]           = useState(false);
+  const [activeView, setActiveView]       = useState("products"); // "products" | "shops"
+
+  // ── Fetch ──────────────────────────────────────────────────
+  useEffect(() => {
+    Promise.all([api.getProducts(), api.getShops()])
+      .then(([prods, shps]) => {
+        setProducts(prods);
+        setShops(shps);
+        setLoading(false);
+      })
+      .catch(err => {
+        setError(err.message);
+        setLoading(false);
+      });
+  }, []);
+
+  // ── Filtering ──────────────────────────────────────────────
+  const filtered = filterProducts(products, { search, activeTab, activeCategory });
+
+  // ── Cart ───────────────────────────────────────────────────
+  const addToCart = useCallback((product) => {
+    setCart(prev => {
+      const existing = prev.find(i => i.id === product.id);
+      if (existing) return prev.map(i => i.id === product.id ? { ...i, qty: i.qty + 1 } : i);
+      return [...prev, { ...product, qty: 1 }];
+    });
+  }, []);
+
+  const updateQty = useCallback((id, qty) => {
+    if (qty <= 0) setCart(prev => prev.filter(i => i.id !== id));
+    else setCart(prev => prev.map(i => i.id === id ? { ...i, qty } : i));
+  }, []);
+
+  const cartCount = cart.reduce((s, i) => s + i.qty, 0);
+
+  // ── Render ─────────────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800 flex flex-col items-center">
+      <div className="w-full max-w-[1024px] bg-[#F5F3E9] shadow-sm overflow-hidden">
+
+        {/* Navbar */}
+        <Navbar cartCount={cartCount} onCartClick={() => setCartOpen(true)} />
+
+        {/* Hero Banner */}
+        <section className="relative w-full h-[220px] bg-[#485B3B] overflow-hidden">
+          <div className="absolute inset-0 opacity-10">
+            {[...Array(12)].map((_, i) => (
+              <div key={i} className="absolute text-white text-6xl select-none" style={{ top: `${(i * 37) % 100}%`, left: `${(i * 23) % 100}%`, transform: `rotate(${i * 15}deg)` }}>🍃</div>
+            ))}
+          </div>
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+            <h1 className="text-3xl md:text-4xl font-serif text-white font-bold drop-shadow-lg mb-2">ATC Tea Shop</h1>
+            <p className="text-[#AEBC9F] text-[15px] font-medium">ชาคัดสรร จากสวนสู่มือคุณ</p>
+          </div>
+        </section>
+
+        {/* Controls */}
+        <section className="px-6 py-6 space-y-4 border-b border-[#AEBC9F]/20">
+          <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+            <SearchBar value={search} onChange={setSearch} />
+            {/* Products / Shops toggle */}
+            <div className="flex rounded-full overflow-hidden border border-[#AEBC9F]/50 bg-white shadow-sm">
+              <button
+                onClick={() => setActiveView("products")}
+                className={`px-5 py-2 text-sm font-bold transition-all ${activeView === "products" ? "bg-[#485B3B] text-white" : "text-[#485B3B]"}`}
+              >
+                สินค้า
+              </button>
+              <button
+                onClick={() => setActiveView("shops")}
+                className={`px-5 py-2 text-sm font-bold transition-all ${activeView === "shops" ? "bg-[#485B3B] text-white" : "text-[#485B3B]"}`}
+              >
+                ร้านค้า
+              </button>
+            </div>
+          </div>
+
+          {activeView === "products" && (
+            <>
+              <TabBar tabs={TAB} active={activeTab} onSelect={setActiveTab} />
+              <CategoryBar categories={CATEGORY} active={activeCategory} onSelect={setActiveCategory} />
+            </>
+          )}
+        </section>
+
+        {/* Content */}
+        <section className="px-6 py-8">
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 rounded-2xl p-4 mb-6 text-sm">
+              ⚠️ ไม่สามารถโหลดข้อมูลได้: {error}
+            </div>
+          )}
+
+          {activeView === "products" ? (
+            <>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-[20px] font-bold text-[#485B3B]">
+                  {activeTab}
+                  {activeCategory && <span className="text-[#AEBC9F] font-medium"> · {activeCategory}</span>}
+                </h2>
+                {!loading && (
+                  <span className="text-sm text-gray-400">{filtered.length} รายการ</span>
+                )}
+              </div>
+
+              {loading ? (
+                <LoadingState />
+              ) : filtered.length === 0 ? (
+                <div className="text-center py-20 text-gray-400">
+                  <p className="text-4xl mb-3">🍵</p>
+                  <p>ไม่พบสินค้าที่ค้นหา</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {filtered.map((product, i) => (
+                    <ProductCard key={product.id ?? i} product={product} onAddToCart={addToCart} />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <h2 className="text-[20px] font-bold text-[#485B3B] mb-6">ร้านค้าทั้งหมด</h2>
+              {loading ? (
+                <div className="space-y-3">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="bg-white rounded-3xl p-5 h-20 animate-pulse" />
+                  ))}
+                </div>
+              ) : shops.length === 0 ? (
+                <div className="text-center py-20 text-gray-400">
+                  <p className="text-4xl mb-3">🏪</p>
+                  <p>ยังไม่มีร้านค้า</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {shops.map((shop, i) => (
+                    <ShopCard key={shop.id ?? i} shop={shop} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        {/* CTA Section — same style as Home */}
+        <section className="py-12 px-6 max-w-[850px] mx-auto text-center">
+          <div className="bg-white/50 rounded-3xl p-8 border border-white/40 shadow-sm">
+            <h2 className="text-[22px] font-bold text-gray-800 mb-2">มีร้านชาของคุณเองไหม?</h2>
+            <p className="text-gray-500 text-[15px] mb-6">เปิดร้านบน ATC แล้วเข้าถึงชุมชนคนรักชากว่าพันคน</p>
+            <div className="flex justify-center gap-4 flex-wrap">
+              <button className="bg-[#485B3B] text-white px-10 py-3 rounded-full font-bold shadow-lg hover:bg-[#3a4a2f] transition-all active:scale-95">เปิดร้านเลย</button>
+              <button className="bg-white text-[#485B3B] border-2 border-[#485B3B] px-10 py-3 rounded-full font-bold hover:bg-[#485B3B] hover:text-white transition-all">เรียนรู้เพิ่มเติม</button>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer — identical to Home */}
+        <footer className="bg-[#AEBC9F] pt-12 pb-20 px-10">
+          <div className="max-w-[850px] mx-auto opacity-30 space-y-4">
+            <div className="h-4 bg-white w-48 rounded"></div>
+            <div className="h-4 bg-white w-32 rounded"></div>
+          </div>
+        </footer>
+      </div>
+
+      {/* Cart Drawer */}
+      {cartOpen && (
+        <CartDrawer
+          cart={cart}
+          onClose={() => setCartOpen(false)}
+          onRemove={(id) => updateQty(id, 0)}
+          onUpdateQty={updateQty}
+        />
+      )}
+    </div>
+  );
+}

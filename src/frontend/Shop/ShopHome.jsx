@@ -343,7 +343,7 @@ export default function ShopHome() {
   // ── Render ─────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800 flex flex-col items-center">
-      <div className="w-full max-w-[1024px] bg-[#F5F3E9] shadow-sm overflow-hidden">
+      <div className="w-full max-w-auto bg-[#F5F3E9] shadow-sm overflow-hidden">
 
         {/* Navbar */}
         <Navbar cartCount={cartCount} onCartClick={() => setCartOpen(true)} />

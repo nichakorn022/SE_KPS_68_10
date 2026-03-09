@@ -29,7 +29,7 @@ export default function Events() {
             <Link to="/" className="hover:text-black transition-colors">Home</Link>
             <Link to="/shop" className="hover:text-black transition-colors">Shop</Link>
             <Link to="/events" className="text-black underline underline-offset-4 font-bold">Event</Link>
-            <a href="#" className="border-l border-black/20 pl-6 hover:text-black">Login</a>
+            <Link to="/login" className="border-l border-black/20 pl-6 hover:text-black">Login</Link>
           </div>
         </nav>
 

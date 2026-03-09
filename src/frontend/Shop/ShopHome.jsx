@@ -60,7 +60,7 @@ function Navbar({ cartCount, onCartClick }) {
             </span>
           )}
         </button>
-        <a href="#" className="hover:text-black transition-colors underline-offset-4 hover:underline">Login</a>
+        <Link to="/login" className="hover:text-black transition-colors underline-offset-4 hover:underline">Login</Link>
       </div>
     </nav>
   );

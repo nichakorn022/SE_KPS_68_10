@@ -17,7 +17,7 @@ export default function EventDetail() {
             <Link to="/" className="hover:text-black">Home</Link>
             <Link to="/shop" className="hover:text-black">Shop</Link>
             <Link to="/events" className="text-black underline underline-offset-8 decoration-2">Event</Link>
-            <a href="#" className="border-l border-black/20 pl-6 hover:text-black font-bold">Login</a>
+            <Link to="/login" className="border-l border-black/20 pl-6 hover:text-black font-bold">Login</Link>
           </div>
         </nav>
 

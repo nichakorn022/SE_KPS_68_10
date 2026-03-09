@@ -54,7 +54,7 @@ export default function Home() {
             <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline">Home</Link>
             <Link to="/shop" className="hover:text-black transition-colors underline-offset-4 hover:underline">Shop</Link>
             <Link to="/events" className="hover:text-black transition-colors underline-offset-4 hover:underline">Event</Link>
-            <a href="#" className="hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6">Login</a>
+            <Link to="/login" className="hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6">Login</Link>
           </div>
         </nav>
 

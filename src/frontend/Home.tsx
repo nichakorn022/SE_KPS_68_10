@@ -38,10 +38,10 @@ export default function Home() {
     <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800 flex flex-col items-center">
       
       {/* Container หลัก */}
-      <div className="w-full max-w-[1024px] bg-[#F5F3E9] shadow-sm overflow-hidden">
+      <div className="w-full max-w-auto bg-[#F5F3E9] shadow-sm overflow-hidden">
 
         {/* ================= Navbar (Header) ================= */}
-        <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
+        <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm pointer-events-auto relative">
           <div className="flex items-center justify-start h-16 w-32 md:w-40"> 
             <img 
               src="./Pictrue/Logo.png"  
@@ -50,10 +50,10 @@ export default function Home() {
             />
           </div>
 
-          <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4">
+          <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4 relative z-50 pointer-events-auto">
             <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline">Home</Link>
             <Link to="/shop" className="hover:text-black transition-colors underline-offset-4 hover:underline">Shop</Link>
-            <a href="#" className="hover:text-black transition-colors underline-offset-4 hover:underline">Event</a>
+            <Link to="/events" className="hover:text-black transition-colors underline-offset-4 hover:underline">Event</Link>
             <a href="#" className="hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6">Login</a>
           </div>
         </nav>
@@ -65,11 +65,11 @@ export default function Home() {
             alt="Tea background" 
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center text-center">
+          <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center text-center pointer-events-none">
             <h1 className="text-4xl md:text-5xl font-serif text-white mb-6 leading-tight drop-shadow-xl font-bold">
               Social,<br/>Activity,<br/>Tea
             </h1>
-            <button className="bg-[#485B3B] text-white px-10 py-3 rounded-full text-sm font-bold hover:bg-[#3a4a2f] transition-all shadow-lg active:scale-95">
+            <button className="bg-[#485B3B] text-white px-10 py-3 rounded-full text-sm font-bold hover:bg-[#3a4a2f] transition-all shadow-lg active:scale-95 pointer-events-auto">
               join us now
             </button>
           </div>
@@ -214,7 +214,11 @@ export default function Home() {
             <p className="text-[#485B3B] font-medium mb-6">พร้อมเริ่มกิจกรรมแรกของคุณหรือยัง?</p>
             <div className="flex justify-center gap-6">
               <button className="bg-[#485B3B] text-white px-10 py-3 rounded-full font-bold shadow-lg hover:bg-[#3a4a2f] transition-all">สมัครสมาชิก</button>
-              <button className="bg-white text-[#485B3B] border-2 border-[#485B3B] px-10 py-3 rounded-full font-bold hover:bg-[#485B3B] hover:text-white transition-all">ดูกิจกรรมทั้งหมด</button>
+              <Link to="/events">
+  <button className="bg-white text-[#485B3B] border-2 border-[#485B3B] px-10 py-3 rounded-full font-bold hover:bg-[#485B3B] hover:text-white transition-all">
+    ดูกิจกรรมทั้งหมด
+  </button>
+</Link>
             </div>
           </div>
         </section>

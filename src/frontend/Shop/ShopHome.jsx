@@ -48,7 +48,7 @@ function Navbar({ cartCount, onCartClick }) {
       <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4">
         <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline">Home</Link>
         <Link to="/shop" className="hover:text-black transition-colors underline-offset-4 hover:underline text-[#485B3B] font-bold">Shop</Link>
-        <a href="#" className="hover:text-black transition-colors underline-offset-4 hover:underline">Event</a>
+        <Link to="/events" className="hover:text-black transition-colors underline-offset-4 hover:underline">Event</Link>
         <button
           onClick={onCartClick}
           className="relative hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6"

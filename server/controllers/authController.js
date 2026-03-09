@@ -7,21 +7,40 @@ exports.register = async (req, res) => {
 
   const { username, email, password } = req.body;
 
-  const hashedPassword = await bcrypt.hash(password, 10);
+  if (!username || !email || !password) {
+    return res.status(400).json({
+      message: "Missing required fields"
+    });
+  }
 
-  const sql = `
-    INSERT INTO users (username, email, password)
-    VALUES (?, ?, ?)
-  `;
+  const checkSql = "SELECT * FROM users WHERE email = ?";
 
-  db.query(sql, [username, email, hashedPassword], (err, result) => {
+  db.query(checkSql, [email], async (err, data) => {
 
-    if (err) {
-      return res.status(500).json(err);
+    if (data.length > 0) {
+      return res.status(400).json({
+        message: "Email already exists"
+      });
     }
 
-    res.json({
-      message: "Register success"
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const sql = `
+      INSERT INTO users (username, email, password)
+      VALUES (?, ?, ?)
+    `;
+
+    db.query(sql, [username, email, hashedPassword], (err, result) => {
+
+      if (err) {
+        return res.status(500).json(err);
+      }
+
+      res.json({
+        message: "Register success",
+        user_id: result.insertId
+      });
+
     });
 
   });

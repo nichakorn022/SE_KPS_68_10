@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './frontend/Home.jsx';
 import Shop from './frontend/Shop/ShopHome.jsx';
 import Events from './frontend/Event/EventPage.jsx';
-import EventDetail from './frontend/Event/Eventdetails.jtx';
+import EventDetail from './frontend/Event/Eventdetails.jsx';
 
 
 function App() {

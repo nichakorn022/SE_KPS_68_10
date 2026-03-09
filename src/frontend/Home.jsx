@@ -53,7 +53,7 @@ export default function Home() {
           <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4 relative z-50 pointer-events-auto">
             <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline">Home</Link>
             <Link to="/shop" className="hover:text-black transition-colors underline-offset-4 hover:underline">Shop</Link>
-            <a href="#" className="hover:text-black transition-colors underline-offset-4 hover:underline">Event</a>
+            <Link to="/events" className="hover:text-black transition-colors underline-offset-4 hover:underline">Event</Link>
             <a href="#" className="hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6">Login</a>
           </div>
         </nav>

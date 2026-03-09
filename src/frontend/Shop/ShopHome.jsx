@@ -1,6 +1,6 @@
 import {useState, useEffect, useCallback} from "react";
 import { Link } from 'react-router-dom';
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "http://localhost:3001/api";
 const api = {
     getProducts: () => fetch(`${API_BASE}/products`).then(r => {
         if (!r.ok) {

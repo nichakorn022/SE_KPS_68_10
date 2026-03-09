@@ -1,3 +1,4 @@
+/* eslint-env node */
 const express = require("express");
 const router = express.Router();
 
@@ -6,4 +7,11 @@ console.log(authController);
 router.post("/register", authController.register);
 router.post("/login", authController.login);
 
+const authMiddleware = require("../middleware/authMiddleware");
+router.get("/profile", authMiddleware, (req,res)=>{
+  res.json({
+    message:"Access granted",
+    user:req.user
+  });
+});
 module.exports = router;

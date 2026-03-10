@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from 'react-router-dom';
 import { useAuthModal } from '../../App';
 
-export default function EventDetail() {
+export default function Eventdetails() {
   const { openLogin } = useAuthModal();
   const { id } = useParams();
   const [event, setEvent] = useState(null);
@@ -16,29 +16,15 @@ export default function EventDetail() {
   if (!event) return <div className="p-10">Loading...</div>;
 
   return (
-    <div className="bg-[#efede7] min-h-screen">
     <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800 flex flex-col items-center">
       <div className="w-full max-w-auto bg-[#F5F3E9] shadow-sm overflow-hidden min-h-screen">
-        
-        {/* Navbar */}
-        <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 pointer-events-auto relative">
-          <div className="flex items-center justify-start h-16 w-32 md:w-40"> 
-            <img src="./Pictrue/Logo.png" alt="ATC Logo" className="h-full w-auto object-contain" />
-          </div>
-          <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] relative z-50 pointer-events-auto">
-            <Link to="/" className="hover:text-black">Home</Link>
-            <Link to="/shop" className="hover:text-black">Shop</Link>
-            <Link to="/events" className="text-black underline underline-offset-8 decoration-2">Event</Link>
-            <button onClick={openLogin} className="border-l border-black/20 pl-6 hover:text-black font-bold bg-transparent border-t-0 border-r-0 border-b-0 cursor-pointer text-[17px] text-[#4a4a4a]">Login</button>
-          </div>
-        </nav>
 
       {/* HEADER (แก้ให้เหมือน Home) */}
       <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
 
         <div className="flex items-center justify-start h-16 w-32 md:w-40">
           <img
-            src="/Pictrue/Logo.png"
+            src="./Pictrue/Logo.png"
             alt="ATC Logo"
             className="h-full w-auto object-contain drop-shadow-sm"
           />
@@ -207,7 +193,7 @@ export default function EventDetail() {
       </div>
 
     </div>
+    </div>
   );
 }
 
-export default EventDetails;

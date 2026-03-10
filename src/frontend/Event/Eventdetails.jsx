@@ -1,135 +1,196 @@
-import React from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams, Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 
-export default function EventDetail() {
+function EventDetails() {
   const { id } = useParams();
+  const [event, setEvent] = useState(null);
+
+  useEffect(() => {
+    fetch(`http://localhost:3001/api/events/${id}`)
+      .then(res => res.json())
+      .then(data => setEvent(data));
+  }, [id]);
+
+  if (!event) return <div className="p-10">Loading...</div>;
 
   return (
-    <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800 flex flex-col items-center">
-      <div className="w-full max-w-auto bg-[#F5F3E9] shadow-sm overflow-hidden min-h-screen">
-        
-        {/* Navbar */}
-        <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 pointer-events-auto relative">
-          <div className="flex items-center justify-start h-16 w-32 md:w-40"> 
-            <img src="./Pictrue/Logo.png" alt="ATC Logo" className="h-full w-auto object-contain" />
-          </div>
-          <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] relative z-50 pointer-events-auto">
-            <Link to="/" className="hover:text-black">Home</Link>
-            <Link to="/shop" className="hover:text-black">Shop</Link>
-            <Link to="/events" className="text-black underline underline-offset-8 decoration-2">Event</Link>
-            <Link to="/login" className="border-l border-black/20 pl-6 hover:text-black font-bold">Login</Link>
-          </div>
-        </nav>
+    <div className="bg-[#efede7] min-h-screen">
 
-        <div className="py-6 px-6 text-center">
-          <h1 className="text-3xl font-medium text-gray-800 mb-6">Events</h1>
+      {/* HEADER (แก้ให้เหมือน Home) */}
+      <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
+
+        <div className="flex items-center justify-start h-16 w-32 md:w-40">
+          <img
+            src="/Pictrue/Logo.png"
+            alt="ATC Logo"
+            className="h-full w-auto object-contain drop-shadow-sm"
+          />
         </div>
 
-        {/* Event Main Card */}
-        <div className="px-6 mb-8">
-          <div className="bg-white rounded-3xl shadow-xl overflow-hidden flex flex-col md:flex-row max-w-[900px] mx-auto border border-gray-100">
-            <div className="p-8 md:w-[55%] flex flex-col">
-              <div className="flex gap-2 mb-4">
-                <div className="w-10 h-3 bg-[#AEBC9F] rounded-full opacity-60"></div>
-                <div className="w-10 h-3 bg-[#AEBC9F] rounded-full opacity-60"></div>
-                <div className="w-10 h-3 bg-[#AEBC9F] rounded-full opacity-60"></div>
-              </div>
-              
-              <h2 className="text-[24px] font-bold text-[#1a2e35] mb-4">Morning Yoga & Meditation Session</h2>
-              
-              <div className="space-y-3 mb-6">
-                <div className="flex items-center gap-3 text-sm text-gray-600">
-                  <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden">
-                    <img src="https://i.pravatar.cc/150?u=guy" alt="avatar" />
-                  </div>
-                  <span>GuyInwzaxd <span className="text-gray-400">@guyza558</span></span>
-                </div>
-                <p className="flex items-center gap-3 text-sm text-gray-500">
-                  <span className="text-lg">🕒</span> Saturday, February 8, 2026 | 7:00 AM - 8:30 AM
-                </p>
-                <p className="flex items-center gap-3 text-sm text-gray-500">
-                  <span className="text-lg">📍</span> Canaan Baptist Church Bangkok <br/>
-                  <span className="text-[10px] text-blue-400 ml-8 underline cursor-pointer">Open with Google Maps</span>
-                </p>
-              </div>
+        <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4">
 
-              <div className="flex gap-3 mb-6">
-                <div className="bg-[#AEBC9F] text-white px-4 py-1.5 rounded-full text-[11px] font-bold">Will go 5/20</div>
-                <div className="bg-gray-100 text-gray-400 px-4 py-1.5 rounded-full text-[11px] font-bold">Interested 10</div>
-              </div>
+          <Link
+            to="/"
+            className="hover:text-black transition-colors underline-offset-4 hover:underline"
+          >
+            Home
+          </Link>
 
-              <div className="mb-8">
-                <h4 className="font-bold text-sm text-gray-800 mb-1">Description</h4>
-                <p className="text-[11px] text-gray-500 leading-relaxed">
-                  Join us for a rejuvenating morning yoga and meditation session designed for all levels. Start your weekend with mindfulness, breathing exercises, and gentle stretches. We'll practice in a peaceful outdoor setting, weather permitting. Please bring your own mat and water bottle. <span className="font-bold text-gray-800 cursor-pointer">Read more.</span>
-                </p>
-              </div>
+          <Link
+            to="/shop"
+            className="hover:text-black transition-colors underline-offset-4 hover:underline"
+          >
+            Shop
+          </Link>
 
-              <div className="flex gap-4">
-                <button className="flex-1 bg-[#AEBC9F] text-white py-2 rounded-full text-sm font-bold flex items-center justify-center gap-2">
-                   💬 Chat
-                </button>
-                <button className="flex-1 border border-gray-200 text-gray-400 py-2 rounded-full text-sm font-bold">
-                  Cancel Registration
-                </button>
-              </div>
-            </div>
+          <Link
+            to="/events"
+            className="hover:text-black transition-colors underline-offset-4 hover:underline"
+          >
+            Event
+          </Link>
 
-            <div className="md:w-[45%] h-auto min-h-[300px]">
-              <img src="https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=800&q=80" 
-                   className="w-full h-full object-cover" alt="Yoga" />
-            </div>
-          </div>
+          <Link
+            to="/login"
+            className="hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6"
+          >
+            Login
+          </Link>
+
         </div>
 
-        {/* Comment Section */}
-        <div className="px-6 pb-20 max-w-[900px] mx-auto">
-          <div className="bg-white rounded-3xl p-8 shadow-md border border-gray-100">
-            <h3 className="text-lg font-bold mb-6 text-gray-800">Comment <span className="text-gray-400 font-normal text-sm">(3)</span></h3>
-            
-            <div className="flex gap-4 mb-10">
-              <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
-                <img src="https://i.pravatar.cc/150?u=me" alt="user" />
-              </div>
-              <div className="flex-1 flex gap-2">
-                <input type="text" placeholder="Write a comment..." className="flex-1 bg-gray-50 border border-gray-200 rounded-full px-6 py-2 text-sm focus:outline-none" />
-                <button className="bg-[#AEBC9F] text-white px-6 py-2 rounded-full text-sm font-bold shadow-md">Post</button>
-              </div>
+      </nav>
+
+      {/* PAGE CONTENT */}
+      <div className="p-8">
+
+        {/* MAIN EVENT CARD */}
+        <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden grid grid-cols-2">
+
+          {/* LEFT SIDE */}
+          <div className="p-8">
+
+            <h1 className="text-2xl font-bold mb-3">
+              {event.title}
+            </h1>
+
+            <p className="text-gray-500 mb-4">
+              Organizer #{event.organizer_id}
+            </p>
+
+            <p className="flex items-center gap-2 text-gray-600">
+              🕒 {new Date(event.event_date).toLocaleDateString()}
+            </p>
+
+            <p className="flex items-center gap-2 text-gray-600 mt-2">
+              📍 {event.location}
+            </p>
+
+            <div className="mt-4 flex gap-3">
+              <span className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm">
+                0/{event.max_participant} Will go
+              </span>
+
+              <span className="bg-gray-200 px-3 py-1 rounded-full text-sm">
+                Interested 0
+              </span>
             </div>
 
-            <div className="space-y-8">
-              {[
-                { name: "Uka Uka", time: "2 hours ago", text: "กิจกรรมสนุกมากครับ บรรยากาศดีมาก อยากให้จัดแบบนี้บ่อยๆ ครับ" },
-                { name: "Somchai", time: "3 hours ago", text: "ขอบคุณทีมงานมาก กิจกรรมจัดดีมากครับ" },
-                { name: "Ploy", time: "1 day ago", text: "บรรยากาศดี เหมาะกับการฝึกสมาธิจริงๆ" }
-              ].map((comment, i) => (
-                <div key={i} className="flex gap-4">
-                  <div className="w-10 h-10 rounded-full bg-slate-300 overflow-hidden">
-                    <img src={`https://i.pravatar.cc/150?u=${i}`} alt="user" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="font-bold text-sm text-gray-800">{comment.name}</span>
-                      <span className="text-gray-400 text-[10px]">{comment.time}</span>
-                    </div>
-                    <div className="bg-gray-50 p-4 rounded-2xl rounded-tl-none text-sm text-gray-700 leading-relaxed">
-                      {comment.text}
-                    </div>
-                  </div>
-                </div>
-              ))}
+            {/* DESCRIPTION */}
+            <div className="mt-6">
+              <h2 className="font-semibold mb-2">Description</h2>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                {event.description}
+              </p>
             </div>
+
+            {/* BUTTONS */}
+            <div className="mt-6 flex gap-4">
+
+              <button
+                onClick={() => console.log("Chat clicked")}
+                className="bg-[#9fb08f] px-6 py-3 rounded-full text-white font-medium hover:opacity-90 active:scale-95 transition"
+              >
+                Chat
+              </button>
+
+              <button
+                onClick={() => console.log("Register clicked")}
+                className="px-4 py-2 rounded-full border hover:bg-gray-100 active:scale-95 transition"
+              >
+                Register
+              </button>
+
+            </div>
+
           </div>
+
+          {/* RIGHT SIDE IMAGE */}
+          <div className="h-full">
+            <img
+              src="/Pictrue/Activity.png"
+              alt="event"
+              className="w-full h-full object-cover"
+            />
+          </div>
+
         </div>
 
-        <footer className="bg-[#AEBC9F] h-40 w-full mt-10 opacity-60">
-           <div className="p-10 space-y-4">
-              <div className="h-4 bg-white/40 w-64 rounded"></div>
-              <div className="h-4 bg-white/40 w-48 rounded"></div>
-           </div>
-        </footer>
+        {/* COMMENT SECTION */}
+        <div className="max-w-6xl mx-auto mt-8 bg-white rounded-2xl shadow p-6">
+
+          <h2 className="font-semibold mb-4">Comment (3)</h2>
+
+          {/* INPUT */}
+          <div className="flex gap-3 mb-6">
+
+            <img
+              src="https://i.pravatar.cc/40"
+              className="w-10 h-10 rounded-full"
+            />
+
+            <input
+              type="text"
+              placeholder="Write a comment..."
+              className="flex-1 border rounded-full px-4 py-2"
+            />
+
+            <button
+                onClick={() => console.log("Post clicked")}
+                className="bg-[#9fb08f] px-6 py-3 rounded-full text-white font-medium hover:opacity-90 active:scale-95 transition"
+              >
+                Post
+              </button>
+
+          </div>
+
+          {/* COMMENT LIST */}
+          <div className="space-y-4">
+
+            <div className="flex gap-3">
+              <img src="https://i.pravatar.cc/41" className="w-9 h-9 rounded-full" />
+              <div className="bg-gray-100 p-3 rounded-xl">
+                <p className="font-semibold text-sm">Uka Uka</p>
+                <p className="text-sm">กิจกรรมสนุกมากครับ บรรยากาศดีมาก</p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <img src="https://i.pravatar.cc/42" className="w-9 h-9 rounded-full" />
+              <div className="bg-gray-100 p-3 rounded-xl">
+                <p className="font-semibold text-sm">Somchai</p>
+                <p className="text-sm">ขอบคุณทีมงานมากครับ กิจกรรมดีมาก</p>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
 
       </div>
+
     </div>
   );
 }
+
+export default EventDetails;

@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { apiUrl, assetUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
 import FloatingCartButton from "../components/FloatingCartButton";
+import usePersistentCart from "../hooks/usePersistentCart";
 
 const TABS = ["Overview", "Product", "Events", "About"];
 
@@ -293,7 +294,7 @@ function LoadingBlock() {
 export default function ShopProfile() {
   const { id } = useParams();
   const [activeTab, setActiveTab] = useState("Overview");
-  const [cart, setCart] = useState([]);
+  const [cart, setCart] = usePersistentCart();
   const [cartOpen, setCartOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { apiUrl, assetUrl } from '../../lib/api';
 import SiteNavbar from '../components/SiteNavbar';
 import FloatingCartButton from '../components/FloatingCartButton';
+import usePersistentCart from '../hooks/usePersistentCart';
 
 const api = {
     getProducts: () => fetch(apiUrl("/products")).then(r => {
@@ -356,7 +357,7 @@ export default function ShopHome() {
   const [search, setSearch]               = useState("");
   const [activeTab, setActiveTab]         = useState(TAB[0]);
   const [activeCategory, setActiveCategory] = useState(null);
-  const [cart, setCart]                   = useState([]);
+  const [cart, setCart]                   = usePersistentCart();
   const [cartOpen, setCartOpen]           = useState(false);
   const [activeView, setActiveView]       = useState("products"); // "products" | "shops"
 

@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiUrl, assetUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
 import FloatingCartButton from "../components/FloatingCartButton";
+import usePersistentCart from "../hooks/usePersistentCart";
 
 const api = {
   getProduct: (id) =>
@@ -338,7 +339,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
   const [addedFeedback, setAddedFeedback] = useState(false);
 
   // Internal cart state (fallback if no prop)
-  const [internalCart, setInternalCart] = useState([]);
+  const [internalCart, setInternalCart] = usePersistentCart();
   const [cartOpen, setCartOpen] = useState(false);
 
   const cart = cartProp ?? internalCart;

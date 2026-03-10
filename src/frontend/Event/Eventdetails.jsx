@@ -9,7 +9,7 @@ export default function Eventdetails() {
   const { id } = useParams();
 
   const [event, setEvent] = useState(null);
-  const [isInterested, setIsInterested] = useState(false);
+  const [interested, setInterested] = useState([]);
 
   useEffect(() => {
 
@@ -18,32 +18,23 @@ export default function Eventdetails() {
       .then(data => setEvent(data));
 
     const saved = JSON.parse(localStorage.getItem("interestedEvents")) || [];
-
-    if (saved.includes(Number(id))) {
-      setIsInterested(true);
-    }
+    setInterested(saved);
 
   }, [id]);
 
 
-  const handleInterested = () => {
+  const toggleInterested = () => {
 
-    const saved = JSON.parse(localStorage.getItem("interestedEvents")) || [];
+    let updated;
 
-    if (saved.includes(event.event_id)) {
-
-      const updated = saved.filter(eid => eid !== event.event_id);
-      localStorage.setItem("interestedEvents", JSON.stringify(updated));
-      setIsInterested(false);
-
+    if (interested.includes(event.event_id)) {
+      updated = interested.filter(e => e !== event.event_id);
     } else {
-
-      saved.push(event.event_id);
-      localStorage.setItem("interestedEvents", JSON.stringify(saved));
-      setIsInterested(true);
-
+      updated = [...interested, event.event_id];
     }
 
+    setInterested(updated);
+    localStorage.setItem("interestedEvents", JSON.stringify(updated));
   };
 
 
@@ -98,14 +89,13 @@ export default function Eventdetails() {
 
       </nav>
 
-
       {/* PAGE CONTENT */}
       <div className="p-8">
 
         {/* MAIN EVENT CARD */}
         <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden grid grid-cols-2">
 
-          {/* LEFT SIDE */}
+          {/* LEFT */}
           <div className="p-8">
 
             <h1 className="text-2xl font-bold mb-3">
@@ -130,12 +120,21 @@ export default function Eventdetails() {
                 0/{event.max_participant} Will go
               </span>
 
-              <span className="bg-gray-200 px-3 py-1 rounded-full text-sm">
-                Interested {isInterested ? 1 : 0}
-              </span>
+              {/* ⭐ ปุ่ม Interested */}
+              <button
+                onClick={toggleInterested}
+                className={`px-3 py-1 rounded-full text-sm
+                ${interested.includes(event.event_id)
+                  ? "bg-red-200 text-red-800"
+                  : "bg-gray-200"}
+                `}
+              >
+                {interested.includes(event.event_id)
+                  ? "❤️ Interested"
+                  : "🤍 Interested"}
+              </button>
 
             </div>
-
 
             {/* DESCRIPTION */}
             <div className="mt-6">
@@ -145,98 +144,39 @@ export default function Eventdetails() {
               </p>
             </div>
 
-
             {/* BUTTONS */}
             <div className="mt-6 flex gap-4">
 
               <button
-                onClick={() => console.log("Chat clicked")}
-                className="bg-[#9fb08f] px-6 py-3 rounded-full text-white font-medium hover:opacity-90 active:scale-95 transition"
+                className="bg-[#9fb08f] px-6 py-3 rounded-full text-white font-medium hover:opacity-90"
               >
                 Chat
               </button>
 
               <button
-                onClick={() => console.log("Register clicked")}
-                className="px-4 py-2 rounded-full border hover:bg-gray-100 active:scale-95 transition"
+                className="px-4 py-2 rounded-full border hover:bg-gray-100"
               >
                 Register
               </button>
 
-              <button
-                onClick={handleInterested}
-                className={`px-4 py-2 rounded-full border transition ${
-                  isInterested
-                    ? "bg-pink-500 text-white border-pink-500"
-                    : "hover:bg-gray-100"
-                }`}
+              <Link
+                to={`/review/${event.event_id}`}
+                className="px-4 py-2 rounded-full bg-[#6f8b5d] text-white hover:opacity-90"
               >
-                ❤️ {isInterested ? "Interested" : "Add Interested"}
-              </button>
+                Review
+              </Link>
 
             </div>
 
           </div>
 
-
-          {/* RIGHT SIDE IMAGE */}
+          {/* RIGHT IMAGE */}
           <div className="h-full">
             <img
               src="/Pictrue/Activity.png"
               alt="event"
               className="w-full h-full object-cover"
             />
-          </div>
-
-        </div>
-
-
-        {/* COMMENT SECTION */}
-        <div className="max-w-6xl mx-auto mt-8 bg-white rounded-2xl shadow p-6">
-
-          <h2 className="font-semibold mb-4">Comment (3)</h2>
-
-          <div className="flex gap-3 mb-6">
-
-            <img
-              src="https://i.pravatar.cc/40"
-              className="w-10 h-10 rounded-full"
-            />
-
-            <input
-              type="text"
-              placeholder="Write a comment..."
-              className="flex-1 border rounded-full px-4 py-2"
-            />
-
-            <button
-              onClick={() => console.log("Post clicked")}
-              className="bg-[#9fb08f] px-6 py-3 rounded-full text-white font-medium hover:opacity-90 active:scale-95 transition"
-            >
-              Post
-            </button>
-
-          </div>
-
-
-          <div className="space-y-4">
-
-            <div className="flex gap-3">
-              <img src="https://i.pravatar.cc/41" className="w-9 h-9 rounded-full" />
-              <div className="bg-gray-100 p-3 rounded-xl">
-                <p className="font-semibold text-sm">Uka Uka</p>
-                <p className="text-sm">กิจกรรมสนุกมากครับ บรรยากาศดีมาก</p>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <img src="https://i.pravatar.cc/42" className="w-9 h-9 rounded-full" />
-              <div className="bg-gray-100 p-3 rounded-xl">
-                <p className="font-semibold text-sm">Somchai</p>
-                <p className="text-sm">ขอบคุณทีมงานมากครับ กิจกรรมดีมาก</p>
-              </div>
-            </div>
-
           </div>
 
         </div>

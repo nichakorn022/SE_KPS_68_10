@@ -174,55 +174,68 @@ function EventPage() {
         {/* EVENT GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-          {filteredEvents.map((event) => (
+          {filteredEvents.map((event) => {
 
-            <Link
-              key={event.event_id}
-              to={`/events/${event.event_id}`}
-              className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition"
-            >
+            const interestedCount = interested.filter(
+              (id) => id === event.event_id
+            ).length;
 
-              <img
-                src="/Pictrue/Activity.png"
-                alt="event"
-                className="w-full h-[170px] object-cover"
-              />
+            return (
 
-              <div className="p-4">
+              <Link
+                key={event.event_id}
+                to={`/events/${event.event_id}`}
+                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition"
+              >
 
-                <h3 className="font-semibold text-lg mb-1">
-                  {event.title}
-                </h3>
+                <img
+                  src="/Pictrue/Activity.png"
+                  alt="event"
+                  className="w-full h-[170px] object-cover"
+                />
 
-                <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                  {event.description}
-                </p>
+                <div className="p-4">
 
-                <p className="text-sm text-gray-500">
-                  📅 {new Date(event.event_date).toLocaleDateString()}
-                </p>
+                  <h3 className="font-semibold text-lg mb-1">
+                    {event.title}
+                  </h3>
 
-                <p className="text-sm text-gray-500">
-                  📍 {event.location}
-                </p>
+                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">
+                    {event.description}
+                  </p>
 
-                <p className="text-xs text-gray-400 mt-2">
-                  0/{event.max_participant} Joined
-                </p>
+                  <p className="text-sm text-gray-500">
+                    📅 {new Date(event.event_date).toLocaleDateString()}
+                  </p>
 
-                <div className="mt-3">
+                  <p className="text-sm text-gray-500">
+                    📍 {event.location}
+                  </p>
 
-                  <span className="bg-[#6f8b5d] text-white px-3 py-1 rounded-lg text-sm">
-                    View Event
-                  </span>
+                  <p className="text-xs text-gray-400 mt-2">
+                    0/{event.max_participant} Joined
+                  </p>
+
+                  {/* ⭐ จำนวนคนสนใจ */}
+                  <p className="text-xs text-red-500">
+                    ❤️ {interestedCount} Interested
+                  </p>
+
+                  <div className="mt-3">
+
+                    <span className="bg-[#6f8b5d] text-white px-3 py-1 rounded-lg text-sm">
+                      View Event
+                    </span>
+
+                  </div>
 
                 </div>
 
-              </div>
+              </Link>
 
-            </Link>
+            );
 
-          ))}
+          })}
 
         </div>
 

@@ -6,6 +6,7 @@ import Events from './frontend/Event/EventPage.jsx';
 import Login from './frontend/Login.jsx';
 import Register from './frontend/Regist.jsx';
 import EventDetails from './frontend/Event/Eventdetails.jsx';
+import EventReview from "./frontend/Event/EventReview.jsx";
 import ShopProfile from './frontend/Shop/ShopProfile.jsx';
 
 export const AuthModalContext = createContext(null);
@@ -30,6 +31,8 @@ function App() {
           <Route path="/events"     element={<Events />} />
           <Route path="/events/:id" element={<EventDetails />} />
           <Route path="*"           element={<Navigate to="/" replace />} />
+          <Route path="/review/:id" element={<EventReview />} />
+          
         </Routes>
         <Login    isOpen={isLoginOpen}    onClose={closeAll} />
         <Register isOpen={isRegisterOpen} onClose={closeAll} />

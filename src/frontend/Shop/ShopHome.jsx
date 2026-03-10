@@ -1,34 +1,34 @@
 import {useState, useEffect, useCallback} from "react";
 import { Link } from 'react-router-dom';
 import { useAuthModal } from '../../App';
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001/api";
-const API_ORIGIN = API_BASE.replace(/\/api$/, "");
+import { apiUrl, assetUrl } from '../../lib/api';
+
 const api = {
-    getProducts: () => fetch(`${API_BASE}/products`).then(r => {
+    getProducts: () => fetch(apiUrl("/products")).then(r => {
         if (!r.ok) {
             throw new Error(`Products ${r.status}`);
         }
         return r.json();
     }),
-    getShops: () => fetch(`${API_BASE}/shops`).then(r => {
+    getShops: () => fetch(apiUrl("/shop")).then(r => {
         if (!r.ok) {
             throw new Error(`Shops ${r.status}`);
         }
         return r.json();
     }),
-    getShopImages: () => fetch(`${API_BASE}/shop-images`).then(r => {
+    getShopImages: () => fetch(apiUrl("/shop-images")).then(r => {
         if (!r.ok) {
             throw new Error(`Shop images ${r.status}`);
         }
         return r.json();
     }),
-    getProductImages: () => fetch(`${API_BASE}/product-images`).then(r => {
+    getProductImages: () => fetch(apiUrl("/product-images")).then(r => {
         if (!r.ok) {
             throw new Error(`Product images ${r.status}`);
         }
         return r.json();
     }),
-    getProduct: (id) => fetch(`${API_BASE}/products/${id}`).then(r => {
+    getProduct: (id) => fetch(apiUrl(`/products/${id}`)).then(r => {
         if (!r.ok) {
             throw new Error(`Product ${id} ${r.status}`);
         }
@@ -51,9 +51,7 @@ function normalizeShop(shop) {
 }
 
 function toAssetUrl(imagePath) {
-    if (!imagePath) return null;
-    if (/^https?:\/\//i.test(imagePath)) return imagePath;
-    return `${API_ORIGIN}${imagePath.startsWith("/") ? imagePath : `/${imagePath}`}`;
+     return assetUrl(imagePath);
 }
 
 function normalizeProduct(product, shopsById, productImageMap) {

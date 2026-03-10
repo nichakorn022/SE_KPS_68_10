@@ -196,6 +196,7 @@ function CategoryBar({ categories, active, onSelect }) {
 
 function ProductCard({ product }) {
   return (
+    <Link to={`/product/${product.id}`} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all hover:-translate-y-0.5 group">
     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all hover:-translate-y-0.5 group">
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-[#F5F3E9]">
@@ -238,6 +239,7 @@ function ProductCard({ product }) {
         </div>
       </div>
     </div>
+      </Link>
   );
 }
 

@@ -8,6 +8,7 @@ import Register from './frontend/Regist.jsx';
 import EventDetails from './frontend/Event/Eventdetails.jsx';
 import EventReview from "./frontend/Event/EventReview.jsx";
 import ShopProfile from './frontend/Shop/ShopProfile.jsx';
+import ProductDetail from './frontend/Shop/ProductDetail.jsx';
 
 export const AuthModalContext = createContext(null);
 export const useAuthModal = () => useContext(AuthModalContext);
@@ -32,7 +33,7 @@ function App() {
           <Route path="/events/:id" element={<EventDetails />} />
           <Route path="*"           element={<Navigate to="/" replace />} />
           <Route path="/review/:id" element={<EventReview />} />
-          
+          <Route path="/product/:id" element={<ProductDetail />} />
         </Routes>
         <Login    isOpen={isLoginOpen}    onClose={closeAll} />
         <Register isOpen={isRegisterOpen} onClose={closeAll} />

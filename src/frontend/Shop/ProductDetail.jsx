@@ -4,6 +4,7 @@ import { apiUrl, assetUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
 import FloatingCartButton from "../components/FloatingCartButton";
 import usePersistentCart from "../hooks/usePersistentCart";
+import ShopHome from "./ShopHome";
 
 const api = {
   getProduct: (id) =>
@@ -14,6 +15,11 @@ const api = {
   getProductImages: (id) =>
     fetch(apiUrl(`/product-images?product_id=${id}`)).then((r) => {
       if (!r.ok) throw new Error(`Images ${r.status}`);
+      return r.json();
+    }),
+  getAllProductImages: () =>
+    fetch(apiUrl(`/product-images`)).then((r) => {
+      if (!r.ok) throw new Error(`All images ${r.status}`);
       return r.json();
     }),
   getShop: (shopId) =>
@@ -127,51 +133,20 @@ function StarRating({ rating = 4.5, count = 0 }) {
 
 // ── Image Gallery ───────────────────────────────────────────────────────────
 function ImageGallery({ images, productName }) {
-  const [selected, setSelected] = useState(0);
-
-  const allImages = images.length > 0 ? images : [null];
+  const mainImg = images[0] ?? null;
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Main image */}
-      <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-[#F0EDE3] border border-[#AEBC9F]/20 shadow-sm">
-        {allImages[selected] ? (
-          <img
-            src={allImages[selected]}
-            alt={productName}
-            className="w-full h-full object-cover object-center"
-          />
-        ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-[#AEBC9F]">
-            <span className="text-7xl mb-2">🍵</span>
-            <span className="text-sm">ไม่มีรูปภาพ</span>
-          </div>
-        )}
-        {/* Tea type badge */}
-      </div>
-
-      {/* Thumbnails */}
-      {allImages.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {allImages.map((img, i) => (
-            <button
-              key={i}
-              onClick={() => setSelected(i)}
-              className={`flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${
-                selected === i
-                  ? "border-[#485B3B] shadow-md"
-                  : "border-transparent hover:border-[#AEBC9F]"
-              }`}
-            >
-              {img ? (
-                <img src={img} alt={`view ${i + 1}`} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full bg-[#F0EDE3] flex items-center justify-center text-xl">
-                  🍵
-                </div>
-              )}
-            </button>
-          ))}
+    <div className="relative w-full aspect-square rounded-2xl overflow-hidden bg-[#F0EDE3] border border-[#AEBC9F]/20 shadow-sm">
+      {mainImg ? (
+        <img
+          src={mainImg}
+          alt={productName}
+          className="w-full h-full object-cover object-center"
+        />
+      ) : (
+        <div className="w-full h-full flex flex-col items-center justify-center text-[#AEBC9F]">
+          <span className="text-7xl mb-2">🍵</span>
+          <span className="text-sm">ไม่มีรูปภาพ</span>
         </div>
       )}
     </div>
@@ -209,7 +184,7 @@ function ShopPanel({ shop, shopImg }) {
         )}
       </div>
       <Link
-        to={`/shop`}
+        to={`/shop/${shop.shop_id}`}
         className="flex-shrink-0 border border-[#485B3B] text-[#485B3B] text-[12px] font-bold px-4 py-1.5 rounded-full hover:bg-[#485B3B] hover:text-white transition-all"
       >
         ดูร้าน
@@ -382,16 +357,23 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
       .then(async (prod) => {
         setProduct(prod);
 
-        // Fetch images, shop, related in parallel
-        const [imgs, shopData] = await Promise.all([
-          api.getProductImages(id).catch(() => []),
+        // Fetch images (all at once), shop in parallel — same pattern as ShopHome
+        const [allProductImgs, shopData] = await Promise.all([
+          api.getAllProductImages().catch(() => []),
           prod.shop_id ? api.getShop(prod.shop_id).catch(() => null) : Promise.resolve(null),
         ]);
 
-        const mappedImgs = imgs
-          .filter((img) => img.image_path)
-          .map((img) => toAssetUrl(img.image_path));
-        setImages(mappedImgs);
+        // Build Map: product_id → first image URL (same as ShopHome)
+        const productImageMap = new Map();
+        allProductImgs.forEach((img) => {
+          if (!productImageMap.has(img.product_id) && img.image_path) {
+            productImageMap.set(img.product_id, toAssetUrl(img.image_path));
+          }
+        });
+
+        // Main product image
+        const mainImg = productImageMap.get(Number(id)) ?? productImageMap.get(String(id)) ?? null;
+        setImages(mainImg ? [mainImg] : []);
         setShop(shopData);
 
         if (shopData) {
@@ -404,13 +386,21 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
             setShopImg(toAssetUrl(shopImgs[0].image_path));
           }
 
-          // Filter out current product, limit to 4
-          setRelated(
-            relatedProds
-              .filter((p) => p.product_id !== prod.product_id)
-              .slice(0, 4)
-              .map((p) => ({ ...p, img: null })) // images not fetched for related
-          );
+          // Only products from this shop, exclude current, limit to 4
+          // Use productImageMap already built — no extra API calls needed
+          const relatedWithImgs = relatedProds
+            .filter(
+              (p) =>
+                String(p.product_id) !== String(prod.product_id) &&
+                String(p.shop_id) === String(shopData.shop_id)
+            )
+            .slice(0, 4)
+            .map((p) => ({
+              ...p,
+              img: productImageMap.get(p.product_id) ?? null,
+            }));
+
+          setRelated(relatedWithImgs);
         }
 
         setLoading(false);
@@ -608,7 +598,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
         {/* ── Back button ── */}
         <div className="mt-8 flex justify-center">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate("/shop")}
             className="flex items-center gap-2 text-[#485B3B] font-semibold text-[14px] hover:underline underline-offset-2 transition-colors"
           >
             ← กลับไปหน้า Shop

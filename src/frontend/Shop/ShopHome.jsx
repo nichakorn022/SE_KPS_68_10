@@ -4,6 +4,12 @@ import { apiUrl, assetUrl } from '../../lib/api';
 import SiteNavbar from '../components/SiteNavbar';
 import FloatingCartButton from '../components/FloatingCartButton';
 import usePersistentCart from '../hooks/usePersistentCart';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Pagination, Autoplay, Navigation } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/pagination';
+import 'swiper/css/navigation';
+
 
 const api = {
     getProducts: () => fetch(apiUrl("/products")).then(r => {
@@ -359,7 +365,7 @@ export default function ShopHome() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [cart, setCart]                   = usePersistentCart();
   const [cartOpen, setCartOpen]           = useState(false);
-  const [activeView, setActiveView]       = useState("products"); // "products" | "shops"
+  const [activeView, setActiveView]       = useState("products"); 
 
   // ── Fetch ──────────────────────────────────────────────────
   useEffect(() => {
@@ -426,15 +432,19 @@ export default function ShopHome() {
         <SiteNavbar active="shop" />
 
         {/* Hero Banner */}
-        <section className="relative w-full h-[220px] bg-[#485B3B] overflow-hidden">
-          <div className="absolute inset-0 opacity-10">
-            {[...Array(12)].map((_, i) => (
-              <div key={i} className="absolute text-white text-6xl select-none" style={{ top: `${(i * 37) % 100}%`, left: `${(i * 23) % 100}%`, transform: `rotate(${i * 15}deg)` }}>🍃</div>
-            ))}
-          </div>
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-            <h1 className="text-3xl md:text-4xl font-serif text-white font-bold drop-shadow-lg mb-2">ATC Tea Shop</h1>
-            <p className="text-[#AEBC9F] text-[15px] font-medium">ชาคัดสรร จากสวนสู่มือคุณ</p>
+        <section className="w-full px-4 md:px-6 pt-8">
+          <div className="group relative w-full max-w-[1400px] h-[400px] mx-auto overflow-hidden rounded-[28px] shadow-sm">
+          <Swiper modules={[Pagination, Navigation, Autoplay]} spaceBetween={20} slidesPerView={1} loop={true} autoplay={{ delay: 4000 }} navigation={{ nextEl: '.s1-next', prevEl: '.s1-prev' }} pagination={{ clickable: true, el: '.s1-pagination' }} className="h-full w-full">
+          {["https://i.pinimg.com/originals/f7/38/89/f7388986e1bd9f2d4fd063f2dda835f8.jpg", "https://files.idyllic.app/files/static/4461046", "https://cplusdesign.lk/wp-content/uploads/2023/12/Small-Tea-Shop-Design-Ideas-1-450x450.jpg"].map((src,i)=>(
+            <SwiperSlide key={i}>
+            <div className="h-full w-full overflow-hidden rounded-3xl shadow-lg">
+              <img src={src} className="w-full h-full object-cover" />
+            </div>
+          </SwiperSlide>))}
+          </Swiper>
+          <div className="s1-prev absolute left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center cursor-pointer text-[#485B3B] hover:bg-[#485B3B] hover:text-white transition-all opacity-0 group-hover:opacity-100 hidden md:flex">❮</div>
+          <div className="s1-next absolute right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center cursor-pointer text-[#485B3B] hover:bg-[#485B3B] hover:text-white transition-all opacity-0 group-hover:opacity-100 hidden md:flex">❯</div>
+          <div className="s1-pagination flex justify-center gap-2 mt-[-30px]"></div>
           </div>
         </section>
 

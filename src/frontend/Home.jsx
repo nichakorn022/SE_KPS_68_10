@@ -22,8 +22,8 @@ export default function Home() {
 
         <SiteNavbar active="home" />
 
-        <section className="w-full px-4 md:px-6">
-          <div className="relative w-full max-w-[1100px] h-[400px] mx-auto overflow-hidden rounded-[28px] shadow-sm">
+        <section className="w-full px-4 md:px-6 pt-8">
+          <div className="relative w-full max-w-[1400px] h-[400px] mx-auto overflow-hidden rounded-[28px] shadow-sm">
             <img src="./Pictrue/Tea Background.png" alt="Tea background" className="w-full h-full object-cover" />
             <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center text-center pointer-events-none">
               <h1 className="text-4xl md:text-5xl font-serif text-white mb-6 leading-tight drop-shadow-xl font-bold">Social,<br/>Activity,<br/>Tea</h1>

@@ -47,7 +47,7 @@ export default function Register({ isOpen, onClose }) {
         .reg-card{width:100%;max-width:820px;border-radius:24px;overflow:hidden;display:flex;min-height:520px;box-shadow:0 32px 80px rgba(0,0,0,0.25);transform:translateY(32px) scale(0.96);opacity:0;transition:transform 0.4s cubic-bezier(0.16,1,0.3,1),opacity 0.35s ease;margin:auto;}
         .reg-card.open{transform:translateY(0) scale(1);opacity:1;}
         .reg-close-btn{position:absolute;top:16px;right:16px;z-index:20;width:34px;height:34px;border-radius:50%;background:rgba(72,91,59,0.12);border:1.5px solid rgba(72,91,59,0.2);color:#485B3B;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.2s,transform 0.25s;}
-        .reg-close-btn:hover{background:rgba(72,91,59,0.2);transform:scale(1.1) rotate(90deg);}
+        .reg-close-btn:hover{background:rgba(72,91,59,0.2);}
         .reg-input{width:100%;background:#fff;border-radius:50px;padding:12px 22px;font-size:14px;font-family:'DM Sans',sans-serif;color:#444;border:1.5px solid transparent;outline:none;box-shadow:0 1px 4px rgba(0,0,0,0.06);box-sizing:border-box;transition:border-color 0.2s,box-shadow 0.2s;}
         .reg-input:focus{border-color:#485B3B;box-shadow:0 0 0 3px rgba(72,91,59,0.12);}
         .reg-tab-btn{flex:1;padding:9px 0;border-radius:50px;border:none;cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;letter-spacing:0.03em;transition:all 0.25s cubic-bezier(0.16,1,0.3,1);}
@@ -62,7 +62,7 @@ export default function Register({ isOpen, onClose }) {
             <img src="https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80" alt="Tea" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
             <div style={{position:"absolute",inset:0,background:"linear-gradient(160deg,rgba(0,0,0,0.08) 0%,rgba(0,0,0,0.28) 100%)"}} />
             <div style={{position:"absolute",top:22,left:22,zIndex:10}}>
-              <span style={{fontFamily:"'Playfair Display',Georgia,serif",fontWeight:"bold",fontSize:22,color:"#fff",textShadow:"0 2px 8px rgba(0,0,0,0.35)",letterSpacing:"0.04em"}}>ATC</span>
+              // Logo
             </div>
           </div>
           <div style={{flex:1,background:"#F0EDE3",display:"flex",flexDirection:"column",justifyContent:"center",padding:"40px 44px",boxSizing:"border-box",overflowY:"auto",position:"relative"}}>

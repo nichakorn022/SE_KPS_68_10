@@ -2,6 +2,7 @@
 import { useAuthModal } from "../../App";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { apiUrl } from "../../lib/api";
 
 function EventPage() {
   const [events, setEvents] = useState([]);
@@ -10,13 +11,25 @@ function EventPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [interested, setInterested] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-
-    fetch("http://localhost:3001/api/events")
-      .then((res) => res.json())
-      .then((data) => setEvents(data))
-      .catch((err) => console.error(err));
+    fetch(apiUrl("/events"))
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`Events ${res.status}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setEvents(Array.isArray(data) ? data : []);
+        setError(null);
+      })
+      .catch((err) => {
+        console.error(err);
+        setEvents([]);
+        setError(err.message);
+      });
 
     const saved = JSON.parse(localStorage.getItem("interestedEvents")) || [];
     setInterested(saved);
@@ -107,6 +120,11 @@ function EventPage() {
 
       {/* EVENTS */}
       <div className="max-w-[1100px] mx-auto mt-10 px-5">
+        {error && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
+            ไม่สามารถโหลดข้อมูลกิจกรรมได้: {error}
+          </div>
+        )}
 
         <h2 className="text-center text-2xl mb-8">
           Events

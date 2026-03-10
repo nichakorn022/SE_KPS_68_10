@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from 'react-router-dom';
 import { useAuthModal } from '../../App';
+import { apiUrl } from "../../lib/api";
 
 export default function Eventdetails() {
 
@@ -10,12 +11,25 @@ export default function Eventdetails() {
 
   const [event, setEvent] = useState(null);
   const [interested, setInterested] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-
-    fetch(`http://localhost:3001/api/events/${id}`)
-      .then(res => res.json())
-      .then(data => setEvent(data));
+    fetch(apiUrl(`/events/${id}`))
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`Event ${id} ${res.status}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setEvent(data);
+        setError(null);
+      })
+      .catch((err) => {
+        console.error(err);
+        setEvent(null);
+        setError(err.message);
+      });
 
     const saved = JSON.parse(localStorage.getItem("interestedEvents")) || [];
     setInterested(saved);
@@ -38,6 +52,7 @@ export default function Eventdetails() {
   };
 
 
+  if (error) return <div className="p-10 text-red-600">ไม่สามารถโหลดข้อมูลกิจกรรมได้: {error}</div>;
   if (!event) return <div className="p-10">Loading...</div>;
 
   return (

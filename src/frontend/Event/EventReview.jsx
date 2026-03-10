@@ -2,6 +2,7 @@
 import { useAuthModal } from "../../App";
 import { Link, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { apiUrl } from "../../lib/api";
 
 export default function ReviewPage() {
 
@@ -10,6 +11,7 @@ export default function ReviewPage() {
 
   const [event, setEvent] = useState(null);
   const [comment, setComment] = useState("");
+  const [error, setError] = useState(null);
 
   const [overall, setOverall] = useState(0);
   const [location, setLocation] = useState(0);
@@ -17,11 +19,25 @@ export default function ReviewPage() {
   const [value, setValue] = useState(0);
 
   useEffect(() => {
-    fetch(`http://localhost:3001/api/events/${id}`)
-      .then(res => res.json())
-      .then(data => setEvent(data));
+    fetch(apiUrl(`/events/${id}`))
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`Event ${id} ${res.status}`);
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setEvent(data);
+        setError(null);
+      })
+      .catch((err) => {
+        console.error(err);
+        setEvent(null);
+        setError(err.message);
+      });
   }, [id]);
 
+  if (error) return <div className="p-10 text-red-600">ไม่สามารถโหลดข้อมูลกิจกรรมได้: {error}</div>;
   if (!event) return <div className="p-10">Loading...</div>;
 
   const eventDate = new Date(event.event_date);

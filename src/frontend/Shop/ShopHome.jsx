@@ -1,6 +1,6 @@
 import {useState, useEffect, useCallback} from "react";
 import { Link } from 'react-router-dom';
-const API_BASE = "http://localhost:3001/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 const api = {
     getProducts: () => fetch(`${API_BASE}/products`).then(r => {
         if (!r.ok) {
@@ -24,6 +24,34 @@ const api = {
 
 const TAB = ["All", "New Arrivals", "Best Sellers", "On Sale"];
 const CATEGORY = ["Green Tea", "Black Tea", "Oolong Tea", "White Tea", "Herbal Tea"];
+
+function normalizeShop(shop) {
+    return {
+        ...shop,
+        id: shop.shop_id,
+        name: shop.shop_name,
+        location: [shop.subdistrict, shop.district, shop.province].filter(Boolean).join(", "),
+        rating: shop.verified_status ? "Verified" : null,
+        img: null
+    };
+}
+
+function normalizeProduct(product, shopsById) {
+    const shop = shopsById.get(product.shop_id);
+
+    return {
+        ...product,
+        id: product.product_id,
+        name: product.tea_name,
+        tag: product.tea_type,
+        shop: shop?.name || `Shop #${product.shop_id}`,
+        img: null,
+        isNew: false,
+        isBestSeller: false,
+        isOnSale: false,
+        discount: 0
+    };
+}
 
 function filterProducts(products, {search, activeTab, activeCategory}) {
     const q = search.toLowerCase();
@@ -311,8 +339,12 @@ export default function ShopHome() {
   useEffect(() => {
     Promise.all([api.getProducts(), api.getShops()])
       .then(([prods, shps]) => {
-        setProducts(prods);
-        setShops(shps);
+        const normalizedShops = shps.map(normalizeShop);
+        const shopsById = new Map(normalizedShops.map(shop => [shop.id, shop]));
+        const normalizedProducts = prods.map(product => normalizeProduct(product, shopsById));
+
+        setProducts(normalizedProducts);
+        setShops(normalizedShops);
         setLoading(false);
       })
       .catch(err => {

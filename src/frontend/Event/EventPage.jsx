@@ -59,7 +59,7 @@ function EventPage() {
   <div className="absolute inset-0 bg-black/40"></div>
 
   <div className="relative text-white">
-     <h1 className="text-3xl md:text-4xl font-serif text-white font-bold drop-shadow-lg mb-2">ATC Tea Shop</h1>
+    <h1 className="text-3xl md:text-4xl font-serif text-white font-bold drop-shadow-lg mb-2">ATC Tea Event</h1>
     <p className="text-lg">กิจกรรมชา และเวิร์คช็อปสำหรับคนรักชา</p>
   </div>
 </div>

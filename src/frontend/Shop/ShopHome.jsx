@@ -1,20 +1,34 @@
 import {useState, useEffect, useCallback} from "react";
 import { Link } from 'react-router-dom';
-const API_BASE = "http://localhost:3001/api";
+import { useAuthModal } from '../../App';
+import { apiUrl, assetUrl } from '../../lib/api';
+
 const api = {
-    getProducts: () => fetch(`${API_BASE}/products`).then(r => {
+    getProducts: () => fetch(apiUrl("/products")).then(r => {
         if (!r.ok) {
             throw new Error(`Products ${r.status}`);
         }
         return r.json();
     }),
-    getShops: () => fetch(`${API_BASE}/shops`).then(r => {
+    getShops: () => fetch(apiUrl("/shops")).then(r => {
         if (!r.ok) {
             throw new Error(`Shops ${r.status}`);
         }
         return r.json();
     }),
-    getProduct: (id) => fetch(`${API_BASE}/products/${id}`).then(r => {
+    getShopImages: () => fetch(apiUrl("/shop-images")).then(r => {
+        if (!r.ok) {
+            throw new Error(`Shop images ${r.status}`);
+        }
+        return r.json();
+    }),
+    getProductImages: () => fetch(apiUrl("/product-images")).then(r => {
+        if (!r.ok) {
+            throw new Error(`Product images ${r.status}`);
+        }
+        return r.json();
+    }),
+    getProduct: (id) => fetch(apiUrl(`/products/${id}`)).then(r => {
         if (!r.ok) {
             throw new Error(`Product ${id} ${r.status}`);
         }
@@ -24,6 +38,38 @@ const api = {
 
 const TAB = ["All", "New Arrivals", "Best Sellers", "On Sale"];
 const CATEGORY = ["Green Tea", "Black Tea", "Oolong Tea", "White Tea", "Herbal Tea"];
+
+function normalizeShop(shop) {
+    return {
+        ...shop,
+        id: shop.shop_id,
+        name: shop.shop_name,
+        location: [shop.subdistrict, shop.district, shop.province].filter(Boolean).join(", "),
+        rating: shop.verified_status ? "Verified" : null,
+        img: null
+    };
+}
+
+function toAssetUrl(imagePath) {
+    return assetUrl(imagePath);
+}
+
+function normalizeProduct(product, shopsById, productImageMap) {
+    const shop = shopsById.get(product.shop_id);
+
+    return {
+        ...product,
+        id: product.product_id,
+        name: product.tea_name,
+        tag: product.tea_type,
+        shop: shop?.name || `Shop #${product.shop_id}`,
+        img: productImageMap.get(product.product_id) || null,
+        isNew: false,
+        isBestSeller: false,
+        isOnSale: false,
+        discount: 0
+    };
+}
 
 function filterProducts(products, {search, activeTab, activeCategory}) {
     const q = search.toLowerCase();
@@ -39,20 +85,31 @@ function filterProducts(products, {search, activeTab, activeCategory}) {
     });
 }
 
-function Navbar({ cartCount, onCartClick }) {
-    return (
+function Navbar({ cartCount, onCartClick, openLogin }) {
+  return (
     <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
+      
       <div className="flex items-center justify-start h-16 w-32 md:w-40">
         <img src="./Pictrue/Logo.png" alt="ATC Logo" className="h-full w-auto object-contain drop-shadow-sm" />
       </div>
       <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4">
-        <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline">Home</Link>
-        <Link to="/shop" className="hover:text-black transition-colors underline-offset-4 hover:underline text-[#485B3B] font-bold">Shop</Link>
-        <Link to="/events" className="hover:text-black transition-colors underline-offset-4 hover:underline">Event</Link>
+        
+        <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline">
+          Home
+        </Link>
+
+        <Link to="/shop" className="hover:text-black transition-colors underline-offset-4 hover:underline text-[#485B3B] font-bold">
+          Shop
+        </Link>
+
+        <Link to="/events" className="hover:text-black transition-colors underline-offset-4 hover:underline">
+          Event
+        </Link>
+
+        {/* Cart */}
         <button
           onClick={onCartClick}
-          className="relative hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6"
-        >
+          className="relative hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6">
           🛒
           {cartCount > 0 && (
             <span className="absolute -top-2 -right-2 bg-[#485B3B] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
@@ -60,7 +117,13 @@ function Navbar({ cartCount, onCartClick }) {
             </span>
           )}
         </button>
-        <Link to="/login" className="hover:text-black transition-colors underline-offset-4 hover:underline">Login</Link>
+
+        {/* Login */}
+        <button
+          onClick={openLogin}
+          className="hover:text-black transition-colors underline-offset-4 hover:underline bg-transparent border-none cursor-pointer font-medium text-[17px] text-[#4a4a4a]">
+          Login
+        </button>
       </div>
     </nav>
   );
@@ -296,6 +359,7 @@ function LoadingState() {
 //  MAIN COMPONENT
 // ============================================================
 export default function ShopHome() {
+  const { openLogin } = useAuthModal();
   const [products, setProducts]           = useState([]);
   const [shops, setShops]                 = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -309,10 +373,33 @@ export default function ShopHome() {
 
   // ── Fetch ──────────────────────────────────────────────────
   useEffect(() => {
-    Promise.all([api.getProducts(), api.getShops()])
-      .then(([prods, shps]) => {
-        setProducts(prods);
-        setShops(shps);
+    Promise.all([api.getProducts(), api.getShops(), api.getShopImages(), api.getProductImages()])
+      .then(([prods, shps, shopImages, productImages]) => {
+        const shopImageMap = new Map();
+        shopImages.forEach(image => {
+          if (!shopImageMap.has(image.shop_id) && image.image_path) {
+            shopImageMap.set(image.shop_id, toAssetUrl(image.image_path));
+          }
+        });
+
+        const productImageMap = new Map();
+        productImages.forEach(image => {
+          if (!productImageMap.has(image.product_id) && image.image_path) {
+            productImageMap.set(image.product_id, toAssetUrl(image.image_path));
+          }
+        });
+
+        const normalizedShops = shps.map(shop => ({
+          ...normalizeShop(shop),
+          img: shopImageMap.get(shop.shop_id) || null
+        }));
+        const shopsById = new Map(normalizedShops.map(shop => [shop.id, shop]));
+        const normalizedProducts = prods.map(product =>
+          normalizeProduct(product, shopsById, productImageMap)
+        );
+
+        setProducts(normalizedProducts);
+        setShops(normalizedShops);
         setLoading(false);
       })
       .catch(err => {
@@ -346,7 +433,7 @@ export default function ShopHome() {
       <div className="w-full max-w-auto bg-[#F5F3E9] shadow-sm overflow-hidden">
 
         {/* Navbar */}
-        <Navbar cartCount={cartCount} onCartClick={() => setCartOpen(true)} />
+        <Navbar cartCount={cartCount} onCartClick={() => setCartOpen(true)} openLogin={openLogin}/>
 
         {/* Hero Banner */}
         <section className="relative w-full h-[220px] bg-[#485B3B] overflow-hidden">

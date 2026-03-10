@@ -194,20 +194,16 @@ function CategoryBar({ categories, active, onSelect }) {
   );
 }
 
-function ProductCard({ product, onAddToCart }) {
-  const discountedPrice = product.discount
-    ? Math.round(product.price * (1 - product.discount / 100))
-    : null;
-
+function ProductCard({ product }) {
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all hover:-translate-y-0.5 group">
       {/* Image */}
-      <div className="relative h-44 overflow-hidden bg-[#F5F3E9]">
+      <div className="relative aspect-[4/3] overflow-hidden bg-[#F5F3E9]">
         {product.img ? (
           <img
             src={product.img}
             alt={product.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-5xl">🍵</div>
@@ -230,32 +226,15 @@ function ProductCard({ product, onAddToCart }) {
       </div>
 
       {/* Info */}
-      <div className="p-4">
-        <p className="text-[12px] text-[#AEBC9F] font-medium mb-1">{product.shop || "ATC Shop"}</p>
-        <h3 className="text-[15px] font-bold text-gray-800 mb-1 leading-snug line-clamp-2">{product.name}</h3>
-        {product.tag && (
-          <span className="inline-block text-[11px] text-[#485B3B] border border-[#AEBC9F] px-2 py-0.5 rounded-full mb-3">
-            {product.tag}
-          </span>
-        )}
-
-        <div className="flex items-end justify-between mt-auto pt-2">
-          <div>
-            {discountedPrice ? (
-              <>
-                <span className="text-gray-400 line-through text-[13px]">฿{product.price?.toLocaleString()}</span>
-                <span className="block text-[18px] font-bold text-[#485B3B]">฿{discountedPrice.toLocaleString()}</span>
-              </>
-            ) : (
-              <span className="text-[18px] font-bold text-[#485B3B]">฿{product.price?.toLocaleString() ?? "–"}</span>
-            )}
-          </div>
-          <button
-            onClick={() => onAddToCart(product)}
-            className="bg-[#485B3B] text-white text-[12px] font-bold px-4 py-2 rounded-full hover:bg-[#3a4a2f] transition-all active:scale-95 shadow-sm"
-          >
-            + ใส่ตะกร้า
-          </button>
+      <div className="flex flex-col px-3.5 pb-3 pt-3">
+        <p className="mb-0.5 truncate text-[12px] font-medium text-[#AEBC9F]">{product.shop || "ATC Shop"}</p>
+        <div className="mb-1 flex items-start justify-between gap-1.5">
+          <h3 className="min-w-0 flex-1 text-[15px] font-bold text-gray-800 leading-snug line-clamp-2">{product.name}</h3>
+          {product.tag && (
+            <span className="inline-flex w-fit max-w-[45%] flex-shrink-0 self-start whitespace-nowrap rounded-full border border-[#AEBC9F]/70 px-2 py-0.5 text-[10px] text-[#485B3B]">
+              {product.tag}
+            </span>
+          )}
         </div>
       </div>
     </div>
@@ -340,10 +319,10 @@ function CartDrawer({ cart, onClose, onRemove, onUpdateQty }) {
 
 function LoadingState() {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {[...Array(6)].map((_, i) => (
         <div key={i} className="bg-white rounded-3xl overflow-hidden shadow-sm animate-pulse">
-          <div className="h-44 bg-[#AEBC9F]/20" />
+          <div className="aspect-[4/3] bg-[#AEBC9F]/20" />
           <div className="p-4 space-y-2">
             <div className="h-3 bg-gray-100 rounded-full w-1/2" />
             <div className="h-4 bg-gray-100 rounded-full w-3/4" />
@@ -505,9 +484,9 @@ export default function ShopHome() {
                   <p>ไม่พบสินค้าที่ค้นหา</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   {filtered.map((product, i) => (
-                    <ProductCard key={product.id ?? i} product={product} onAddToCart={addToCart} />
+                    <ProductCard key={product.id ?? i} product={product} />
                   ))}
                 </div>
               )}

@@ -10,7 +10,7 @@ export default function Register({ isOpen, onClose }) {
   const navigate = useNavigate();
   const { openLogin } = useAuthModal();
 
-  const [userForm, setUserForm] = useState({ username:"", email:"", phone:"", password:"", confirmPassword:"" });
+  const [userForm, setUserForm] = useState({ username:"", email:"", password:"", confirmPassword:"" });
   const [merchantForm, setMerchantForm] = useState({ storeName:"", storeAddress:"", nationalId:"", username:"", email:"", phone:"", password:"", confirmPassword:"" });
 
   const handleUserChange = e => setUserForm({...userForm,[e.target.name]:e.target.value});
@@ -84,7 +84,7 @@ export default function Register({ isOpen, onClose }) {
               {tab==="user"?<>
                 <input className="reg-input" name="username" placeholder="Username" value={userForm.username} onChange={handleUserChange} />
                 <input className="reg-input" name="email" placeholder="Email address" value={userForm.email} onChange={handleUserChange} />
-                <input className="reg-input" name="phone" placeholder="Phone number" value={userForm.phone} onChange={handleUserChange} />
+               
                 <input className="reg-input" name="password" type="password" placeholder="Password" value={userForm.password} onChange={handleUserChange} />
                 <input className="reg-input" name="confirmPassword" type="password" placeholder="Confirm password" value={userForm.confirmPassword} onChange={handleUserChange} />
               </>:<>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import Navbar from "../components/Navbar";
 const SHOP = {
   name: "Crafted Leaf & Co.",
   location: "เชียงใหม่, ประเทศไทย",
@@ -27,32 +28,7 @@ const EVENTS = [
 
 const TABS = ["Overview", "Product", "Events", "About"];
 
-// ── Navbar (from ShopHome.jsx) ──────────────────────────────────
-function Navbar({ cartCount, onCartClick }) {
-  return (
-    <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
-      <div className="flex items-center justify-start h-16 w-32 md:w-40">
-        <span className="text-white font-bold text-2xl tracking-widest">ATC</span>
-      </div>
-      <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4">
-        <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline">Home</Link>
-        <Link to="/shop" className="hover:text-black transition-colors underline-offset-4 hover:underline">Shop</Link>
-        <Link to="/event" className="hover:text-black transition-colors underline-offset-4 hover:underline">Event</Link>
-        <button
-          onClick={onCartClick}
-          className="relative hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6"
-        >
-          🛒
-          {cartCount > 0 && (
-            <span className="absolute -top-2 -right-2 bg-[#485B3B] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
-              {cartCount}
-            </span>
-          )}
-        </button>
-      </div>
-    </nav>
-  );
-}
+
 
 // ── Product Card ───────────────────────────────────────────────
 function ProductCard({ product, onAddToCart }) {

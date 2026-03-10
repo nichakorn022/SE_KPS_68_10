@@ -413,9 +413,6 @@ export default function ShopHome() {
     <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800 flex flex-col items-center">
       <div className="w-full max-w-auto bg-[#F5F3E9] shadow-sm overflow-hidden">
 
-        {/* Navbar */}
-        <Navbar cartCount={cartCount} onCartClick={() => setCartOpen(true)} openLogin={openLogin}/>
-
         {/* Hero Banner */}
         <section className="relative w-full h-[220px] bg-[#485B3B] overflow-hidden">
           <div className="absolute inset-0 opacity-10">
@@ -530,13 +527,6 @@ export default function ShopHome() {
           </div>
         </section>
 
-        {/* Footer — identical to Home */}
-        <footer className="bg-[#AEBC9F] pt-12 pb-20 px-10">
-          <div className="max-w-[850px] mx-auto opacity-30 space-y-4">
-            <div className="h-4 bg-white w-48 rounded"></div>
-            <div className="h-4 bg-white w-32 rounded"></div>
-          </div>
-        </footer>
       </div>
 
       {/* Cart Drawer */}

@@ -19,32 +19,36 @@ export default function Home() {
     <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800 flex flex-col items-center">
       <div className="w-full max-w-auto bg-[#F5F3E9] shadow-sm overflow-hidden">
 
-        <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm pointer-events-auto relative">
+        <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
           <div className="flex items-center justify-start h-16 w-32 md:w-40">
             <img src="./Pictrue/Logo.png" alt="ATC Logo" className="h-full w-auto object-contain drop-shadow-sm" />
           </div>
-          <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4 relative z-50 pointer-events-auto">
-            <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline">Home</Link>
+          <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4">
+            <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline text-[#485B3B] font-bold">Home</Link>
             <Link to="/shop" className="hover:text-black transition-colors underline-offset-4 hover:underline">Shop</Link>
             <Link to="/events" className="hover:text-black transition-colors underline-offset-4 hover:underline">Event</Link>
-            <button onClick={openLogin} className="hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6 bg-transparent border-r-0 border-t-0 border-b-0 cursor-pointer font-medium text-[17px] text-[#4a4a4a]">Login</button>
+            <div className="h-8 w-px bg-black/20" />
+            <button onClick={openLogin} className="hover:text-black transition-colors underline-offset-4 hover:underline bg-transparent border-none cursor-pointer font-medium text-[17px] text-[#4a4a4a]">Login</button>
+            <button onClick={openRegister} className="hover:text-black transition-colors underline-offset-4 hover:underline bg-transparent border-none cursor-pointer font-medium text-[17px] text-[#4a4a4a]">Register</button>
           </div>
         </nav>
 
-        <section className="relative w-full h-[400px]">
-          <img src="./Pictrue/Tea Background.png" alt="Tea background" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center text-center pointer-events-none">
-            <h1 className="text-4xl md:text-5xl font-serif text-white mb-6 leading-tight drop-shadow-xl font-bold">Social,<br/>Activity,<br/>Tea</h1>
-            <button onClick={openRegister} className="bg-[#485B3B] text-white px-10 py-3 rounded-full text-sm font-bold hover:bg-[#3a4a2f] transition-all shadow-lg active:scale-95 pointer-events-auto">join us now</button>
+        <section className="w-full px-4 md:px-6">
+          <div className="relative w-full max-w-[1100px] h-[400px] mx-auto overflow-hidden rounded-[28px] shadow-sm">
+            <img src="./Pictrue/Tea Background.png" alt="Tea background" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center text-center pointer-events-none">
+              <h1 className="text-4xl md:text-5xl font-serif text-white mb-6 leading-tight drop-shadow-xl font-bold">Social,<br/>Activity,<br/>Tea</h1>
+              <button onClick={openRegister} className="bg-[#485B3B] text-white px-14 py-4 rounded-full text-base font-bold hover:bg-[#3a4a2f] transition-all shadow-lg active:scale-95 pointer-events-auto">join us now</button>
+            </div>
           </div>
         </section>
 
         <section className="py-14 px-4 text-center">
-          <h2 className="text-[26px] font-medium text-[#485B3B] mb-10">ชวนพักใจ พบเพื่อนใหม่ในชุมชนชา</h2>
-          <div className="relative w-full max-w-[850px] mx-auto group">
+          <h2 className="text-[30px] md:text-[34px] font-medium text-[#485B3B] mb-10">ชวนพักใจ พบเพื่อนใหม่ในชุมชนชา</h2>
+          <div className="relative w-full max-w-[920px] mx-auto group">
             <Swiper modules={[Pagination, Navigation, Autoplay]} spaceBetween={20} slidesPerView={1} loop={true} autoplay={{ delay: 4000 }} navigation={{ nextEl: '.s1-next', prevEl: '.s1-prev' }} pagination={{ clickable: true, el: '.s1-pagination' }} className="pb-16">
               {["https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=1200&q=80","https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=1200&q=80","https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80"].map((src,i) => (
-                <SwiperSlide key={i}><div className="h-64 md:h-96 overflow-hidden rounded-3xl shadow-lg border-8 border-white"><img src={src} className="w-full h-full object-cover" alt={`Community ${i+1}`} /></div></SwiperSlide>
+                <SwiperSlide key={i}><div className="h-64 md:h-96 overflow-hidden rounded-3xl shadow-lg"><img src={src} className="w-full h-full object-cover" alt={`Community ${i+1}`} /></div></SwiperSlide>
               ))}
             </Swiper>
             <div className="s1-prev absolute left-[-20px] top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-lg flex items-center justify-center cursor-pointer text-[#485B3B] hover:bg-[#485B3B] hover:text-white transition-all opacity-0 group-hover:opacity-100 hidden md:flex">❮</div>
@@ -54,8 +58,8 @@ export default function Home() {
         </section>
 
         <section className="py-10 px-6 text-center">
-          <h2 className="text-[26px] font-medium text-[#485B3B] mb-10">ร่วมกิจกรรมเพื่อสุขภาพกับผู้คนหลากหลาย</h2>
-          <div className="relative max-w-[850px] mx-auto group">
+          <h2 className="text-[27px] md:text-[30px] font-medium text-[#485B3B] mb-10">ร่วมกิจกรรมเพื่อสุขภาพกับผู้คนหลากหลาย</h2>
+          <div className="relative w-full max-w-[860px] mx-auto group">
             <Swiper modules={[Pagination, Navigation, Autoplay]} spaceBetween={30} slidesPerView={1} loop={true} autoplay={{ delay: 5000 }} navigation={{ nextEl: '.s2-next', prevEl: '.s2-prev' }} pagination={{ clickable: true, el: '.s2-pagination' }} className="pb-16">
               {eventData.map((event, index) => (
                 <SwiperSlide key={index}>

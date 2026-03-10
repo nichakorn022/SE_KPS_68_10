@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuthModal } from '../App';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination, Autoplay, Navigation } from 'swiper/modules';
+import SiteNavbar from './components/SiteNavbar';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import 'swiper/css/navigation';
@@ -18,6 +19,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800 flex flex-col items-center">
       <div className="w-full max-w-auto bg-[#F5F3E9] shadow-sm overflow-hidden">
+
+        <SiteNavbar active="home" />
 
         <section className="w-full px-4 md:px-6">
           <div className="relative w-full max-w-[1100px] h-[400px] mx-auto overflow-hidden rounded-[28px] shadow-sm">

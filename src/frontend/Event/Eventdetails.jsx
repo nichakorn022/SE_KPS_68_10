@@ -1,12 +1,11 @@
 
 import { useEffect, useState } from "react";
 import { Link, useParams } from 'react-router-dom';
-import { useAuthModal } from '../../App';
 import { apiUrl } from "../../lib/api";
+import SiteNavbar from "../components/SiteNavbar";
 
 export default function Eventdetails() {
 
-  const { openLogin } = useAuthModal();
   const { id } = useParams();
 
   const [event, setEvent] = useState(null);
@@ -60,49 +59,7 @@ export default function Eventdetails() {
       <div className="w-full max-w-auto bg-[#F5F3E9] shadow-sm overflow-hidden min-h-screen">
 
       {/* HEADER */}
-      <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
-
-        <div className="flex items-center justify-start h-16 w-32 md:w-40">
-          <img
-            src="/Pictrue/Logo.png"
-            alt="ATC Logo"
-            className="h-full w-auto object-contain drop-shadow-sm"
-          />
-        </div>
-
-        <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4">
-
-          <Link
-            to="/"
-            className="hover:text-black transition-colors underline-offset-4 hover:underline"
-          >
-            Home
-          </Link>
-
-          <Link
-            to="/shop"
-            className="hover:text-black transition-colors underline-offset-4 hover:underline"
-          >
-            Shop
-          </Link>
-
-          <Link
-            to="/events"
-            className="hover:text-black transition-colors underline-offset-4 hover:underline"
-          >
-            Event
-          </Link>
-
-          <button
-            onClick={openLogin}
-            className="hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6"
-          >
-            Login
-          </button>
-
-        </div>
-
-      </nav>
+      <SiteNavbar active="events" />
 
       {/* PAGE CONTENT */}
       <div className="p-8">

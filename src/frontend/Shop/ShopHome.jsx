@@ -1,7 +1,8 @@
 import {useState, useEffect, useCallback} from "react";
 import { Link } from 'react-router-dom';
-import { useAuthModal } from '../../App';
 import { apiUrl, assetUrl } from '../../lib/api';
+import SiteNavbar from '../components/SiteNavbar';
+import FloatingCartButton from '../components/FloatingCartButton';
 
 const api = {
     getProducts: () => fetch(apiUrl("/products")).then(r => {
@@ -85,31 +86,33 @@ function filterProducts(products, {search, activeTab, activeCategory}) {
     });
 }
 
-function Navbar({ cartCount, onCartClick, openLogin }) {
+function Navbar({ cartCount, onCartClick, openLogin, openRegister }) {
   return (
     <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
       
       <div className="flex items-center justify-start h-16 w-32 md:w-40">
-        <img src="./Pictrue/Logo.png" alt="ATC Logo" className="h-full w-auto object-contain drop-shadow-sm" />
+        <img src="/Pictrue/Logo.png" alt="ATC Logo" className="h-full w-auto object-contain drop-shadow-sm" />
       </div>
       <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4">
         
-        <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline">
+        <Link to="/" className="rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]">
           Home
         </Link>
 
-        <Link to="/shop" className="hover:text-black transition-colors underline-offset-4 hover:underline text-[#485B3B] font-bold">
+        <Link to="/shop" className="rounded-full px-4 py-2 transition-all bg-[#485B3B]/12 text-[#485B3B] font-bold">
           Shop
         </Link>
 
-        <Link to="/events" className="hover:text-black transition-colors underline-offset-4 hover:underline">
+        <Link to="/events" className="rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]">
           Event
         </Link>
+
+        <div className="h-8 w-px bg-black/20" />
 
         {/* Cart */}
         <button
           onClick={onCartClick}
-          className="relative hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6">
+          className="relative rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]">
           🛒
           {cartCount > 0 && (
             <span className="absolute -top-2 -right-2 bg-[#485B3B] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
@@ -121,8 +124,13 @@ function Navbar({ cartCount, onCartClick, openLogin }) {
         {/* Login */}
         <button
           onClick={openLogin}
-          className="hover:text-black transition-colors underline-offset-4 hover:underline bg-transparent border-none cursor-pointer font-medium text-[17px] text-[#4a4a4a]">
+          className="rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B] bg-transparent border-none cursor-pointer font-medium text-[17px] text-[#4a4a4a]">
           Login
+        </button>
+        <button
+          onClick={openRegister}
+          className="rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B] bg-transparent border-none cursor-pointer font-medium text-[17px] text-[#4a4a4a]">
+          Register
         </button>
       </div>
     </nav>
@@ -197,7 +205,6 @@ function CategoryBar({ categories, active, onSelect }) {
 function ProductCard({ product }) {
   return (
     <Link to={`/product/${product.id}`} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all hover:-translate-y-0.5 group">
-    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all hover:-translate-y-0.5 group">
       {/* Image */}
       <div className="relative aspect-[4/3] overflow-hidden bg-[#F5F3E9]">
         {product.img ? (
@@ -238,8 +245,7 @@ function ProductCard({ product }) {
           )}
         </div>
       </div>
-    </div>
-      </Link>
+    </Link>
   );
 }
 
@@ -260,9 +266,12 @@ function ShopCard({ shop }) {
           <p className="text-[12px] text-[#AEBC9F] font-medium">⭐ {shop.rating}</p>
         )}
       </div>
-      <button className="ml-auto flex-shrink-0 border border-[#485B3B] text-[#485B3B] text-[12px] font-bold px-4 py-1.5 rounded-full hover:bg-[#485B3B] hover:text-white transition-all">
+      <Link
+        to={`/shop/${shop.id}`}
+        className="ml-auto flex-shrink-0 border border-[#485B3B] text-[#485B3B] text-[12px] font-bold px-4 py-1.5 rounded-full hover:bg-[#485B3B] hover:text-white transition-all"
+      >
         ดูร้าน
-      </button>
+      </Link>
     </div>
   );
 }
@@ -340,7 +349,6 @@ function LoadingState() {
 //  MAIN COMPONENT
 // ============================================================
 export default function ShopHome() {
-  const { openLogin } = useAuthModal();
   const [products, setProducts]           = useState([]);
   const [shops, setShops]                 = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -412,6 +420,9 @@ export default function ShopHome() {
   return (
     <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800 flex flex-col items-center">
       <div className="w-full max-w-auto bg-[#F5F3E9] shadow-sm overflow-hidden">
+
+        {/* Navbar */}
+        <SiteNavbar active="shop" />
 
         {/* Hero Banner */}
         <section className="relative w-full h-[220px] bg-[#485B3B] overflow-hidden">
@@ -538,6 +549,7 @@ export default function ShopHome() {
           onUpdateQty={updateQty}
         />
       )}
+      <FloatingCartButton cartCount={cartCount} onClick={() => setCartOpen(true)} />
     </div>
   );
 }

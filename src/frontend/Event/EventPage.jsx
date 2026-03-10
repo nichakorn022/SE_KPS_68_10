@@ -3,11 +3,10 @@ import { useAuthModal } from "../../App";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiUrl } from "../../lib/api";
+import SiteNavbar from "../components/SiteNavbar";
 
 function EventPage() {
   const [events, setEvents] = useState([]);
-  const { openLogin } = useAuthModal();
-
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [interested, setInterested] = useState([]);
@@ -63,6 +62,8 @@ function EventPage() {
   return (
     <div className="bg-[#e7e3d8] min-h-screen">
 
+      {/* NAVBAR */}
+      <SiteNavbar active="events" />
 
       {/* HERO */}
       <div

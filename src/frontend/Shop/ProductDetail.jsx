@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { useAuthModal } from "../../App";
 import { apiUrl, assetUrl } from "../../lib/api";
+import SiteNavbar from "../components/SiteNavbar";
+import FloatingCartButton from "../components/FloatingCartButton";
 
 const api = {
   getProduct: (id) =>
@@ -36,12 +37,12 @@ function toAssetUrl(path) {
 }
 
 // ── Navbar (same as ShopHome) ───────────────────────────────────────────────
-function Navbar({ cartCount, onCartClick, openLogin }) {
+function Navbar({ cartCount, onCartClick, openLogin, openRegister }) {
   return (
     <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
       <div className="flex items-center justify-start h-16 w-32 md:w-40">
         <img
-          src="./Pictrue/Logo.png"
+          src="/Pictrue/Logo.png"
           alt="ATC Logo"
           className="h-full w-auto object-contain drop-shadow-sm"
         />
@@ -49,25 +50,26 @@ function Navbar({ cartCount, onCartClick, openLogin }) {
       <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4">
         <Link
           to="/"
-          className="hover:text-black transition-colors underline-offset-4 hover:underline"
+          className="rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]"
         >
           Home
         </Link>
         <Link
           to="/shop"
-          className="hover:text-black transition-colors underline-offset-4 hover:underline text-[#485B3B] font-bold"
+          className="rounded-full px-4 py-2 transition-all bg-[#485B3B]/12 text-[#485B3B] font-bold"
         >
           Shop
         </Link>
         <Link
           to="/events"
-          className="hover:text-black transition-colors underline-offset-4 hover:underline"
+          className="rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]"
         >
           Event
         </Link>
+        <div className="h-8 w-px bg-black/20" />
         <button
           onClick={onCartClick}
-          className="relative hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6"
+          className="relative rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]"
         >
           🛒
           {cartCount > 0 && (
@@ -78,9 +80,15 @@ function Navbar({ cartCount, onCartClick, openLogin }) {
         </button>
         <button
           onClick={openLogin}
-          className="hover:text-black transition-colors underline-offset-4 hover:underline bg-transparent border-none cursor-pointer font-medium text-[17px] text-[#4a4a4a]"
+          className="rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B] bg-transparent border-none cursor-pointer font-medium text-[17px] text-[#4a4a4a]"
         >
           Login
+        </button>
+        <button
+          onClick={openRegister}
+          className="rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B] bg-transparent border-none cursor-pointer font-medium text-[17px] text-[#4a4a4a]"
+        >
+          Register
         </button>
       </div>
     </nav>
@@ -317,7 +325,6 @@ function RelatedCard({ product, onClick }) {
 export default function ProductDetail({ cart: cartProp, onAddToCart }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { openLogin } = useAuthModal();
 
   const [product, setProduct] = useState(null);
   const [images, setImages] = useState([]);
@@ -417,7 +424,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F5F3E9]">
-        <Navbar cartCount={0} onCartClick={() => {}} openLogin={openLogin} />
+        <SiteNavbar active="shop" />
         <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="grid md:grid-cols-2 gap-8 animate-pulse">
             <div className="aspect-square rounded-2xl bg-[#AEBC9F]/20" />
@@ -438,7 +445,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
   if (error || !product) {
     return (
       <div className="min-h-screen bg-[#F5F3E9]">
-        <Navbar cartCount={0} onCartClick={() => {}} openLogin={openLogin} />
+        <SiteNavbar active="shop" />
         <div className="flex flex-col items-center justify-center py-32 text-gray-400">
           <p className="text-5xl mb-4">🍵</p>
           <p className="text-lg font-medium text-gray-500">ไม่พบสินค้า</p>
@@ -469,11 +476,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
 
   return (
     <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800">
-      <Navbar
-        cartCount={cartCount}
-        onCartClick={() => setCartOpen(true)}
-        openLogin={openLogin}
-      />
+      <SiteNavbar active="shop" />
 
 
       {/* Main Content */}
@@ -629,6 +632,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
           onUpdateQty={updateQty}
         />
       )}
+      <FloatingCartButton cartCount={cartCount} onClick={() => setCartOpen(true)} />
     </div>
   );
 }

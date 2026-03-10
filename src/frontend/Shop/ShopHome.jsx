@@ -10,7 +10,7 @@ const api = {
         }
         return r.json();
     }),
-    getShops: () => fetch(apiUrl("/shop")).then(r => {
+    getShops: () => fetch(apiUrl("/shops")).then(r => {
         if (!r.ok) {
             throw new Error(`Shops ${r.status}`);
         }

@@ -1,7 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useAuthModal } from '../../App';
 
 export default function Events() {
+  const { openLogin } = useAuthModal();
   // ข้อมูลจำลองรายการกิจกรรม
   const allEvents = Array(5).fill({
     title: "Morning Yoga & Meditation Session",
@@ -29,7 +31,7 @@ export default function Events() {
             <Link to="/" className="hover:text-black transition-colors">Home</Link>
             <Link to="/shop" className="hover:text-black transition-colors">Shop</Link>
             <Link to="/events" className="text-black underline underline-offset-4 font-bold">Event</Link>
-            <Link to="/login" className="border-l border-black/20 pl-6 hover:text-black">Login</Link>
+            <button onClick={openLogin} className="border-l border-black/20 pl-6 hover:text-black bg-transparent border-t-0 border-r-0 border-b-0 cursor-pointer font-medium text-[17px] text-[#4a4a4a]">Login</button>
           </div>
         </nav>
 

@@ -1,7 +1,9 @@
 import React from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useAuthModal } from '../../App';
 
 export default function EventDetail() {
+  const { openLogin } = useAuthModal();
   const { id } = useParams();
 
   return (
@@ -17,7 +19,7 @@ export default function EventDetail() {
             <Link to="/" className="hover:text-black">Home</Link>
             <Link to="/shop" className="hover:text-black">Shop</Link>
             <Link to="/events" className="text-black underline underline-offset-8 decoration-2">Event</Link>
-            <Link to="/login" className="border-l border-black/20 pl-6 hover:text-black font-bold">Login</Link>
+            <button onClick={openLogin} className="border-l border-black/20 pl-6 hover:text-black font-bold bg-transparent border-t-0 border-r-0 border-b-0 cursor-pointer text-[17px] text-[#4a4a4a]">Login</button>
           </div>
         </nav>
 

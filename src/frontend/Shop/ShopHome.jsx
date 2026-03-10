@@ -1,6 +1,7 @@
 import {useState, useEffect, useCallback} from "react";
 import { Link } from 'react-router-dom';
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+import { useAuthModal } from '../../App';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001/api";
 const API_ORIGIN = API_BASE.replace(/\/api$/, "");
 const api = {
     getProducts: () => fetch(`${API_BASE}/products`).then(r => {
@@ -86,20 +87,31 @@ function filterProducts(products, {search, activeTab, activeCategory}) {
     });
 }
 
-function Navbar({ cartCount, onCartClick }) {
-    return (
+function Navbar({ cartCount, onCartClick, openLogin }) {
+  return (
     <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
+      
       <div className="flex items-center justify-start h-16 w-32 md:w-40">
         <img src="./Pictrue/Logo.png" alt="ATC Logo" className="h-full w-auto object-contain drop-shadow-sm" />
       </div>
       <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4">
-        <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline">Home</Link>
-        <Link to="/shop" className="hover:text-black transition-colors underline-offset-4 hover:underline text-[#485B3B] font-bold">Shop</Link>
-        <Link to="/events" className="hover:text-black transition-colors underline-offset-4 hover:underline">Event</Link>
+        
+        <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline">
+          Home
+        </Link>
+
+        <Link to="/shop" className="hover:text-black transition-colors underline-offset-4 hover:underline text-[#485B3B] font-bold">
+          Shop
+        </Link>
+
+        <Link to="/events" className="hover:text-black transition-colors underline-offset-4 hover:underline">
+          Event
+        </Link>
+
+        {/* Cart */}
         <button
           onClick={onCartClick}
-          className="relative hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6"
-        >
+          className="relative hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6">
           🛒
           {cartCount > 0 && (
             <span className="absolute -top-2 -right-2 bg-[#485B3B] text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
@@ -107,7 +119,13 @@ function Navbar({ cartCount, onCartClick }) {
             </span>
           )}
         </button>
-        <Link to="/login" className="hover:text-black transition-colors underline-offset-4 hover:underline">Login</Link>
+
+        {/* Login */}
+        <button
+          onClick={openLogin}
+          className="hover:text-black transition-colors underline-offset-4 hover:underline bg-transparent border-none cursor-pointer font-medium text-[17px] text-[#4a4a4a]">
+          Login
+        </button>
       </div>
     </nav>
   );
@@ -343,6 +361,7 @@ function LoadingState() {
 //  MAIN COMPONENT
 // ============================================================
 export default function ShopHome() {
+  const { openLogin } = useAuthModal();
   const [products, setProducts]           = useState([]);
   const [shops, setShops]                 = useState([]);
   const [loading, setLoading]             = useState(true);
@@ -416,7 +435,7 @@ export default function ShopHome() {
       <div className="w-full max-w-auto bg-[#F5F3E9] shadow-sm overflow-hidden">
 
         {/* Navbar */}
-        <Navbar cartCount={cartCount} onCartClick={() => setCartOpen(true)} />
+        <Navbar cartCount={cartCount} onCartClick={() => setCartOpen(true)} openLogin={openLogin}/>
 
         {/* Hero Banner */}
         <section className="relative w-full h-[220px] bg-[#485B3B] overflow-hidden">

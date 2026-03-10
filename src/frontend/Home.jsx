@@ -19,20 +19,6 @@ export default function Home() {
     <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800 flex flex-col items-center">
       <div className="w-full max-w-auto bg-[#F5F3E9] shadow-sm overflow-hidden">
 
-        <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
-          <div className="flex items-center justify-start h-16 w-32 md:w-40">
-            <img src="./Pictrue/Logo.png" alt="ATC Logo" className="h-full w-auto object-contain drop-shadow-sm" />
-          </div>
-          <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a] pr-4">
-            <Link to="/" className="hover:text-black transition-colors underline-offset-4 hover:underline text-[#485B3B] font-bold">Home</Link>
-            <Link to="/shop" className="hover:text-black transition-colors underline-offset-4 hover:underline">Shop</Link>
-            <Link to="/events" className="hover:text-black transition-colors underline-offset-4 hover:underline">Event</Link>
-            <div className="h-8 w-px bg-black/20" />
-            <button onClick={openLogin} className="hover:text-black transition-colors underline-offset-4 hover:underline bg-transparent border-none cursor-pointer font-medium text-[17px] text-[#4a4a4a]">Login</button>
-            <button onClick={openRegister} className="hover:text-black transition-colors underline-offset-4 hover:underline bg-transparent border-none cursor-pointer font-medium text-[17px] text-[#4a4a4a]">Register</button>
-          </div>
-        </nav>
-
         <section className="w-full px-4 md:px-6">
           <div className="relative w-full max-w-[1100px] h-[400px] mx-auto overflow-hidden rounded-[28px] shadow-sm">
             <img src="./Pictrue/Tea Background.png" alt="Tea background" className="w-full h-full object-cover" />
@@ -105,10 +91,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        <footer className="bg-[#AEBC9F] pt-12 pb-20 px-10">
-          <div className="max-w-[850px] mx-auto opacity-30 space-y-4"><div className="h-4 bg-white w-48 rounded"></div><div className="h-4 bg-white w-32 rounded"></div></div>
-        </footer>
       </div>
       <style dangerouslySetInnerHTML={{ __html: `.s1-pagination .swiper-pagination-bullet-active,.s2-pagination .swiper-pagination-bullet-active{background:#485B3B !important;width:12px;height:12px;}.s1-pagination .swiper-pagination-bullet,.s2-pagination .swiper-pagination-bullet{background:#AEBC9F;opacity:0.6;}` }} />
     </div>

@@ -1,5 +1,6 @@
 import { useState, createContext, useContext } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Layout from "./frontend/components/Layout";
 import Home from './frontend/Home.jsx';
 import Shop from './frontend/Shop/ShopHome.jsx';
 import Events from './frontend/Event/EventPage.jsx';
@@ -25,15 +26,17 @@ function App() {
     <AuthModalContext.Provider value={{ openLogin, openRegister }}>
       <BrowserRouter>
         <Routes>
-          <Route path="/"           element={<Home />} />
-          <Route path="/home"       element={<Home />} />
-          <Route path="/shop"       element={<Shop />} />
-          <Route path="/shop/:id"   element={<ShopProfile />} />
-          <Route path="/events"     element={<Events />} />
-          <Route path="/events/:id" element={<EventDetails />} />
-          <Route path="*"           element={<Navigate to="/" replace />} />
-          <Route path="/review/:id" element={<EventReview />} />
-          <Route path="/product/:id" element={<ProductDetail />} />
+          <Route element={<Layout />}>
+            <Route path="/"           element={<Home />} />
+            <Route path="/home"       element={<Home />} />
+            <Route path="/shop"       element={<Shop />} />
+            <Route path="/shop/:id"   element={<ShopProfile />} />
+            <Route path="/events"     element={<Events />} />
+            <Route path="/events/:id" element={<EventDetails />} />
+            <Route path="*"           element={<Navigate to="/" replace />} />
+            <Route path="/review/:id" element={<EventReview />} />
+            <Route path="/product/:id" element={<ProductDetail />} />
+          </Route>
         </Routes>
         <Login    isOpen={isLoginOpen}    onClose={closeAll} />
         <Register isOpen={isRegisterOpen} onClose={closeAll} />

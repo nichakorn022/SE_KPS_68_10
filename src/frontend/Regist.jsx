@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthModal } from '../App';
+import { apiUrl } from "../lib/api";
 
 export default function Register({ isOpen, onClose }) {
   const [tab, setTab] = useState("user");
@@ -27,7 +28,7 @@ export default function Register({ isOpen, onClose }) {
     const form = isUser?userForm:merchantForm;
     if (form.password!==form.confirmPassword){alert("Passwords do not match");return;}
     try {
-      const endpoint = isUser?"http://localhost:3001/api/auth/register/user":"http://localhost:3001/api/auth/register/merchant";
+      const endpoint = isUser ? apiUrl("/auth/register/user") : apiUrl("/auth/register/merchant");
       const res = await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});
       const data = await res.json();
       if (res.ok){alert("Register success!");handleClose();}

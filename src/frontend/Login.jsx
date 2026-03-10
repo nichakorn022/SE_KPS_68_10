@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthModal } from '../App';
+import { apiUrl } from "../lib/api";
 
 export default function Login({ isOpen, onClose }) {
   const [username, setUsername] = useState("");
@@ -29,7 +30,7 @@ export default function Login({ isOpen, onClose }) {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch("http://localhost:3001/api/auth/login", {
+      const res = await fetch(apiUrl("/auth/login"), {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: username, password }),
       });

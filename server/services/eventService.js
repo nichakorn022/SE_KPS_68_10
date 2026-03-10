@@ -4,46 +4,127 @@ const baseSelect = `
   SELECT event_id, title, description, event_date, location, max_participant, price, status, organizer_id
 `;
 
-async function queryEvents(sql, values = []) {
-  try {
-    return await query(sql, values);
-  } catch (error) {
-    if (error.code === "ER_NO_SUCH_TABLE" && sql.includes(" FROM event")) {
-      const fallbackSql = sql.replace(" FROM event", " FROM tea_event");
-      return query(fallbackSql, values);
-    }
-
-    throw error;
-  }
-}
-
+// ---------------- GET ALL EVENTS ----------------
 async function getEvents() {
-  return queryEvents(
-    `${baseSelect}
-     FROM event
-     ORDER BY event_id DESC`
-  );
+  return query(`
+    ${baseSelect}
+    FROM event
+    ORDER BY event_id DESC
+  `);
 }
 
+// ---------------- GET EVENT BY ID ----------------
 async function getEventById(id) {
-  const rows = await queryEvents(
-    `${baseSelect}
-     FROM event
-     WHERE event_id = ?
-     LIMIT 1`,
-    [id]
-  );
 
-  if (rows.length === 0) {
-    const error = new Error("Event not found");
-    error.statusCode = 404;
-    throw error;
+  const rows = await query(`
+    ${baseSelect}
+    FROM event
+    WHERE event_id = ?
+    LIMIT 1
+  `,[id]);
+
+  if(rows.length === 0){
+    const err = new Error("Event not found");
+    err.statusCode = 404;
+    throw err;
   }
 
   return rows[0];
 }
 
+// ---------------- CREATE EVENT ----------------
+async function createEvent(data){
+
+  const {
+    organizer_id,
+    title,
+    description,
+    event_date,
+    location,
+    price,
+    max_participant
+  } = data;
+
+  const result = await query(`
+    INSERT INTO event
+    (organizer_id,title,description,event_date,location,price,max_participant)
+    VALUES (?,?,?,?,?,?,?)
+  `,[
+    organizer_id,
+    title,
+    description,
+    event_date,
+    location,
+    price,
+    max_participant
+  ]);
+
+  return result.insertId;
+}
+
+// ---------------- UPDATE EVENT ----------------
+async function updateEvent(id,data){
+
+  const {
+    title,
+    description,
+    event_date,
+    location,
+    price,
+    max_participant
+  } = data;
+
+  await query(`
+    UPDATE event
+    SET title=?,
+        description=?,
+        event_date=?,
+        location=?,
+        price=?,
+        max_participant=?
+    WHERE event_id=?
+  `,[
+    title,
+    description,
+    event_date,
+    location,
+    price,
+    max_participant,
+    id
+  ]);
+
+}
+
+// ---------------- DELETE EVENT ----------------
+async function deleteEvent(id){
+
+  await query(`
+    DELETE FROM event
+    WHERE event_id=?
+  `,[id]);
+
+}
+
+// ---------------- SEARCH EVENT ----------------
+async function searchEvents(keyword){
+
+  return query(`
+    SELECT *
+    FROM event
+    WHERE title LIKE ?
+    OR description LIKE ?
+  `,[
+    `%${keyword}%`,
+    `%${keyword}%`
+  ]);
+
+}
+
 module.exports = {
   getEvents,
-  getEventById
+  getEventById,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  searchEvents
 };

@@ -1,9 +1,10 @@
-
+import { useAuthModal } from "../../App";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 function EventPage() {
   const [events, setEvents] = useState([]);
+  const { openLogin } = useAuthModal();
 
   useEffect(() => {
     fetch("http://localhost:3001/api/events")
@@ -39,12 +40,12 @@ function EventPage() {
             Event
           </Link>
 
-          <Link
-            to="/login"
-            className="hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6"
-          >
-            Login
-          </Link>
+          <button
+  onClick={openLogin}
+  className="hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6"
+>
+  Login
+</button>
         </div>
 
       </nav>

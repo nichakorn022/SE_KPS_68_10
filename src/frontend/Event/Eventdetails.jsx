@@ -6,6 +6,7 @@ export default function Eventdetails() {
   const { openLogin } = useAuthModal();
   const { id } = useParams();
   const [event, setEvent] = useState(null);
+  
 
   useEffect(() => {
     fetch(`http://localhost:3001/api/events/${id}`)
@@ -24,7 +25,7 @@ export default function Eventdetails() {
 
         <div className="flex items-center justify-start h-16 w-32 md:w-40">
           <img
-            src="./Pictrue/Logo.png"
+            src="/Pictrue/Logo.png"
             alt="ATC Logo"
             className="h-full w-auto object-contain drop-shadow-sm"
           />
@@ -53,12 +54,12 @@ export default function Eventdetails() {
             Event
           </Link>
 
-          <Link
-            to="/login"
-            className="hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6"
-          >
-            Login
-          </Link>
+          <button
+  onClick={openLogin}
+  className="hover:text-black transition-colors underline-offset-4 hover:underline border-l border-black/20 pl-6"
+>
+  Login
+</button>
 
         </div>
 

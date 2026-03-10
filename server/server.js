@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
-require("dotenv").config();
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
@@ -13,6 +13,7 @@ const orderRoutes = require("./routes/orderRoutes");
 const orderDetailRoutes = require("./routes/orderDetailRoutes");
 
 const app = express();
+const port = Number(process.env.PORT) || 3001;
 
 app.use(cors());
 app.use(express.json());
@@ -30,6 +31,6 @@ app.use("/api/order-details", orderDetailRoutes);
 
 
 
-app.listen(process.env.PORT, () => {
-  console.log(`Server running on port ${process.env.PORT}`);
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });

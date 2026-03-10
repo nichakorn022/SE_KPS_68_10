@@ -1,6 +1,7 @@
 import {useState, useEffect, useCallback} from "react";
 import { Link } from 'react-router-dom';
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+const API_ORIGIN = API_BASE.replace(/\/api$/, "");
 const api = {
     getProducts: () => fetch(`${API_BASE}/products`).then(r => {
         if (!r.ok) {
@@ -11,6 +12,18 @@ const api = {
     getShops: () => fetch(`${API_BASE}/shops`).then(r => {
         if (!r.ok) {
             throw new Error(`Shops ${r.status}`);
+        }
+        return r.json();
+    }),
+    getShopImages: () => fetch(`${API_BASE}/shop-images`).then(r => {
+        if (!r.ok) {
+            throw new Error(`Shop images ${r.status}`);
+        }
+        return r.json();
+    }),
+    getProductImages: () => fetch(`${API_BASE}/product-images`).then(r => {
+        if (!r.ok) {
+            throw new Error(`Product images ${r.status}`);
         }
         return r.json();
     }),
@@ -36,7 +49,13 @@ function normalizeShop(shop) {
     };
 }
 
-function normalizeProduct(product, shopsById) {
+function toAssetUrl(imagePath) {
+    if (!imagePath) return null;
+    if (/^https?:\/\//i.test(imagePath)) return imagePath;
+    return `${API_ORIGIN}${imagePath.startsWith("/") ? imagePath : `/${imagePath}`}`;
+}
+
+function normalizeProduct(product, shopsById, productImageMap) {
     const shop = shopsById.get(product.shop_id);
 
     return {
@@ -45,7 +64,7 @@ function normalizeProduct(product, shopsById) {
         name: product.tea_name,
         tag: product.tea_type,
         shop: shop?.name || `Shop #${product.shop_id}`,
-        img: null,
+        img: productImageMap.get(product.product_id) || null,
         isNew: false,
         isBestSeller: false,
         isOnSale: false,
@@ -337,11 +356,30 @@ export default function ShopHome() {
 
   // ── Fetch ──────────────────────────────────────────────────
   useEffect(() => {
-    Promise.all([api.getProducts(), api.getShops()])
-      .then(([prods, shps]) => {
-        const normalizedShops = shps.map(normalizeShop);
+    Promise.all([api.getProducts(), api.getShops(), api.getShopImages(), api.getProductImages()])
+      .then(([prods, shps, shopImages, productImages]) => {
+        const shopImageMap = new Map();
+        shopImages.forEach(image => {
+          if (!shopImageMap.has(image.shop_id) && image.image_path) {
+            shopImageMap.set(image.shop_id, toAssetUrl(image.image_path));
+          }
+        });
+
+        const productImageMap = new Map();
+        productImages.forEach(image => {
+          if (!productImageMap.has(image.product_id) && image.image_path) {
+            productImageMap.set(image.product_id, toAssetUrl(image.image_path));
+          }
+        });
+
+        const normalizedShops = shps.map(shop => ({
+          ...normalizeShop(shop),
+          img: shopImageMap.get(shop.shop_id) || null
+        }));
         const shopsById = new Map(normalizedShops.map(shop => [shop.id, shop]));
-        const normalizedProducts = prods.map(product => normalizeProduct(product, shopsById));
+        const normalizedProducts = prods.map(product =>
+          normalizeProduct(product, shopsById, productImageMap)
+        );
 
         setProducts(normalizedProducts);
         setShops(normalizedShops);

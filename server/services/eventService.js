@@ -32,8 +32,6 @@ async function getEventById(id) {
   return rows[0];
 }
 
-/*
-
 // ---------------- CREATE EVENT ----------------
 async function createEvent(data){
 
@@ -120,13 +118,13 @@ async function searchEvents(keyword){
     `%${keyword}%`
   ]);
 
-}   */
+}
 
 module.exports = {
   getEvents,
-  getEventById
-  //createEvent,
- // updateEvent,
-  //deleteEvent,
-  //searchEvents
+  getEventById,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  searchEvents
 };

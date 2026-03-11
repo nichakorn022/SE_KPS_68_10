@@ -3,10 +3,35 @@ import { useNavigate } from "react-router-dom";
 import { useAuthModal } from '../App';
 import { apiUrl } from "../lib/api";
 
+// Toast component
+function Toast({ message, type = "success", onDone }) {
+  const [visible, setVisible] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => { setVisible(false); setTimeout(onDone, 300); }, 2500);
+    return () => clearTimeout(t);
+  }, []);
+  return (
+    <div style={{
+      position: "fixed", top: 28, left: "50%",
+      transform: `translateX(-50%) translateY(${visible ? 0 : -20}px)`,
+      opacity: visible ? 1 : 0, transition: "all 0.3s ease",
+      background: type === "success" ? "#485B3B" : "#c0392b",
+      color: "#fff", padding: "14px 28px", borderRadius: 50,
+      fontSize: 14, fontFamily: "'DM Sans', sans-serif", fontWeight: 500,
+      boxShadow: "0 8px 32px rgba(0,0,0,0.18)", zIndex: 9999,
+      display: "flex", alignItems: "center", gap: 10, whiteSpace: "nowrap"
+    }}>
+      <span>{type === "success" ? "✓" : "✕"}</span>
+      {message}
+    </div>
+  );
+}
+
 export default function Register({ isOpen, onClose }) {
   const [tab, setTab] = useState("user");
   const [visible, setVisible] = useState(false);
   const [animating, setAnimating] = useState(false);
+  const [toast, setToast] = useState(null); // ✅ เพิ่ม
   const navigate = useNavigate();
   const { openLogin } = useAuthModal();
 
@@ -24,22 +49,34 @@ export default function Register({ isOpen, onClose }) {
   const handleClose = () => { setAnimating(false); setTimeout(()=>{setVisible(false);onClose?.();},350); };
 
   const handleRegister = async () => {
-    const isUser = tab==="user";
-    const form = isUser?userForm:merchantForm;
-    if (form.password!==form.confirmPassword){alert("Passwords do not match");return;}
+    const isUser = tab === "user";
+    const form = isUser ? userForm : merchantForm;
+    if (form.password !== form.confirmPassword) {
+      setToast({ message: "Passwords do not match", type: "error" }); // ✅ แทน alert
+      return;
+    }
     try {
       const endpoint = isUser ? apiUrl("/auth/register/user") : apiUrl("/auth/register/merchant");
-      const res = await fetch(endpoint,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(form)});
+      const res = await fetch(endpoint, { method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(form) });
       const data = await res.json();
-      if (res.ok){alert("Register success!");handleClose();}
-      else{alert(data.message||"Registration failed");}
-    } catch(err){console.error(err);alert("Server error");}
+      if (res.ok) {
+        setToast({ message: "Register success! 🍵", type: "success" }); // ✅ แทน alert
+        setTimeout(() => handleClose(), 1500);
+      } else {
+        setToast({ message: data.message || "Registration failed", type: "error" }); // ✅ แทน alert
+      }
+    } catch(err) {
+      console.error(err);
+      setToast({ message: "Server error", type: "error" }); // ✅ แทน alert
+    }
   };
 
   if (!visible) return null;
 
   return (
     <>
+      {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
+
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
         .reg-backdrop{position:fixed;inset:0;background:rgba(30,27,20,0);backdrop-filter:blur(0px);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;transition:background 0.35s ease,backdrop-filter 0.35s ease;overflow-y:auto;}
@@ -61,9 +98,6 @@ export default function Register({ isOpen, onClose }) {
           <div style={{flex:"0 0 40%",position:"relative",overflow:"hidden"}}>
             <img src="https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=800&q=80" alt="Tea" style={{position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover"}} />
             <div style={{position:"absolute",inset:0,background:"linear-gradient(160deg,rgba(0,0,0,0.08) 0%,rgba(0,0,0,0.28) 100%)"}} />
-            <div style={{position:"absolute",top:22,left:22,zIndex:10}}>
-              // Logo
-            </div>
           </div>
           <div style={{flex:1,background:"#F0EDE3",display:"flex",flexDirection:"column",justifyContent:"center",padding:"40px 44px",boxSizing:"border-box",overflowY:"auto",position:"relative"}}>
             <button className="reg-close-btn" onClick={handleClose}>✕</button>
@@ -84,7 +118,6 @@ export default function Register({ isOpen, onClose }) {
               {tab==="user"?<>
                 <input className="reg-input" name="username" placeholder="Username" value={userForm.username} onChange={handleUserChange} />
                 <input className="reg-input" name="email" placeholder="Email address" value={userForm.email} onChange={handleUserChange} />
-               
                 <input className="reg-input" name="password" type="password" placeholder="Password" value={userForm.password} onChange={handleUserChange} />
                 <input className="reg-input" name="confirmPassword" type="password" placeholder="Confirm password" value={userForm.confirmPassword} onChange={handleUserChange} />
               </>:<>

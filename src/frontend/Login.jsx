@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuthModal } from '../App';
 import { apiUrl } from "../lib/api";
 
-export default function Login({ isOpen, onClose }) {
+export default function Login({ isOpen, onClose, onLoginSuccess }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
@@ -27,18 +27,27 @@ export default function Login({ isOpen, onClose }) {
     setTimeout(() => { setVisible(false); onClose?.(); }, 350);
   };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await fetch(apiUrl("/auth/login"), {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: username, password }),
-      });
-      const data = await res.json();
-      if (res.ok) { localStorage.setItem("token", data.token); alert("Login success"); handleClose(); navigate("/"); }
-      else { alert(data.message); }
-    } catch (err) { console.error(err); alert("Server error"); }
-  };
+   const handleLogin = async (e) => {
+  e.preventDefault();
+  try {
+    const res = await fetch(apiUrl("/auth/login"), {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: username, password }),
+    });
+    const data = await res.json();
+    console.log("res.ok:", res.ok, "data:", data); // ← ดูว่า login สำเร็จไหม
+    if (res.ok) {
+      console.log("token:", data.token); // ← ดูว่ามี token ไหม
+      onLoginSuccess(data.token);
+      console.log("onLoginSuccess called"); // ← ดูว่า function ถูกเรียกไหม
+      navigate("/");
+    } else { 
+      alert(data.message); 
+    }
+  } catch (err) { 
+    console.error(err); alert("Server error"); 
+  }
+};
 
   if (!visible) return null;
 

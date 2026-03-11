@@ -1,4 +1,4 @@
-import { Swiper, SwiperSlide } from "swiper/react";
+/*import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination, Autoplay } from "swiper/modules";
 
 export default function EventSlider() {
@@ -56,4 +56,4 @@ export default function EventSlider() {
 
     </section>
   );
-}
+}*/

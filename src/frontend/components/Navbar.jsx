@@ -1,8 +1,14 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuthModal } from "../../App";
 
 export default function Navbar() {
-  const { openLogin } = useAuthModal();
+  const { openLogin, token, handleLogout } = useAuthModal(); // ✅ ดึงจาก Context
+  const navigate = useNavigate();
+
+  const onLogout = () => {
+    handleLogout();
+    navigate("/");
+  };
 
   return (
     <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
@@ -15,12 +21,18 @@ export default function Navbar() {
         <Link to="/shop">Shop</Link>
         <Link to="/events">Event</Link>
 
-        <button
-          onClick={openLogin}
-          className="border-l border-black/20 pl-6 hover:underline"
-        >
-          Login
-        </button>
+        {token ? (
+          <button onClick={onLogout} className="border-l border-black/20 pl-6 hover:underline">
+            Logout
+          </button>
+        ) : (
+          <>
+            <button onClick={openLogin} className="border-l border-black/20 pl-6 hover:underline">
+              Login
+            </button>
+            <Link to="/register" className="hover:underline">Register</Link>
+          </>
+        )}
       </div>
     </nav>
   );

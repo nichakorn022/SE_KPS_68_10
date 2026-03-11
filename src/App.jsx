@@ -17,13 +17,26 @@ export const useAuthModal = () => useContext(AuthModalContext);
 function App() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [token, setToken] = useState(localStorage.getItem("token")); // ✅ เพิ่ม
 
   const openLogin    = () => { setIsRegisterOpen(false); setIsLoginOpen(true); };
   const openRegister = () => { setIsLoginOpen(false); setIsRegisterOpen(true); };
   const closeAll     = () => { setIsLoginOpen(false); setIsRegisterOpen(false); };
 
+  const handleLoginSuccess = (newToken) => { // ✅ เพิ่ม
+    localStorage.setItem("token", newToken);
+    setToken(newToken);
+    closeAll();
+  };
+
+  const handleLogout = () => { // ✅ เพิ่ม
+    localStorage.removeItem("token");
+    setToken(null);
+  };
+
   return (
-    <AuthModalContext.Provider value={{ openLogin, openRegister }}>
+    // ✅ ส่ง token, handleLogout เข้า Context ด้วย
+    <AuthModalContext.Provider value={{ openLogin, openRegister, token, handleLogout }}>
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
@@ -38,7 +51,8 @@ function App() {
             <Route path="/product/:id" element={<ProductDetail />} />
           </Route>
         </Routes>
-        <Login    isOpen={isLoginOpen}    onClose={closeAll} />
+        {/* ✅ ส่ง onLoginSuccess แทน onClose */}
+        <Login    isOpen={isLoginOpen}    onClose={closeAll} onLoginSuccess={handleLoginSuccess} />
         <Register isOpen={isRegisterOpen} onClose={closeAll} />
       </BrowserRouter>
     </AuthModalContext.Provider>

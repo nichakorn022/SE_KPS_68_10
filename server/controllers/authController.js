@@ -1,6 +1,6 @@
-const db = require("../db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const { query, beginTransaction, commit, rollback } = require("../utils/dbHelpers");
 
 function getAdminEmails() {
   return (process.env.ADMIN_EMAILS || "")
@@ -11,130 +11,201 @@ function getAdminEmails() {
 
 function isAdminUser(user) {
   if (!user) return false;
-
   if (user.role && String(user.role).toLowerCase() === "admin") return true;
   if (user.user_role && String(user.user_role).toLowerCase() === "admin") return true;
   if (Number(user.is_admin) === 1) return true;
   if (Number(user.isAdmin) === 1) return true;
-
   return getAdminEmails().includes(String(user.email || "").toLowerCase());
 }
 
-// REGISTER
+function sanitizeText(value) {
+  if (value === undefined || value === null) return null;
+  const trimmed = String(value).trim();
+  return trimmed ? trimmed : null;
+}
+
+function buildAuthPayload(user) {
+  const adminUser = isAdminUser(user);
+  const role = adminUser ? "admin" : String(user.role || "user").toLowerCase();
+
+  return {
+    tokenPayload: {
+      user_id: user.user_id,
+      email: user.email,
+      role,
+    },
+    responseUser: {
+      user_id: user.user_id,
+      username: user.username,
+      email: user.email,
+      role,
+    },
+    isAdmin: adminUser,
+  };
+}
+
+async function ensureUniqueUser(username, email) {
+  const rows = await query(
+    "SELECT user_id, username, email FROM users WHERE username = ? OR email = ? LIMIT 1",
+    [username, email]
+  );
+
+  if (rows.length === 0) return;
+
+  const duplicate = rows[0];
+  if (String(duplicate.username).toLowerCase() === String(username).toLowerCase()) {
+    const error = new Error("Username already exists");
+    error.statusCode = 409;
+    throw error;
+  }
+
+  const error = new Error("Email already exists");
+  error.statusCode = 409;
+  throw error;
+}
+
 exports.registerUser = async (req, res) => {
+  try {
+    const username = sanitizeText(req.body.username);
+    const email = sanitizeText(req.body.email);
+    const password = String(req.body.password || "");
 
-  const { username, email, password } = req.body;
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  const sql = `
-    INSERT INTO users (username, email, password)
-    VALUES (?, ?, ?)
-  `;
-
-  db.query(sql, [username, email, hashedPassword], (err, result) => {
-
-    if (err) {
-      return res.status(500).json(err);
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: "Username, email, and password are required" });
     }
 
-    res.json({
-      message: "Register success"
-    });
+    await ensureUniqueUser(username, email);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-  });
+    await query("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, 'user')", [
+      username,
+      email,
+      hashedPassword,
+    ]);
 
+    res.json({ message: "Register success" });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.message || "Registration failed" });
+  }
 };
 
+exports.registerMerchant = async (req, res) => {
+  const username = sanitizeText(req.body.username);
+  const email = sanitizeText(req.body.email);
+  const password = String(req.body.password || "");
+  const shopName = sanitizeText(req.body.storeName);
+  const address = sanitizeText(req.body.storeAddress);
+  const nationalId = sanitizeText(req.body.nationalId);
+  const phone = sanitizeText(req.body.phone);
+  const description = sanitizeText(req.body.description);
+  const contactInfo = sanitizeText(req.body.contactInfo);
+  const province = sanitizeText(req.body.province);
+  const district = sanitizeText(req.body.district);
+  const subdistrict = sanitizeText(req.body.subdistrict);
 
-// LOGIN
-exports.login = (req, res) => {
+  if (!username || !email || !password || !shopName) {
+    return res.status(400).json({
+      message: "Username, email, password, and store name are required",
+    });
+  }
 
-  const { email, password } = req.body;
+  try {
+    await ensureUniqueUser(username, email);
 
-  const sql = "SELECT * FROM users WHERE email = ?";
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-  db.query(sql, [email], async (err, result) => {
+    await beginTransaction();
 
-    if (err) {
-      return res.status(500).json(err);
-    }
+    const userResult = await query(
+      "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, 'shop')",
+      [username, email, hashedPassword]
+    );
+
+    await query(
+      `INSERT INTO tea_shop (
+        user_id, shop_name, description, contact_info, phone, address, province, district, subdistrict, national_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userResult.insertId,
+        shopName,
+        description,
+        contactInfo,
+        phone,
+        address,
+        province,
+        district,
+        subdistrict,
+        nationalId,
+      ]
+    );
+
+    await commit();
+    res.json({ message: "Merchant register success" });
+  } catch (error) {
+    await rollback();
+    res.status(error.statusCode || 500).json({ message: error.message || "Merchant registration failed" });
+  }
+};
+
+exports.login = async (req, res) => {
+  const email = sanitizeText(req.body.email);
+  const password = String(req.body.password || "");
+
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
+  try {
+    const result = await query("SELECT * FROM users WHERE email = ? LIMIT 1", [email]);
 
     if (result.length === 0) {
-      return res.status(401).json({
-        message: "User not found"
-      });
+      return res.status(401).json({ message: "User not found" });
     }
 
     const user = result[0];
-
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
-      return res.status(401).json({
-        message: "Wrong password"
-      });
+      return res.status(401).json({ message: "Wrong password" });
     }
 
-    const adminUser = isAdminUser(user);
-    const tokenPayload = {
-      user_id: user.user_id,
-    };
-
-    if (adminUser) {
-      tokenPayload.email = user.email;
-      tokenPayload.role = "admin";
-    }
-
+    const { tokenPayload, responseUser } = buildAuthPayload(user);
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     res.json({
       message: "Login success",
       token,
-      user: {
-        user_id: user.user_id,
-        username: user.username,
-        email: user.email,
-        role: adminUser ? "admin" : "user"
-      }
+      user: responseUser,
     });
-
-  });
-
+  } catch (error) {
+    res.status(500).json({ message: error.message || "Login failed" });
+  }
 };
 
-exports.loginAdmin = (req, res) => {
+exports.loginAdmin = async (req, res) => {
+  const email = sanitizeText(req.body.email);
+  const password = String(req.body.password || "");
 
-  const { email, password } = req.body;
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
 
-  const sql = "SELECT * FROM users WHERE email = ?";
-
-  db.query(sql, [email], async (err, result) => {
-
-    if (err) {
-      return res.status(500).json(err);
-    }
+  try {
+    const result = await query("SELECT * FROM users WHERE email = ? LIMIT 1", [email]);
 
     if (result.length === 0) {
-      return res.status(401).json({
-        message: "User not found"
-      });
+      return res.status(401).json({ message: "User not found" });
     }
 
     const user = result[0];
-
     const match = await bcrypt.compare(password, user.password);
 
     if (!match) {
-      return res.status(401).json({
-        message: "Wrong password"
-      });
+      return res.status(401).json({ message: "Wrong password" });
     }
 
     if (!isAdminUser(user)) {
-      return res.status(403).json({
-        message: "Admin access denied"
-      });
+      return res.status(403).json({ message: "Admin access denied" });
     }
 
     const token = jwt.sign(
@@ -150,28 +221,22 @@ exports.loginAdmin = (req, res) => {
         user_id: user.user_id,
         username: user.username,
         email: user.email,
-        role: "admin"
-      }
+        role: "admin",
+      },
     });
-
-  });
-
+  } catch (error) {
+    res.status(500).json({ message: error.message || "Admin login failed" });
+  }
 };
 
-exports.adminProfile = (req, res) => {
-
-  const sql = "SELECT user_id, username, email FROM users WHERE user_id = ?";
-
-  db.query(sql, [req.user.user_id], (err, result) => {
-
-    if (err) {
-      return res.status(500).json(err);
-    }
+exports.adminProfile = async (req, res) => {
+  try {
+    const result = await query("SELECT user_id, username, email FROM users WHERE user_id = ? LIMIT 1", [
+      req.user.user_id,
+    ]);
 
     if (result.length === 0) {
-      return res.status(404).json({
-        message: "User not found"
-      });
+      return res.status(404).json({ message: "User not found" });
     }
 
     const user = result[0];
@@ -179,10 +244,10 @@ exports.adminProfile = (req, res) => {
     res.json({
       user: {
         ...user,
-        role: "admin"
-      }
+        role: "admin",
+      },
     });
-
-  });
-
+  } catch (error) {
+    res.status(500).json({ message: error.message || "Failed to fetch admin profile" });
+  }
 };

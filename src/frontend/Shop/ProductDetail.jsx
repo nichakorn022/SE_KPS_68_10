@@ -5,6 +5,7 @@ import SiteNavbar from "../components/SiteNavbar";
 import FloatingCartButton from "../components/FloatingCartButton";
 import usePersistentCart from "../hooks/usePersistentCart";
 import ShopHome from "./ShopHome";
+import { getUserIdFromToken } from "./authClient";
 
 const api = {
   getProduct: (id) =>
@@ -455,6 +456,11 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
   const price = Number(product.price ?? 0);
   const stock = product.stock ?? 0;
   const inStock = stock > 0;
+  const currentUserId = getUserIdFromToken();
+  const isOwnProduct =
+    currentUserId != null &&
+    shop?.user_id != null &&
+    Number(currentUserId) === Number(shop.user_id);
 
   const currentProduct = {
     id: product.product_id,
@@ -553,7 +559,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
               <div className="flex gap-3">
                 <button
                   onClick={() => addToCart(currentProduct, qty)}
-                  disabled={!inStock}
+                  disabled={!inStock || isOwnProduct}
                   className={`flex-1 flex items-center justify-center gap-2 border-2 border-[#485B3B] text-[#485B3B] font-bold py-3 rounded-2xl transition-all active:scale-95 disabled:opacity-40 ${
                     addedFeedback
                       ? "bg-[#485B3B] text-white"
@@ -561,13 +567,13 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
                   }`}
                 >
                   🛒
-                  {addedFeedback ? "เพิ่มแล้ว ✓" : "เพิ่มไปยังตะกร้า"}
+                  {isOwnProduct ? "สินค้าร้านคุณ" : addedFeedback ? "เพิ่มแล้ว ✓" : "เพิ่มไปยังตะกร้า"}
                 </button>
                 <button
-                  disabled={!inStock}
+                  disabled={!inStock || isOwnProduct}
                   className="flex-1 bg-[#485B3B] text-white font-bold py-3 rounded-2xl hover:bg-[#3a4a2f] transition-all shadow-lg active:scale-95 disabled:opacity-40"
                 >
-                  ซื้อสินค้า
+                  {isOwnProduct ? "สินค้าร้านคุณ" : "ซื้อสินค้า"}
                 </button>
               </div>
 

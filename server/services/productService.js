@@ -2,9 +2,26 @@ const { query } = require("../utils/dbHelpers");
 
 async function getProducts() {
   return query(
-    `SELECT product_id, shop_id, tea_name, tea_type, description, price, stock
-     FROM tea_product
-     ORDER BY product_id DESC`
+    `SELECT
+        tp.product_id,
+        tp.shop_id,
+        tp.tea_name,
+        tp.tea_type,
+        tp.description,
+        tp.price,
+        tp.stock,
+        COALESCE(SUM(
+          CASE
+            WHEN o.status = 'paid' AND o.order_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+            THEN od.quantity
+            ELSE 0
+          END
+        ), 0) AS sales_7d
+     FROM tea_product tp
+     LEFT JOIN order_details od ON od.product_id = tp.product_id
+     LEFT JOIN orders o ON o.order_id = od.order_id
+     GROUP BY tp.product_id, tp.shop_id, tp.tea_name, tp.tea_type, tp.description, tp.price, tp.stock
+     ORDER BY tp.product_id DESC`
   );
 }
 
@@ -82,10 +99,69 @@ async function deleteProduct(id) {
   return { message: "Product deleted" };
 }
 
+async function getShopByOwnerId(userId) {
+  const rows = await query("SELECT shop_id FROM tea_shop WHERE user_id = ? LIMIT 1", [userId]);
+
+  if (rows.length === 0) {
+    const error = new Error("Shop profile not found for this account");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return rows[0];
+}
+
+async function getProductsByOwner(userId) {
+  const shop = await getShopByOwnerId(userId);
+
+  return query(
+    `SELECT product_id, shop_id, tea_name, tea_type, description, price, stock
+     FROM tea_product
+     WHERE shop_id = ?
+     ORDER BY product_id DESC`,
+    [shop.shop_id]
+  );
+}
+
+async function createProductByOwner(userId, payload) {
+  const shop = await getShopByOwnerId(userId);
+  return createProduct({ ...payload, shop_id: shop.shop_id });
+}
+
+async function updateProductByOwner(userId, productId, payload) {
+  const shop = await getShopByOwnerId(userId);
+  const product = await getProductById(productId);
+
+  if (Number(product.shop_id) !== Number(shop.shop_id)) {
+    const error = new Error("You do not have access to this product");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return updateProduct(productId, payload);
+}
+
+async function deleteProductByOwner(userId, productId) {
+  const shop = await getShopByOwnerId(userId);
+  const product = await getProductById(productId);
+
+  if (Number(product.shop_id) !== Number(shop.shop_id)) {
+    const error = new Error("You do not have access to this product");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return deleteProduct(productId);
+}
+
 module.exports = {
   getProducts,
   getProductById,
   createProduct,
   updateProduct,
-  deleteProduct
+  deleteProduct,
+  getProductsByOwner,
+  createProductByOwner,
+  updateProductByOwner,
+  deleteProductByOwner
 };

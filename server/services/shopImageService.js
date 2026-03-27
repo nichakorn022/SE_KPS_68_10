@@ -54,6 +54,7 @@ async function createShopImage({ shop_id, image_path }) {
 }
 
 async function deleteShopImage(id) {
+  const existing = await getShopImageById(id);
   const result = await query("DELETE FROM shop_images WHERE image_id = ?", [id]);
 
   if (result.affectedRows === 0) {
@@ -62,7 +63,10 @@ async function deleteShopImage(id) {
     throw error;
   }
 
-  return { message: "Shop image deleted" };
+  return {
+    message: "Shop image deleted",
+    image_path: existing.image_path
+  };
 }
 
 module.exports = {

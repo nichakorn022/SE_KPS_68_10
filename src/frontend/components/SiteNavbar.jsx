@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthModal } from "../../App";
+import { getUserRoleFromToken } from "../Shop/authClient";
 
 // Toast component
 function Toast({ message, type = "success", onDone }) {
@@ -34,6 +35,7 @@ function itemClass(isActive) {
 export default function SiteNavbar({ active, showCart = false, cartCount = 0, onCartClick }) {
   const { openLogin, openRegister, token, handleLogout } = useAuthModal();
   const navigate = useNavigate();
+  const userRole = token ? getUserRoleFromToken() : null;
   const [toast, setToast] = useState(null); // ✅ เพิ่ม
 
   const onLogout = () => {
@@ -55,6 +57,7 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
           <Link to="/" className={itemClass(active === "home")}>Home</Link>
           <Link to="/shop" className={itemClass(active === "shop")}>Shop</Link>
           <Link to="/events" className={itemClass(active === "events")}>Event</Link>
+          {userRole === "shop" && <Link to="/seller" className={itemClass(active === "seller")}>Seller Hub</Link>}
 
           <div className="h-8 w-px bg-black/20" />
 

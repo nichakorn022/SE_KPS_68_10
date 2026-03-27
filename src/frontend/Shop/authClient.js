@@ -3,21 +3,28 @@ export function getStoredToken() {
   return window.localStorage.getItem("token") || "";
 }
 
-export function getAuthHeaders(extraHeaders = {}) {
-  const token = getStoredToken();
-  return token ? { ...extraHeaders, Authorization: `Bearer ${token}` } : { ...extraHeaders };
-}
-
-export function getUserIdFromToken() {
+export function getTokenPayload() {
   const token = getStoredToken();
   if (!token) return null;
 
   try {
     const [, payload] = token.split(".");
     if (!payload) return null;
-    const decoded = JSON.parse(window.atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
-    return decoded?.user_id ?? null;
+    return JSON.parse(window.atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
   } catch {
     return null;
   }
+}
+
+export function getAuthHeaders(extraHeaders = {}) {
+  const token = getStoredToken();
+  return token ? { ...extraHeaders, Authorization: `Bearer ${token}` } : { ...extraHeaders };
+}
+
+export function getUserIdFromToken() {
+  return getTokenPayload()?.user_id ?? null;
+}
+
+export function getUserRoleFromToken() {
+  return getTokenPayload()?.role ?? null;
 }

@@ -8,6 +8,7 @@ import { apiUrl, assetUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
 import FloatingCartButton from "../components/FloatingCartButton";
 import usePersistentCart from "../hooks/usePersistentCart";
+import { getUserIdFromToken } from "./authClient";
 
 const api = {
   getProducts: () =>
@@ -55,7 +56,7 @@ const HERO_SLIDES = [
   },
 ];
 
-const TABS = ["ทั้งหมด", "เมนูใหม่", "แนะนำ", "โปรโมชัน"];
+const TABS = ["ทั้งหมด", "เมนูใหม่", "ยอดฮิต", "แนะนำ", "โปรโมชัน"];
 const CATEGORIES = ["Green Tea", "Black Tea", "Oolong Tea", "White Tea", "Herbal Tea"];
 
 function toAssetUrl(imagePath) {
@@ -74,6 +75,7 @@ function normalizeShop(shop) {
   return {
     ...shop,
     id: shop.shop_id,
+    ownerUserId: Number(shop.user_id),
     name: shop.shop_name,
     location: getLocation(shop),
     isVerified: Number(shop.verified_status) === 1,
@@ -84,12 +86,15 @@ function normalizeShop(shop) {
 function buildProductSignals(product) {
   const stock = Number(product.stock ?? 0);
   const price = Number(product.price ?? 0);
+  const weeklySales = Number(product.sales_7d ?? 0);
 
   return {
     stock,
     price,
+    weeklySales,
     soldOut: stock <= 0,
     lowStock: stock > 0 && stock <= 3,
+    popular: weeklySales > 0,
     featured: price >= 90,
     freshPick: stock > 3 && stock <= 8,
     promo: price <= 70,
@@ -106,6 +111,7 @@ function normalizeProduct(product, shopsById, productImageMap) {
     name: product.tea_name,
     tag: product.tea_type,
     shop: shop?.name || `Shop #${product.shop_id}`,
+    ownerUserId: shop?.ownerUserId ?? null,
     shopVerified: shop?.isVerified ?? false,
     img: productImageMap.get(product.product_id) || null,
     ...signals,
@@ -115,7 +121,7 @@ function normalizeProduct(product, shopsById, productImageMap) {
 function filterProducts(products, { search, activeTab, activeCategory }) {
   const query = search.trim().toLowerCase();
 
-  return products.filter((product) => {
+  const filtered = products.filter((product) => {
     const matchesSearch =
       !query ||
       product.name?.toLowerCase().includes(query) ||
@@ -128,11 +134,22 @@ function filterProducts(products, { search, activeTab, activeCategory }) {
     const matchesTab =
       activeTab === "ทั้งหมด" ||
       (activeTab === "เมนูใหม่" && product.freshPick) ||
+      (activeTab === "ยอดฮิต" && product.popular) ||
       (activeTab === "แนะนำ" && product.featured) ||
       (activeTab === "โปรโมชัน" && product.promo);
 
     return matchesSearch && matchesCategory && matchesTab;
   });
+
+  if (activeTab === "ยอดฮิต") {
+    return [...filtered].sort((a, b) => {
+      const salesDiff = Number(b.weeklySales ?? 0) - Number(a.weeklySales ?? 0);
+      if (salesDiff !== 0) return salesDiff;
+      return Number(b.id ?? 0) - Number(a.id ?? 0);
+    });
+  }
+
+  return filtered;
 }
 
 function getSectionTitle(search, activeTab, activeCategory) {
@@ -150,6 +167,7 @@ function getSectionDescription(search, activeTab, activeCategory) {
     return "แสดงสินค้าในหมวดที่เลือกพร้อมสถานะสต็อกและร้านที่เกี่ยวข้อง";
   }
   if (activeTab === "เมนูใหม่") return "เมนูที่สต็อกยังสดและเหมาะกับการสำรวจร้านใหม่ๆ";
+  if (activeTab === "ยอดฮิต") return "จัดอันดับจากจำนวนชิ้นที่ขายได้จริงในช่วง 7 วันล่าสุด แล้วเรียงจากมากไปน้อย";
   if (activeTab === "แนะนำ") return "เครื่องดื่มที่ราคาสูงขึ้นนิด แต่ภาพรวมดูพรีเมียมและเหมาะเป็นตัวเด่น";
   if (activeTab === "โปรโมชัน") return "เมนูเข้าถึงง่าย เหมาะสำหรับเริ่มลองหรือสั่งหลายแก้ว";
   return "หน้าเดียวสำหรับค้นหาเมนู ดูร้าน และหยิบสินค้าลงตะกร้าแบบไม่รู้สึกโล่งหรือแข็งเกินไป";
@@ -327,15 +345,15 @@ function ProductCard({ product, onAddToCart }) {
 
           <button
             type="button"
-            disabled={product.soldOut}
+            disabled={product.soldOut || product.isOwnProduct}
             onClick={() => onAddToCart(product)}
             className={`rounded-full px-4 py-2.5 text-sm font-semibold transition-all duration-300 ${
-              product.soldOut
+              product.soldOut || product.isOwnProduct
                 ? "cursor-not-allowed bg-[#E6E9E0] text-[#93A08C]"
                 : "bg-[#485B3B] text-white shadow-[0_14px_28px_rgba(72,91,59,0.22)] hover:-translate-y-0.5 hover:bg-[#394A31] active:scale-[0.98]"
             }`}
           >
-            {product.soldOut ? "ของหมด" : "เพิ่มลงตะกร้า"}
+            {product.isOwnProduct ? "สินค้าร้านคุณ" : product.soldOut ? "ของหมด" : "เพิ่มลงตะกร้า"}
           </button>
         </div>
       </div>
@@ -615,6 +633,7 @@ function LoadingState() {
 
 export default function ShopHome() {
   const navigate = useNavigate();
+  const currentUserId = getUserIdFromToken();
   const [products, setProducts] = useState([]);
   const [shops, setShops] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -653,9 +672,17 @@ export default function ShopHome() {
         }));
 
         const shopsById = new Map(normalizedShops.map((shop) => [shop.id, shop]));
-        const normalizedProducts = productRows.map((product) =>
-          normalizeProduct(product, shopsById, productImageMap)
-        );
+        const normalizedProducts = productRows.map((product) => {
+          const normalizedProduct = normalizeProduct(product, shopsById, productImageMap);
+
+          return {
+            ...normalizedProduct,
+            isOwnProduct:
+              currentUserId != null &&
+              normalizedProduct.ownerUserId != null &&
+              Number(currentUserId) === Number(normalizedProduct.ownerUserId),
+          };
+        });
 
         setProducts(normalizedProducts);
         setShops(normalizedShops);
@@ -665,7 +692,7 @@ export default function ShopHome() {
         setError(fetchError.message);
         setLoading(false);
       });
-  }, [refreshKey]);
+  }, [currentUserId, refreshKey]);
 
   const filteredProducts = useMemo(
     () => filterProducts(products, { search, activeTab, activeCategory }),

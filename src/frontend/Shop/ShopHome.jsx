@@ -815,6 +815,10 @@ export default function ShopHome() {
               <ViewToggle activeView={activeView} onChange={setActiveView} />
             </div>
 
+            <div className="mt-5">
+              <SearchBar value={search} onChange={setSearch} />
+            </div>
+
             {activeView === "products" && (
               <div className="mt-5 space-y-4">
                 <TabBar tabs={TABS} active={activeTab} onSelect={setActiveTab} />

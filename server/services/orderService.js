@@ -1,19 +1,16 @@
 const { beginTransaction, commit, rollback, query } = require("../utils/dbHelpers");
 
 const allowedStatuses = new Set(["pending", "paid", "cancelled"]);
+const orderSelectFields = `
+  SELECT order_id, user_id, order_date, status, total_amount,
+         NULL AS address_id, NULL AS recipient_name, NULL AS phone,
+         NULL AS shipping_address, NULL AS subdistrict, NULL AS district,
+         NULL AS province, NULL AS postal_code, NULL AS address_note
+`;
 
 async function createOrder({
   user_id,
   items,
-  address_id = null,
-  recipient_name = null,
-  phone = null,
-  shipping_address = null,
-  subdistrict = null,
-  district = null,
-  province = null,
-  postal_code = null,
-  address_note = null
 }) {
   if (user_id === undefined || user_id === null) {
     const error = new Error("user_id is required");
@@ -80,23 +77,9 @@ async function createOrder({
     }
 
     const orderResult = await query(
-      `INSERT INTO orders (
-        user_id, address_id, status, total_amount, recipient_name, phone, shipping_address,
-        subdistrict, district, province, postal_code, address_note
-      ) VALUES (?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        user_id,
-        address_id,
-        totalAmount,
-        recipient_name,
-        phone,
-        shipping_address,
-        subdistrict,
-        district,
-        province,
-        postal_code,
-        address_note
-      ]
+      `INSERT INTO orders (user_id, status, payment_status, fulfillment_status, total_amount)
+       VALUES (?, 'pending', 'unpaid', 'pending', ?)`,
+      [user_id, totalAmount]
     );
 
     const orderId = orderResult.insertId;
@@ -129,8 +112,7 @@ async function createOrder({
 
 async function getOrderById(id) {
   const orderRows = await query(
-    `SELECT order_id, user_id, address_id, order_date, status, total_amount, recipient_name, phone,
-            shipping_address, subdistrict, district, province, postal_code, address_note
+    `${orderSelectFields}
      FROM orders
      WHERE order_id = ?`,
     [id]
@@ -173,8 +155,7 @@ async function getOrders({ status, user_id }) {
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   return query(
-    `SELECT order_id, user_id, address_id, order_date, status, total_amount,
-            recipient_name, phone, shipping_address, subdistrict, district, province, postal_code, address_note
+    `${orderSelectFields}
      FROM orders
      ${whereClause}
      ORDER BY order_date DESC`,
@@ -184,8 +165,7 @@ async function getOrders({ status, user_id }) {
 
 async function getOrdersByUser(userId) {
   return query(
-    `SELECT order_id, user_id, address_id, order_date, status, total_amount,
-            recipient_name, phone, shipping_address, subdistrict, district, province, postal_code, address_note
+    `${orderSelectFields}
      FROM orders
      WHERE user_id = ?
      ORDER BY order_date DESC`,

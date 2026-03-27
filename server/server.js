@@ -15,6 +15,7 @@ const registrationRoutes = require("./routes/registrationRoutes");
 const userAddressRoutes = require("./routes/userAddressRoutes");
 const organizerRoutes = require("./routes/organizerRoutes");
 const reportRoutes = require("./routes/reportRoutes");
+const chatRoutes = require("./routes/chatRoutes");
 
 const app = express();
 const port = Number(process.env.PORT) || 3001;
@@ -36,6 +37,7 @@ app.use("/api/registrations", registrationRoutes);
 app.use("/api/user-addresses", userAddressRoutes);
 app.use("/api/organizers", organizerRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/chat", chatRoutes);
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

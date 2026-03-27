@@ -9,6 +9,7 @@ import Register from "./frontend/Regist.jsx";
 import EventDetails from "./frontend/Event/Eventdetails.jsx";
 import EventReview from "./frontend/Event/EventReview.jsx";
 import ShopProfile from "./frontend/Shop/ShopProfile.jsx";
+import ShopChatPage from "./frontend/Shop/ShopChatPage.jsx";
 import ProductDetail from "./frontend/Shop/ProductDetail.jsx";
 import CheckoutPage from "./frontend/Shop/CheckoutPage.jsx";
 import CheckoutAddressPage from "./frontend/Shop/CheckoutAddressPage.jsx";
@@ -94,6 +95,7 @@ function App() {
             <Route path="/home" element={<Home />} />
             <Route path="/shop" element={<Shop />} />
             <Route path="/shop/:id" element={<ShopProfile />} />
+            <Route path="/shop/:id/chat" element={<ShopChatPage />} />
             <Route path="/events" element={<Events />} />
             <Route path="/events/:id" element={<EventDetails />} />
             <Route path="/review/:id" element={<EventReview />} />

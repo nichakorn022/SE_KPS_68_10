@@ -8,23 +8,18 @@ import Login from "./frontend/Login.jsx";
 import Register from "./frontend/Regist.jsx";
 import EventDetails from "./frontend/Event/Eventdetails.jsx";
 import EventReview from "./frontend/Event/EventReview.jsx";
-<<<<<<< Updated upstream
-import ShopProfile from './frontend/Shop/ShopProfile.jsx';
-import ProductDetail from './frontend/Shop/ProductDetail.jsx';
-import CheckoutPage from './frontend/Shop/CheckoutPage.jsx';
-import CheckoutAddressPage from './frontend/Shop/CheckoutAddressPage.jsx';
-import CheckoutAddressFormPage from './frontend/Shop/CheckoutAddressFormPage.jsx';
-import OrderSuccessPage from './frontend/Shop/OrderSuccessPage.jsx';
-=======
 import ShopProfile from "./frontend/Shop/ShopProfile.jsx";
 import ProductDetail from "./frontend/Shop/ProductDetail.jsx";
+import CheckoutPage from "./frontend/Shop/CheckoutPage.jsx";
+import CheckoutAddressPage from "./frontend/Shop/CheckoutAddressPage.jsx";
+import CheckoutAddressFormPage from "./frontend/Shop/CheckoutAddressFormPage.jsx";
+import OrderSuccessPage from "./frontend/Shop/OrderSuccessPage.jsx";
 import AdminRoute from "./frontend/admin/AdminRoute.jsx";
 import AdminDashboard from "./frontend/admin/AdminDashboard.jsx";
 import AdminInboxPage from "./frontend/admin/AdminInboxPage.jsx";
 import AdminProductsPage from "./frontend/admin/AdminProductsPage.jsx";
 import AdminEventsPage from "./frontend/admin/AdminEventsPage.jsx";
 import AdminOrdersPage from "./frontend/admin/AdminOrdersPage.jsx";
->>>>>>> Stashed changes
 
 export const AuthModalContext = createContext(null);
 export const useAuthModal = () => useContext(AuthModalContext);

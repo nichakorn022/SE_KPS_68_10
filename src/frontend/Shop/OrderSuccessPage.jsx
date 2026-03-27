@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { apiUrl, assetUrl } from "../../lib/api";
+import { getAuthHeaders } from "./authClient";
 
 function formatPrice(price) {
   return `฿${Number(price ?? 0).toLocaleString("th-TH", {
@@ -105,7 +106,7 @@ export default function OrderSuccessPage() {
     let ignore = false;
 
     Promise.all([
-      fetch(apiUrl(`/orders/${orderId}`)).then(async (response) => {
+      fetch(apiUrl(`/orders/${orderId}`), { headers: getAuthHeaders() }).then(async (response) => {
         if (!response.ok) throw new Error("โหลดคำสั่งซื้อไม่สำเร็จ");
         return response.json();
       }),

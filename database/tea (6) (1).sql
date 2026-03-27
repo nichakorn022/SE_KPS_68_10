@@ -309,6 +309,28 @@ INSERT INTO `tea_shop` (`shop_id`, `user_id`, `shop_name`, `description`, `conta
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `user_address`
+--
+
+CREATE TABLE `user_address` (
+  `address_id` int(10) NOT NULL,
+  `user_id` int(10) NOT NULL,
+  `recipient_name` varchar(150) NOT NULL,
+  `phone` varchar(20) NOT NULL,
+  `address_line` text NOT NULL,
+  `subdistrict` varchar(100) DEFAULT NULL,
+  `district` varchar(100) DEFAULT NULL,
+  `province` varchar(100) DEFAULT NULL,
+  `postal_code` varchar(10) DEFAULT NULL,
+  `note` text DEFAULT NULL,
+  `is_default` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `users`
 --
 
@@ -455,6 +477,13 @@ ALTER TABLE `tea_shop`
   ADD UNIQUE KEY `user_id` (`user_id`);
 
 --
+-- Indexes for table `user_address`
+--
+ALTER TABLE `user_address`
+  ADD PRIMARY KEY (`address_id`),
+  ADD KEY `fk_user_address_user` (`user_id`);
+
+--
 -- Indexes for table `users`
 --
 ALTER TABLE `users`
@@ -549,6 +578,12 @@ ALTER TABLE `tea_product`
 --
 ALTER TABLE `tea_shop`
   MODIFY `shop_id` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+
+--
+-- AUTO_INCREMENT for table `user_address`
+--
+ALTER TABLE `user_address`
+  MODIFY `address_id` int(10) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -654,6 +689,12 @@ ALTER TABLE `tea_product`
 --
 ALTER TABLE `tea_shop`
   ADD CONSTRAINT `fk_teashop_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `user_address`
+--
+ALTER TABLE `user_address`
+  ADD CONSTRAINT `fk_user_address_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

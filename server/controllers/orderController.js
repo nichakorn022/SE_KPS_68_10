@@ -17,6 +17,11 @@ exports.getOrderById = async (req, res) => {
 
   try {
     const result = await orderService.getOrderById(id);
+    if (req.user?.role !== "admin" && Number(result.user_id) !== Number(req.user?.user_id)) {
+      return res.status(403).json({
+        message: "You do not have access to this order"
+      });
+    }
     return res.json(result);
   } catch (error) {
     return res.status(error.statusCode || 500).json({
@@ -39,6 +44,11 @@ exports.getOrdersByUser = async (req, res) => {
   const { userId } = req.params;
 
   try {
+    if (req.user?.role !== "admin" && Number(userId) !== Number(req.user?.user_id)) {
+      return res.status(403).json({
+        message: "You do not have access to these orders"
+      });
+    }
     const rows = await orderService.getOrdersByUser(userId);
     return res.json(rows);
   } catch (error) {

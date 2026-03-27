@@ -23,6 +23,19 @@ exports.createShop = (req, res) => {
     .createShop(req.body)
     .then((result) => res.status(201).json(result))
     .catch((error) =>
-      res.status(error.statusCode || 500).json({ message: "Failed to create shop", error })
+        res.status(error.statusCode || 500).json({ message: "Failed to create shop", error })
+    );
+};
+
+exports.updateShopVerification = (req, res) => {
+  const { id } = req.params;
+
+  shopService
+    .updateShopVerification(id, req.body.verified_status)
+    .then((result) => res.json(result))
+    .catch((error) =>
+      res
+        .status(error.statusCode || 500)
+        .json({ message: "Failed to update shop verification", error: error.message })
     );
 };

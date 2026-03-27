@@ -2,19 +2,21 @@ const { query } = require("../utils/dbHelpers");
 
 async function getShops() {
   return query(
-    `SELECT shop_id, user_id, email, shop_name, description, contact_info, phone, address,
-            province, district, subdistrict, national_id, verified_status
-     FROM tea_shop
+    `SELECT ts.shop_id, ts.user_id, u.email, ts.shop_name, ts.description, ts.contact_info, ts.phone, ts.address,
+            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status
+     FROM tea_shop ts
+     LEFT JOIN users u ON u.user_id = ts.user_id
      ORDER BY shop_id DESC`
   );
 }
 
 async function getShopById(id) {
   const rows = await query(
-    `SELECT shop_id, user_id, email, shop_name, description, contact_info, phone, address,
-            province, district, subdistrict, national_id, verified_status
-     FROM tea_shop
-     WHERE shop_id = ?`,
+    `SELECT ts.shop_id, ts.user_id, u.email, ts.shop_name, ts.description, ts.contact_info, ts.phone, ts.address,
+            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status
+     FROM tea_shop ts
+     LEFT JOIN users u ON u.user_id = ts.user_id
+     WHERE ts.shop_id = ?`,
     [id]
   );
 
@@ -29,7 +31,6 @@ async function getShopById(id) {
 
 async function createShop({
   user_id,
-  email,
   shop_name,
   description,
   contact_info,
@@ -48,12 +49,11 @@ async function createShop({
 
   const result = await query(
     `INSERT INTO tea_shop (
-      user_id, email, shop_name, description, contact_info, phone, address,
+      user_id, shop_name, description, contact_info, phone, address,
       province, district, subdistrict, national_id
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       user_id,
-      email ?? null,
       shop_name,
       description ?? null,
       contact_info ?? null,
@@ -72,8 +72,28 @@ async function createShop({
   };
 }
 
+async function updateShopVerification(shopId, verifiedStatus) {
+  const result = await query(
+    `UPDATE tea_shop
+     SET verified_status = ?
+     WHERE shop_id = ?`,
+    [verifiedStatus ? 1 : 0, shopId]
+  );
+
+  if (result.affectedRows === 0) {
+    const error = new Error("Shop not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return {
+    message: "Shop verification updated"
+  };
+}
+
 module.exports = {
   getShops,
   getShopById,
-  createShop
+  createShop,
+  updateShopVerification
 };

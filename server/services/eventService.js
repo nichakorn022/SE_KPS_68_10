@@ -42,13 +42,14 @@ async function createEvent(data){
     event_date,
     location,
     price,
-    max_participant
+    max_participant,
+    status
   } = data;
 
   const result = await query(`
     INSERT INTO event
-    (organizer_id,title,description,event_date,location,price,max_participant)
-    VALUES (?,?,?,?,?,?,?)
+    (organizer_id,title,description,event_date,location,price,max_participant,status)
+    VALUES (?,?,?,?,?,?,?,?)
   `,[
     organizer_id,
     title,
@@ -56,7 +57,8 @@ async function createEvent(data){
     event_date,
     location,
     price,
-    max_participant
+    max_participant,
+    status || "draft"
   ]);
 
   return result.insertId;
@@ -66,30 +68,36 @@ async function createEvent(data){
 async function updateEvent(id,data){
 
   const {
-    title,
-    description,
-    event_date,
-    location,
-    price,
-    max_participant
-  } = data;
-
-  await query(`
-    UPDATE event
-    SET title=?,
-        description=?,
-        event_date=?,
-        location=?,
-        price=?,
-        max_participant=?
-    WHERE event_id=?
-  `,[
+    organizer_id,
     title,
     description,
     event_date,
     location,
     price,
     max_participant,
+    status
+  } = data;
+
+  await query(`
+    UPDATE event
+    SET organizer_id=?,
+        title=?,
+        description=?,
+        event_date=?,
+        location=?,
+        price=?,
+        max_participant=?,
+        status=?
+    WHERE event_id=?
+  `,[
+    organizer_id,
+    title,
+    description,
+    event_date,
+    location,
+    price,
+    max_participant,
+    status,
     id
   ]);
 

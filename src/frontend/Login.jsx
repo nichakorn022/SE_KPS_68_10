@@ -1,44 +1,69 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuthModal } from '../App';
+import { useAuthModal } from "../App";
 import { apiUrl } from "../lib/api";
 
-// ✅ Toast component
 function Toast({ message, type = "success", onDone }) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
-    const t = setTimeout(() => { setVisible(false); setTimeout(onDone, 300); }, 2500);
-    return () => clearTimeout(t);
-  }, []);
+    const timer = setTimeout(() => {
+      setVisible(false);
+      setTimeout(onDone, 300);
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [onDone]);
 
   return (
-    <div style={{
-      position: "fixed", top: 28, left: "50%", transform: `translateX(-50%) translateY(${visible ? 0 : -20}px)`,
-      opacity: visible ? 1 : 0, transition: "all 0.3s ease",
-      background: type === "success" ? "#485B3B" : "#c0392b",
-      color: "#fff", padding: "14px 28px", borderRadius: 50,
-      fontSize: 14, fontFamily: "'DM Sans', sans-serif", fontWeight: 500,
-      boxShadow: "0 8px 32px rgba(0,0,0,0.18)", zIndex: 9999,
-      display: "flex", alignItems: "center", gap: 10, whiteSpace: "nowrap"
-    }}>
-      <span>{type === "success" ? "✓" : "✕"}</span>
+    <div
+      style={{
+        position: "fixed",
+        top: 28,
+        left: "50%",
+        transform: `translateX(-50%) translateY(${visible ? 0 : -20}px)`,
+        opacity: visible ? 1 : 0,
+        transition: "all 0.3s ease",
+        background: type === "success" ? "#485B3B" : "#c0392b",
+        color: "#fff",
+        padding: "14px 28px",
+        borderRadius: 50,
+        fontSize: 14,
+        fontFamily: "'DM Sans', sans-serif",
+        fontWeight: 500,
+        boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <span>{type === "success" ? "OK" : "X"}</span>
       {message}
     </div>
   );
 }
 
-export default function Login({ isOpen, onClose, onLoginSuccess }) {
-  const [username, setUsername] = useState("");
+export default function Login({
+  isOpen,
+  onClose,
+  onLoginSuccess,
+  onAdminLoginSuccess,
+}) {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [visible, setVisible] = useState(false);
   const [animating, setAnimating] = useState(false);
-  const [toast, setToast] = useState(null); // ✅ เพิ่ม
+  const [toast, setToast] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { openRegister } = useAuthModal();
 
   useEffect(() => {
     if (isOpen) {
+      setEmail("");
+      setPassword("");
       setVisible(true);
       requestAnimationFrame(() => requestAnimationFrame(() => setAnimating(true)));
     } else {
@@ -50,33 +75,52 @@ export default function Login({ isOpen, onClose, onLoginSuccess }) {
 
   const handleClose = () => {
     setAnimating(false);
-    setTimeout(() => { setVisible(false); onClose?.(); }, 350);
+    setTimeout(() => {
+      setVisible(false);
+      onClose?.();
+    }, 350);
   };
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async (event) => {
+    event.preventDefault();
+    setIsSubmitting(true);
+
     try {
-      const res = await fetch(apiUrl("/auth/login"), {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: username, password }),
+      const response = await fetch(apiUrl("/auth/login"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
-      const data = await res.json();
-      if (res.ok) {
-        onLoginSuccess(data.token);
-        setToast({ message: "Login success! 🍵", type: "success" }); // ✅ แทน alert
-        setTimeout(() => { handleClose(); navigate("/"); }, 1200);
-      } else {
-        setToast({ message: data.message || "Login failed", type: "error" }); // ✅ แทน alert
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Login failed");
       }
-    } catch (err) {
-      console.error(err);
-      setToast({ message: "Server error", type: "error" }); // ✅ แทน alert
+
+      if (data.user?.role === "admin") {
+        onAdminLoginSuccess?.(data.token);
+        setToast({ message: "Admin login success", type: "success" });
+        setTimeout(() => {
+          handleClose();
+          navigate("/admin");
+        }, 1200);
+      } else {
+        onLoginSuccess?.(data.token);
+        setToast({ message: "Login success", type: "success" });
+        setTimeout(() => {
+          handleClose();
+          navigate("/");
+        }, 1200);
+      }
+    } catch (error) {
+      setToast({ message: error.message || "Server error", type: "error" });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <>
-      {/* ✅ แสดง Toast */}
       {toast && <Toast message={toast.message} type={toast.type} onDone={() => setToast(null)} />}
 
       {visible && (
@@ -95,28 +139,141 @@ export default function Login({ isOpen, onClose, onLoginSuccess }) {
             .login-btn:hover{background:#3a4c2e;box-shadow:0 6px 22px rgba(72,91,59,0.42);transform:translateY(-1px);}
           `}</style>
           <div className={`modal-backdrop ${animating ? "open" : ""}`} onClick={handleClose}>
-            <div className={`modal-card ${animating ? "open" : ""}`} onClick={e => e.stopPropagation()} style={{ position: "relative" }}>
-              <button className="close-btn" onClick={handleClose}>✕</button>
-              <div style={{ width: "44%", flexShrink: 0, background: "#F0EDE3", display: "flex", flexDirection: "column", justifyContent: "center", padding: "52px 44px", boxSizing: "border-box" }}>
-                <h1 style={{ fontFamily: "'Playfair Display',Georgia,serif", fontSize: 42, fontWeight: 400, color: "#2e2e2e", margin: "0 0 32px 0", letterSpacing: "-0.5px" }}>Login</h1>
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <input className="login-input" type="text" placeholder="Email" value={username} onChange={e => setUsername(e.target.value)} />
-                  <input className="login-input" type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin(e)} />
-                  <button className="login-btn" onClick={handleLogin}>Login</button>
-                </div>
-                <p style={{ textAlign: "center", color: "#aaa", fontSize: 13, marginTop: 20, fontFamily: "'DM Sans',sans-serif" }}>
+            <div
+              className={`modal-card ${animating ? "open" : ""}`}
+              onClick={(event) => event.stopPropagation()}
+              style={{ position: "relative" }}
+            >
+              <button className="close-btn" onClick={handleClose} type="button">
+                X
+              </button>
+              <div
+                style={{
+                  width: "44%",
+                  flexShrink: 0,
+                  background: "#F0EDE3",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "center",
+                  padding: "52px 44px",
+                  boxSizing: "border-box",
+                }}
+              >
+                <h1
+                  style={{
+                    fontFamily: "'Playfair Display',Georgia,serif",
+                    fontSize: 42,
+                    fontWeight: 400,
+                    color: "#2e2e2e",
+                    margin: "0 0 24px 0",
+                    letterSpacing: "-0.5px",
+                  }}
+                >
+                  Login
+                </h1>
+
+                <form onSubmit={handleLogin} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <input
+                    className="login-input"
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    required
+                  />
+                  <input
+                    className="login-input"
+                    type="password"
+                    placeholder="Password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    required
+                  />
+                  <button type="submit" className="login-btn" disabled={isSubmitting}>
+                    {isSubmitting ? "Signing in..." : "Login"}
+                  </button>
+                </form>
+
+                <p
+                  style={{
+                    textAlign: "center",
+                    color: "#aaa",
+                    fontSize: 13,
+                    marginTop: 20,
+                    fontFamily: "'DM Sans',sans-serif",
+                  }}
+                >
                   Don't have an account?{" "}
-                  <button onClick={() => { handleClose(); setTimeout(openRegister, 360); }} style={{ color: "#485B3B", fontWeight: 500, background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 13 }}>Sign up</button>
+                  <button
+                    onClick={() => {
+                      handleClose();
+                      setTimeout(openRegister, 360);
+                    }}
+                    style={{
+                      color: "#485B3B",
+                      fontWeight: 500,
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: 0,
+                      fontSize: 13,
+                    }}
+                  >
+                    Sign up
+                  </button>
+                </p>
+
+                <p
+                  style={{
+                    color: "#7e7b71",
+                    fontSize: 13,
+                    marginTop: 12,
+                    fontFamily: "'DM Sans',sans-serif",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  Admin accounts will be redirected to the admin area automatically after login.
                 </p>
               </div>
               <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
-                <img src="https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=900&q=80" alt="Tea" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
-                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(135deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.15) 100%)" }} />
+                <img
+                  src="https://images.unsplash.com/photo-1576092768241-dec231879fc3?auto=format&fit=crop&w=900&q=80"
+                  alt="Tea"
+                  style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "linear-gradient(135deg,rgba(0,0,0,0.35) 0%,rgba(0,0,0,0.15) 100%)",
+                  }}
+                />
                 <div style={{ position: "absolute", bottom: 36, left: 32, right: 32, color: "#fff" }}>
-                  <p style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 400, margin: 0, lineHeight: 1.5, textShadow: "0 2px 12px rgba(0,0,0,0.3)" }}>
-                    "Good tea, good friends,<br />good life."
+                  <p
+                    style={{
+                      fontFamily: "'Playfair Display',serif",
+                      fontSize: 20,
+                      fontWeight: 400,
+                      margin: 0,
+                      lineHeight: 1.5,
+                      textShadow: "0 2px 12px rgba(0,0,0,0.3)",
+                    }}
+                  >
+                    "Good tea, good friends,
+                    <br />
+                    good life."
                   </p>
-                  <p style={{ fontFamily: "'DM Sans',sans-serif", fontSize: 12, margin: "8px 0 0 0", opacity: 0.7, letterSpacing: "0.05em" }}>— Our Promise</p>
+                  <p
+                    style={{
+                      fontFamily: "'DM Sans',sans-serif",
+                      fontSize: 12,
+                      margin: "8px 0 0 0",
+                      opacity: 0.7,
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    Our Promise
+                  </p>
                 </div>
               </div>
             </div>

@@ -10,6 +10,10 @@ import EventDetails from './frontend/Event/Eventdetails.jsx';
 import EventReview from "./frontend/Event/EventReview.jsx";
 import ShopProfile from './frontend/Shop/ShopProfile.jsx';
 import ProductDetail from './frontend/Shop/ProductDetail.jsx';
+import CheckoutPage from './frontend/Shop/CheckoutPage.jsx';
+import CheckoutAddressPage from './frontend/Shop/CheckoutAddressPage.jsx';
+import CheckoutAddressFormPage from './frontend/Shop/CheckoutAddressFormPage.jsx';
+import OrderSuccessPage from './frontend/Shop/OrderSuccessPage.jsx';
 
 export const AuthModalContext = createContext(null);
 export const useAuthModal = () => useContext(AuthModalContext);
@@ -49,6 +53,10 @@ function App() {
             <Route path="*"           element={<Navigate to="/" replace />} />
             <Route path="/review/:id" element={<EventReview />} />
             <Route path="/product/:id" element={<ProductDetail />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/checkout/address" element={<CheckoutAddressPage />} />
+            <Route path="/checkout/address/new" element={<CheckoutAddressFormPage />} />
+            <Route path="/checkout/success/:orderId" element={<OrderSuccessPage />} />
           </Route>
         </Routes>
         {/* ✅ ส่ง onLoginSuccess แทน onClose */}

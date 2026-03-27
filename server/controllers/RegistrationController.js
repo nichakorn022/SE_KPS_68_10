@@ -2,6 +2,22 @@ const registrationService = require("../services/registrationService");
 
 class RegistrationController {
 
+  static async getRegistrations(req,res){
+
+    try{
+
+      const data = await registrationService.getRegistrations();
+
+      res.json(data);
+
+    }catch(err){
+
+      res.status(500).json({error:err.message});
+
+    }
+
+  }
+
   static async registerEvent(req,res){
 
     try{

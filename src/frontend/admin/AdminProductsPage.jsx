@@ -303,7 +303,7 @@ export default function AdminProductsPage() {
       {isShopModalOpen && selectedShop && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/35 px-4 py-6" onClick={closeShopModal}>
           <div
-            className="w-full max-w-6xl rounded-[32px] bg-white p-7 shadow-2xl ring-1 ring-[#e6ddc9]"
+            className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-[32px] bg-white p-7 shadow-2xl ring-1 ring-[#e6ddc9]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
@@ -439,7 +439,7 @@ export default function AdminProductsPage() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6" onClick={resetForm}>
-          <div className="w-full max-w-xl rounded-[32px] bg-white p-7 shadow-2xl ring-1 ring-[#e6ddc9]" onClick={(event) => event.stopPropagation()}>
+          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-[32px] bg-white p-7 shadow-2xl ring-1 ring-[#e6ddc9]" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">

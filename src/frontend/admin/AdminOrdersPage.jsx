@@ -202,7 +202,7 @@ export default function AdminOrdersPage() {
           onClick={() => setSelectedOrder(null)}
         >
           <div
-            className="w-full max-w-3xl rounded-[32px] bg-white p-7 shadow-2xl ring-1 ring-[#e6ddc9]"
+            className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-[32px] bg-white p-7 shadow-2xl ring-1 ring-[#e6ddc9]"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">

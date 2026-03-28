@@ -37,6 +37,8 @@ export default function UserProfile() {
   const [user, setUser] = useState(null);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [purchasesTab, setPurchasesTab] = useState('all');
+  const [purchaseSearch, setPurchaseSearch] = useState('');
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [orderLoading, setOrderLoading] = useState(false);
@@ -100,6 +102,8 @@ export default function UserProfile() {
   }
 
   function OrderRow({ o, onClick }) {
+    const { label: badgeLabel, color: badgeColor } = getPaymentBadge(o);
+
     return (
       <div onClick={onClick} className="flex items-center justify-between gap-4 rounded-lg bg-white p-4 shadow-sm cursor-pointer">
         <div>
@@ -108,10 +112,20 @@ export default function UserProfile() {
         </div>
         <div className="text-right">
           <div className="text-sm text-[#6f7b70]">{o.total ? `฿${Number(o.total).toLocaleString('th-TH')}` : ''}</div>
-          <div className="mt-2 inline-block rounded-full px-3 py-1 text-sm font-semibold text-white" style={{background: o.status === 'delivered' ? '#6B8A5B' : '#87a179'}}>{o.status}</div>
+          <div className="mt-2 inline-block rounded-full px-3 py-1 text-sm font-semibold text-white" style={{background: badgeColor}}>{badgeLabel}</div>
         </div>
       </div>
     );
+  }
+
+  function getPaymentBadge(o) {
+    const ps = String(o.payment_status || '').toLowerCase();
+    const st = String(o.status || '').toLowerCase();
+    const isPaid = ps === 'paid' || st === 'paid';
+    if (isPaid) return { label: 'Paid', color: '#6B8A5B' };
+    if (ps === 'unpaid' || st === 'pending' || !ps && !st) return { label: 'Unpaid', color: '#87a179' };
+    if (ps === 'cancelled' || st === 'cancelled') return { label: 'Cancelled', color: '#c0392b' };
+    return { label: (ps || st || 'Unknown'), color: '#87a179' };
   }
 
   async function openOrder(o) {
@@ -233,6 +247,31 @@ export default function UserProfile() {
     );
   }
 
+  const filteredOrdersForPurchases = (() => {
+    const normalizedSearch = (purchaseSearch || '').trim().toLowerCase();
+    return orders.slice().reverse().filter(o => {
+      const ps = String(o.payment_status || '').toLowerCase();
+      const st = String(o.status || '').toLowerCase();
+      const fs = String(o.fulfillment_status || '').toLowerCase();
+
+      // User wants unpaid orders under Preparing, paid orders under Completed
+      if (purchasesTab === 'preparing') {
+        // show orders that are NOT paid and NOT cancelled
+        if (ps === 'paid' || st === 'paid' || st === 'cancelled') return false;
+      } else if (purchasesTab === 'completed') {
+        // show only paid orders (consider status as paid too)
+        if (!(ps === 'paid' || st === 'paid')) return false;
+      } else if (purchasesTab === 'cancelled') {
+        if (!(st === 'cancelled' || ps === 'cancelled')) return false;
+      }
+
+      if (!normalizedSearch) return true;
+      const orderIdMatch = String(o.order_id).toLowerCase().includes(normalizedSearch) || (o.order_code && String(o.order_code).toLowerCase().includes(normalizedSearch));
+      const productMatch = (o.items || []).some(it => ((it.name || it.tea_name) || '').toLowerCase().includes(normalizedSearch));
+      return orderIdMatch || productMatch;
+    });
+  })();
+
   return (
     <div className="min-h-screen bg-[#FAF8F2]">
       <SiteNavbar active="" />
@@ -327,7 +366,57 @@ export default function UserProfile() {
 
           {activeTab === 'purchases' && (
             <div className="space-y-4">
-              {orders.length === 0 ? <div className="rounded-lg bg-white p-6 text-[#6f7b70]">ยังไม่มีคำสั่งซื้อ</div> : orders.slice().reverse().map(o => <OrderRow key={o.order_id} o={o} onClick={() => openOrder(o)} />)}
+              <div className="rounded-lg bg-white p-4">
+                <div className="flex gap-3">
+                  {['all','preparing','completed','cancelled'].map(key => (
+                    <button key={key} onClick={() => setPurchasesTab(key)} className={`rounded-full px-4 py-2 ${purchasesTab===key ? 'text-[#485B3B] font-semibold border-b-2 border-[#485B3B]' : 'text-[#4a4a4a]'}`}>{key === 'all' ? 'All' : key === 'preparing' ? 'Preparing' : key === 'completed' ? 'Completed' : 'Cancelled'}</button>
+                  ))}
+                </div>
+
+                <div className="mt-4">
+                  <input value={purchaseSearch} onChange={(e) => setPurchaseSearch(e.target.value)} placeholder="Search by order number or product name..." className="w-full rounded-lg border p-3 text-sm" />
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                {filteredOrdersForPurchases.length === 0 ? (
+                  <div className="rounded-lg bg-white p-6 text-[#6f7b70]">ยังไม่มีคำสั่งซื้อ</div>
+                ) : (
+                  filteredOrdersForPurchases.map(o => (
+                    <div key={o.order_id} className="rounded-lg bg-white p-6 shadow-sm">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="text-xs text-[#6f7b70]">Order</div>
+                          <div className="mt-1 font-semibold text-lg">#{o.order_id}</div>
+                          {(() => {
+                            const { label, color } = getPaymentBadge(o);
+                            const cls = label === 'Paid' ? 'text-green-600' : 'text-gray-600';
+                            return (
+                              <div className="mt-2 text-sm text-[#6f7b70] flex items-center gap-3">{new Date(o.order_date).toLocaleString('en-GB', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })} • <span className={cls}>{label}</span></div>
+                            );
+                          })()}
+
+                          <div className="mt-4">
+                            <div className="text-xs text-[#6f7b70]">ITEMS</div>
+                            <div className="flex items-center gap-3 mt-2">
+                              {(o.items || []).slice(0,3).map((it, idx) => (
+                                <div key={idx} className="h-12 w-12 rounded bg-[#f4f1ea] flex items-center justify-center text-sm text-[#bfb4a2]">{/* image */}</div>
+                              ))}
+                            </div>
+                            <div className="mt-3 text-sm text-[#333]">{(o.items || []).map(it => it.tea_name || it.name).filter(Boolean).join(', ')}</div>
+                          </div>
+                        </div>
+
+                        <div className="w-48 flex flex-col items-end justify-between">
+                          <div className="text-sm text-[#6f7b70]">Total Amount</div>
+                          <div className="mt-2 text-2xl font-bold">{formatPrice(o.total || o.total_amount)}</div>
+                          <button onClick={() => openOrder(o)} className="mt-4 rounded-md border px-4 py-2 text-sm">View Details</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 
@@ -364,6 +453,7 @@ export default function UserProfile() {
               <button onClick={() => setShowOrderModal(false)} className="text-sm text-gray-600">ปิด</button>
             </div>
             <div className="mt-2 text-sm text-[#6f7b70]">Status: <span className="font-medium">{selectedOrder.status}</span></div>
+            <div className="mt-1 text-sm text-[#6f7b70]">Payment: <span className="font-medium">{selectedOrder.payment_status || 'unknown'}</span>{selectedOrder.paid_at ? <span className="ml-2 text-xs text-[#6f7b70]">(paid at {new Date(selectedOrder.paid_at).toLocaleString('th-TH')})</span> : null}</div>
 
             <div className="mt-4 space-y-3">
               {selectedOrder.items && selectedOrder.items.length > 0 ? selectedOrder.items.map(it => (

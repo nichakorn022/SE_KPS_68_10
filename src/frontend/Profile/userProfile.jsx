@@ -84,7 +84,7 @@ export default function UserProfile() {
     return () => {
       ignore = true;
     };
-  }, [userId, tokenPayload]);
+  }, [userId]);
 
   async function openOrder(order) {
     try {

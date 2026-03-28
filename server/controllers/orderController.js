@@ -69,3 +69,21 @@ exports.updateOrderStatus = async (req, res) => {
     });
   }
 };
+
+exports.mockMarkOrderPaid = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const order = await orderService.getOrderById(id);
+    if (req.user?.role !== "admin" && Number(order.user_id) !== Number(req.user?.user_id)) {
+      return res.status(403).json({ message: "You do not have access to this order" });
+    }
+
+    const result = await orderService.markOrderPaid(id);
+    return res.json(result);
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.message || "Failed to mark order as paid"
+    });
+  }
+};

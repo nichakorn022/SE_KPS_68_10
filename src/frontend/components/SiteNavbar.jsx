@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthModal } from "../../App";
-import { apiUrl } from "../../lib/api";
+import { apiUrl, assetUrl } from "../../lib/api";
 import {
   getStoredAvatar,
   getTokenPayload,
@@ -63,12 +63,14 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
   const userId = token ? getUserIdFromToken() : null;
   const [toast, setToast] = useState(null);
   const [ownedShopId, setOwnedShopId] = useState(null);
+  const [shopAvatar, setShopAvatar] = useState("");
 
   useEffect(() => {
     let ignore = false;
 
     if (userRole !== "shop" || !userId) {
       setOwnedShopId(null);
+      setShopAvatar("");
       return () => {
         ignore = true;
       };
@@ -90,6 +92,32 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
     };
   }, [userId, userRole]);
 
+  useEffect(() => {
+    let ignore = false;
+
+    if (userRole !== "shop" || !ownedShopId) {
+      setShopAvatar("");
+      return () => {
+        ignore = true;
+      };
+    }
+
+    fetch(apiUrl(`/shop-images/shop/${ownedShopId}`))
+      .then((response) => (response.ok ? response.json() : []))
+      .then((rows) => {
+        if (ignore) return;
+        const firstImage = (Array.isArray(rows) ? rows : []).find((item) => item?.image_path);
+        setShopAvatar(firstImage?.image_path ? assetUrl(firstImage.image_path) : "");
+      })
+      .catch(() => {
+        if (!ignore) setShopAvatar("");
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [ownedShopId, userRole]);
+
   const onLogout = () => {
     handleLogout();
     setToast({ message: "Logged out successfully", type: "success" });
@@ -97,6 +125,10 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
   };
 
   const profileLink = userRole === "shop" && ownedShopId ? `/shop/${ownedShopId}` : "/profile";
+  const navbarAvatar =
+    userRole === "shop"
+      ? shopAvatar || "/Pictrue/default-avatar.png"
+      : getStoredAvatar() || getTokenPayload()?.avatar || "/Pictrue/default-avatar.png";
 
   return (
     <>
@@ -130,7 +162,7 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
             <>
               <Link to={profileLink} className="flex items-center gap-3 rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]">
                 <img
-                  src={getStoredAvatar() || getTokenPayload()?.avatar || "/Pictrue/default-avatar.png"}
+                  src={navbarAvatar}
                   alt="avatar"
                   className="h-8 w-8 rounded-full object-cover"
                 />

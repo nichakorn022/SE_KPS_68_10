@@ -1,60 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { fetchUserOrders } from "../../lib/api";
+import { getStoredToken, getUserIdFromToken } from "./authClient";
 
-const ORDERS = [
-  {
-    id: "ORD-2461",
-    status: "Preparing",
-    date: "Mar 24, 2026",
-    time: "2:30 PM",
-    payment: "Paid",
-    items: [
-      { id: 1, name: "Organic Sencha Green Tea", qty: 2, color: "#6b8f5e", emoji: "🌿" },
-      { id: 2, name: "Premium Matcha Powder", qty: 1, color: "#8fad6a", emoji: "🍵" },
-    ],
-    total: 48.5,
-    canReorder: false,
-  },
-  {
-    id: "ORD-2428",
-    status: "Completed",
-    date: "Mar 20, 2026",
-    time: "10:15 AM",
-    payment: "Paid",
-    items: [
-      { id: 1, name: "Earl Grey Reserve", qty: 3, color: "#7a6b5a", emoji: "🍃" },
-      { id: 2, name: "Jasmine Pearl", qty: 1, color: "#9e8b6f", emoji: "🌸" },
-    ],
-    total: 61.0,
-    canReorder: true,
-  },
-  {
-    id: "ORD-2395",
-    status: "Completed",
-    date: "Mar 15, 2026",
-    time: "4:45 PM",
-    payment: "Paid",
-    items: [
-      { id: 1, name: "Organic Sencha Green Tea", qty: 1, color: "#6b8f5e", emoji: "🌿" },
-      { id: 2, name: "Chamomile Herbal Blend", qty: 2, color: "#c9a84c", emoji: "🌼" },
-      { id: 3, name: "Premium Matcha Powder", qty: 1, color: "#8fad6a", emoji: "🍵" },
-    ],
-    total: 72.5,
-    canReorder: true,
-    extra: 1,
-  },
-  {
-    id: "ORD-2301",
-    status: "Cancelled",
-    date: "Mar 10, 2026",
-    time: "11:20 AM",
-    payment: "Refunded",
-    items: [
-      { id: 1, name: "Imperial Oolong", qty: 2, color: "#7c6e5b", emoji: "🫖" },
-    ],
-    total: 54.0,
-    canReorder: false,
-  },
-];
+// Color and emoji mapping for products
+const PRODUCT_STYLES = {
+  "Organic Sencha Green Tea": { color: "#6b8f5e", emoji: "🌿" },
+  "Premium Matcha Powder": { color: "#8fad6a", emoji: "🍵" },
+  "Earl Grey Reserve": { color: "#7a6b5a", emoji: "🍃" },
+  "Jasmine Pearl": { color: "#9e8b6f", emoji: "🌸" },
+  "Chamomile Herbal Blend": { color: "#c9a84c", emoji: "🌼" },
+  "Imperial Oolong": { color: "#7c6e5b", emoji: "🫖" },
+};
 
 const STATUS_STYLES = {
   Preparing: { bg: "#fff8ec", color: "#c07d2a", border: "#f0c97a" },
@@ -70,16 +26,48 @@ const PAYMENT_COLORS = {
 export default function OrderHistory() {
   const [activeTab, setActiveTab] = useState("All");
   const [search, setSearch] = useState("");
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Fetch orders on component mount
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setLoading(true);
+        const userId = getUserIdFromToken();
+        const token = getStoredToken();
+
+        // Check if user is authenticated
+        if (!userId || !token) {
+          setError("Please log in to view your orders");
+          setLoading(false);
+          return;
+        }
+
+        const data = await fetchUserOrders(userId, token);
+        setOrders(data);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching orders:", err);
+        setError(err.message || "Failed to load orders. Please try again.");
+        setOrders([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, []);
 
   const tabs = ["All", "Preparing", "Completed", "Cancelled"];
 
-  const filtered = ORDERS.filter((o) => {
+  const filtered = orders.filter((o) => {
     const matchTab = activeTab === "All" || o.status === activeTab;
     const q = search.toLowerCase();
     const matchSearch =
       !q ||
-      o.id.toLowerCase().includes(q) ||
-      o.items.some((i) => i.name.toLowerCase().includes(q));
+      o.order_id?.toString().toLowerCase().includes(q);
     return matchTab && matchSearch;
   });
 
@@ -128,7 +116,23 @@ export default function OrderHistory() {
 
         {/* Order Cards */}
         <div style={styles.cardList}>
-          {filtered.length === 0 && (
+          {loading && (
+            <div style={styles.empty}>
+              <span style={{ fontSize: 40 }}>⏳</span>
+              <p style={{ marginTop: 12, color: "#b0a090", fontFamily: "'Cormorant Garamond', serif", fontSize: 18 }}>
+                Loading your orders...
+              </p>
+            </div>
+          )}
+          {error && !loading && (
+            <div style={styles.empty}>
+              <span style={{ fontSize: 40 }}>⚠️</span>
+              <p style={{ marginTop: 12, color: "#b0a090", fontFamily: "'Cormorant Garamond', serif", fontSize: 18 }}>
+                {error}
+              </p>
+            </div>
+          )}
+          {!loading && !error && filtered.length === 0 && (
             <div style={styles.empty}>
               <span style={{ fontSize: 40 }}>🍃</span>
               <p style={{ marginTop: 12, color: "#b0a090", fontFamily: "'Cormorant Garamond', serif", fontSize: 18 }}>
@@ -136,17 +140,11 @@ export default function OrderHistory() {
               </p>
             </div>
           )}
-          {filtered.map((order) => {
-            const s = STATUS_STYLES[order.status];
-            const displayItems = order.extra ? order.items.slice(0, 2) : order.items;
-            const itemNames =
-              order.items
-                .slice(0, order.extra ? 2 : order.items.length)
-                .map((i) => i.name)
-                .join(", ") + (order.extra ? ` +${order.extra} more` : "");
-
+          {!loading && !error && filtered.map((order) => {
+            const s = STATUS_STYLES[order.status] || STATUS_STYLES["Preparing"];
+            
             return (
-              <div key={order.id} style={styles.card} className="order-card">
+              <div key={order.order_id} style={styles.card} className="order-card">
                 {/* Card Header */}
                 <div style={styles.cardHeader}>
                   <div style={styles.orderMeta}>
@@ -157,7 +155,7 @@ export default function OrderHistory() {
                     </div>
                     <div>
                       <span style={styles.orderLabel}>Order</span>
-                      <div style={styles.orderId}>#{order.id}</div>
+                      <div style={styles.orderId}>#{order.order_id}</div>
                     </div>
                   </div>
                   <span
@@ -168,7 +166,7 @@ export default function OrderHistory() {
                       border: `1px solid ${s.border}`,
                     }}
                   >
-                    {order.status}
+                    {order.status || "pending"}
                   </span>
                 </div>
 
@@ -180,57 +178,32 @@ export default function OrderHistory() {
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a09080" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}>
                       <rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
                     </svg>
-                    {order.date} · {order.time}
+                    {new Date(order.order_date).toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric', 
+                      year: 'numeric' 
+                    })}
                   </span>
                   <span style={styles.metaItem}>
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a09080" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}>
                       <rect x="1" y="4" width="22" height="16" rx="2" /><line x1="1" y1="10" x2="23" y2="10" />
                     </svg>
-                    <span style={{ color: PAYMENT_COLORS[order.payment], fontWeight: 600 }}>
-                      {order.payment}
+                    <span style={{ color: PAYMENT_COLORS["Paid"], fontWeight: 600 }}>
+                      Paid
                     </span>
                   </span>
                 </div>
 
-                {/* Items */}
-                <div style={{ marginTop: 16 }}>
-                  <span style={styles.itemsLabel}>Items</span>
-                  <div style={styles.thumbRow}>
-                    {displayItems.map((item) => (
-                      <div key={item.id} style={{ position: "relative", marginRight: 8 }}>
-                        <div
-                          style={{
-                            ...styles.thumb,
-                            background: `linear-gradient(135deg, ${item.color}33, ${item.color}66)`,
-                            border: `1.5px solid ${item.color}44`,
-                          }}
-                        >
-                          <span style={{ fontSize: 22 }}>{item.emoji}</span>
-                        </div>
-                        {item.qty > 1 && (
-                          <span style={styles.qtyBadge}>{item.qty}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <p style={styles.itemNames}>{itemNames}</p>
-                </div>
-
-                {/* Footer */}
+                {/* Total Amount */}
                 <div style={styles.cardFooter}>
                   <div>
                     <div style={styles.totalLabel}>Total Amount</div>
-                    <div style={styles.totalAmount}>${order.total.toFixed(2)}</div>
+                    <div style={styles.totalAmount}>${parseFloat(order.total_amount || 0).toFixed(2)}</div>
                   </div>
                   <div style={styles.actions}>
                     <button style={styles.btnOutline} className="btn-outline">
                       View Details
                     </button>
-                    {order.canReorder && (
-                      <button style={styles.btnFilled} className="btn-filled">
-                        Order Again
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>

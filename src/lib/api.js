@@ -13,3 +13,20 @@ export function assetUrl(path) {
   const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${API_ORIGIN}${normalizedPath}`;
 }
+
+export async function fetchUserOrders(userId, token) {
+  const response = await fetch(apiUrl(`/orders/user/${userId}`), {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Failed to fetch orders");
+  }
+
+  return response.json();
+}

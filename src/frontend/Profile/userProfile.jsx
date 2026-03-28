@@ -66,6 +66,7 @@ export default function UserProfile() {
 
         if (ignore) return;
 
+        console.log('loaded profile data', { userRes, ordersRes, regsRes });
         const u = userRes || tokenPayload || { name: "User", bio: "ยังไม่มีข้อมูล" };
         const userProducts = (Array.isArray(productRes) ? productRes : []).filter((p) => String(p.user_id) === String(userId) || String(p.shop_id) === String(userId));
 
@@ -73,6 +74,7 @@ export default function UserProfile() {
         setProducts(userProducts.map((p) => ({ id: p.product_id || p.id, name: p.tea_name || p.name || "Unnamed", description: p.description || "", price: Number(p.price ?? 0), img: p.image_path ? assetUrl(p.image_path) : null })));
         setOrders(Array.isArray(ordersRes) ? ordersRes : []);
         setRegistrations(Array.isArray(regsRes) ? regsRes : []);
+        console.log('orders count', (ordersRes || []).length, 'registrations count', (regsRes || []).length);
       } catch (e) {
         console.error(e);
       } finally {
@@ -141,6 +143,91 @@ export default function UserProfile() {
         </div>
         <div className="text-right">
           <div className="mt-2 inline-block rounded-full px-3 py-1 text-sm font-semibold text-white" style={{background: r.registration_status === 'registered' ? '#6B8A5B' : '#c0392b'}}>{r.registration_status}</div>
+        </div>
+      </div>
+    );
+  }
+
+  function Calendar({ registrations }) {
+    const [monthOffset, setMonthOffset] = useState(0);
+    const [selectedDate, setSelectedDate] = useState(null);
+
+    function toKey(d) {
+      const y = d.getFullYear();
+      const m = `${d.getMonth() + 1}`.padStart(2, '0');
+      const day = `${d.getDate()}`.padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    }
+
+    const marks = new Set((registrations || []).map(r => {
+      const raw = r.created_at || r.registered_at || r.registration_date;
+      if (!raw) return null;
+      const d = new Date(raw);
+      return toKey(d);
+    }).filter(Boolean));
+
+    const base = new Date();
+    base.setDate(1);
+    base.setMonth(base.getMonth() + monthOffset);
+    const year = base.getFullYear();
+    const month = base.getMonth();
+    const firstWeekday = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const cells = [];
+    for (let i = 0; i < firstWeekday; i++) cells.push(null);
+    for (let d = 1; d <= daysInMonth; d++) cells.push(new Date(year, month, d));
+
+    const selectedKey = selectedDate ? toKey(selectedDate) : null;
+
+    const eventsOnSelected = (registrations || []).filter(r => {
+      const raw = r.created_at || r.registered_at || r.registration_date;
+      if (!raw) return false;
+      const k = toKey(new Date(raw));
+      return k === selectedKey;
+    });
+
+    return (
+      <div className="w-full max-w-sm">
+        <div className="bg-white rounded-lg p-4 shadow-sm">
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={() => setMonthOffset(m => m - 1)} className="px-2">◀</button>
+            <div className="font-medium">{base.toLocaleString('th-TH', { month: 'long', year: 'numeric' })}</div>
+            <button onClick={() => setMonthOffset(m => m + 1)} className="px-2">▶</button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 text-xs text-center text-[#6f7b70]">
+            {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="py-1">{d}</div>)}
+          </div>
+
+          <div className="grid grid-cols-7 gap-1 mt-2">
+            {cells.map((c, i) => {
+              if (!c) return <div key={i} className="h-10" />;
+              const key = toKey(c);
+              const marked = marks.has(key);
+              const isSelected = selectedKey === key;
+              return (
+                <button key={key} onClick={() => setSelectedDate(c)} className={`h-10 flex items-center justify-center rounded ${marked ? 'bg-green-100' : 'bg-white'} ${isSelected ? 'ring-2 ring-green-400' : ''}`}>
+                  <span className="text-sm">{c.getDate()}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-3 text-sm">
+            <div className="font-medium">Selected</div>
+            <div className="text-[#6f7b70]">{selectedDate ? selectedDate.toLocaleDateString('th-TH') : '—'}</div>
+            {eventsOnSelected.length > 0 && (
+              <div className="mt-2 space-y-2">
+                {eventsOnSelected.map(r => (
+                  <div key={r.registration_id} className="rounded p-2 bg-gray-50">
+                    <div className="font-medium">{r.event_title || r.title || `Event ${r.event_id || ''}`}</div>
+                    <div className="text-xs text-[#6f7b70]">{new Date(r.created_at || r.registered_at || r.registration_date).toLocaleTimeString('th-TH')}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -246,7 +333,16 @@ export default function UserProfile() {
 
           {activeTab === 'events' && (
             <div className="space-y-4">
-              {registrations.length === 0 ? <div className="rounded-lg bg-white p-6 text-[#6f7b70]">ยังไม่มีการลงทะเบียน</div> : registrations.slice().reverse().map(r => <RegistrationRow key={r.registration_id} r={r} />)}
+              <div className="flex gap-6">
+                <div className="flex-1 space-y-4">
+                  {registrations.length === 0 ? (
+                    <div className="rounded-lg bg-white p-6 text-[#6f7b70]">ยังไม่มีการลงทะเบียน</div>
+                  ) : (
+                    registrations.slice().reverse().map(r => <RegistrationRow key={r.registration_id} r={r} />)
+                  )}
+                </div>
+                <Calendar registrations={registrations} />
+              </div>
             </div>
           )}
 

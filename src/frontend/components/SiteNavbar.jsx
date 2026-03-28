@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthModal } from "../../App";
-import { getUserRoleFromToken } from "../Shop/authClient";
+import { getUserRoleFromToken, getTokenPayload } from "../Shop/authClient";
 
 // Toast component
 function Toast({ message, type = "success", onDone }) {
@@ -73,12 +73,25 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
           )}
 
           {token ? (
-            <button
-              onClick={onLogout}
-              className="rounded-full border-none bg-transparent px-4 py-2 text-[17px] font-medium text-[#4a4a4a] transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]"
-            >
-              Logout
-            </button>
+            <>
+              <Link to="/profile" className="flex items-center gap-3 rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]">
+                <img
+                  src={getTokenPayload()?.avatar || "/Pictrue/default-avatar.png"}
+                  alt="avatar"
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+                <span className="hidden md:inline text-[17px] font-medium text-[#4a4a4a]">
+                  {getTokenPayload()?.name || "Profile"}
+                </span>
+              </Link>
+
+              <button
+                onClick={onLogout}
+                className="rounded-full border-none bg-transparent px-4 py-2 text-[17px] font-medium text-[#4a4a4a] transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]"
+              >
+                Logout
+              </button>
+            </>
           ) : (
             <>
               <button onClick={openLogin} className="rounded-full border-none bg-transparent px-4 py-2 text-[17px] font-medium text-[#4a4a4a] transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]">

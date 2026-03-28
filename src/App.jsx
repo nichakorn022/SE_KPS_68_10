@@ -23,6 +23,7 @@ import AdminInboxPage from "./frontend/admin/AdminInboxPage.jsx";
 import AdminProductsPage from "./frontend/admin/AdminProductsPage.jsx";
 import AdminEventsPage from "./frontend/admin/AdminEventsPage.jsx";
 import AdminOrdersPage from "./frontend/admin/AdminOrdersPage.jsx";
+import UserProfile from "./frontend/Profile/userProfile.jsx";
 
 export const AuthModalContext = createContext(null);
 export const useAuthModal = () => useContext(AuthModalContext);
@@ -108,6 +109,7 @@ function App() {
             <Route path="/checkout/address" element={<CheckoutAddressPage />} />
             <Route path="/checkout/address/new" element={<CheckoutAddressFormPage />} />
             <Route path="/checkout/success/:orderId" element={<OrderSuccessPage />} />
+            <Route path="/profile" element={<UserProfile />} />
           </Route>
 
           <Route

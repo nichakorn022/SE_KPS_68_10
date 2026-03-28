@@ -37,6 +37,9 @@ export default function UserProfile() {
   const [user, setUser] = useState(null);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [orderLoading, setOrderLoading] = useState(false);
   const [registrations, setRegistrations] = useState([]);
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -94,9 +97,9 @@ export default function UserProfile() {
     );
   }
 
-  function OrderRow({ o }) {
+  function OrderRow({ o, onClick }) {
     return (
-      <div className="flex items-center justify-between gap-4 rounded-lg bg-white p-4 shadow-sm">
+      <div onClick={onClick} className="flex items-center justify-between gap-4 rounded-lg bg-white p-4 shadow-sm cursor-pointer">
         <div>
           <div className="text-sm text-[#6f7b70]">Order #{o.order_id} • {new Date(o.order_date).toLocaleString('th-TH')}</div>
           <div className="mt-1 font-medium">{o.items?.map(it => it.name).slice(0,2).join(', ') || 'Products'}</div>
@@ -107,6 +110,26 @@ export default function UserProfile() {
         </div>
       </div>
     );
+  }
+
+  async function openOrder(o) {
+    try {
+      setOrderLoading(true);
+      const headers = getAuthHeaders();
+      const res = await fetch(apiUrl(`/orders/${o.order_id}`), { headers });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Failed to load order');
+      }
+      const data = await res.json();
+      setSelectedOrder(data);
+      setShowOrderModal(true);
+    } catch (err) {
+      console.error(err);
+      alert('ไม่สามารถโหลดรายละเอียดคำสั่งซื้อได้');
+    } finally {
+      setOrderLoading(false);
+    }
   }
 
   function RegistrationRow({ r }) {
@@ -208,7 +231,7 @@ export default function UserProfile() {
           {activeTab === 'overview' && (
             <div className="space-y-6">
               <h2 className="text-xl font-semibold">Recent orders</h2>
-              {orders.length === 0 ? <div className="rounded-lg bg-white p-6 text-[#6f7b70]">ยังไม่มีคำสั่งซื้อ</div> : <div className="space-y-4">{orders.slice().reverse().map(o => <OrderRow key={o.order_id} o={o} />)}</div>}
+              {orders.length === 0 ? <div className="rounded-lg bg-white p-6 text-[#6f7b70]">ยังไม่มีคำสั่งซื้อ</div> : <div className="space-y-4">{orders.slice().reverse().map(o => <OrderRow key={o.order_id} o={o} onClick={() => openOrder(o)} />)}</div>}
 
               <h2 className="mt-6 text-xl font-semibold">Registered events</h2>
               {registrations.length === 0 ? <div className="rounded-lg bg-white p-6 text-[#6f7b70]">ยังไม่มีการลงทะเบียน</div> : <div className="space-y-4">{registrations.slice().reverse().map(r => <RegistrationRow key={r.registration_id} r={r} />)}</div>}
@@ -217,7 +240,7 @@ export default function UserProfile() {
 
           {activeTab === 'purchases' && (
             <div className="space-y-4">
-              {orders.length === 0 ? <div className="rounded-lg bg-white p-6 text-[#6f7b70]">ยังไม่มีคำสั่งซื้อ</div> : orders.slice().reverse().map(o => <OrderRow key={o.order_id} o={o} />)}
+              {orders.length === 0 ? <div className="rounded-lg bg-white p-6 text-[#6f7b70]">ยังไม่มีคำสั่งซื้อ</div> : orders.slice().reverse().map(o => <OrderRow key={o.order_id} o={o} onClick={() => openOrder(o)} />)}
             </div>
           )}
 
@@ -235,6 +258,34 @@ export default function UserProfile() {
           )}
         </div>
       </div>
+
+      {showOrderModal && selectedOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowOrderModal(false)} />
+          <div className="relative max-w-2xl w-full mx-4 bg-white rounded-lg shadow-lg overflow-auto max-h-[80vh] p-6">
+            <div className="flex justify-between items-start">
+              <h3 className="text-lg font-semibold">Order #{selectedOrder.order_id}</h3>
+              <button onClick={() => setShowOrderModal(false)} className="text-sm text-gray-600">ปิด</button>
+            </div>
+            <div className="mt-2 text-sm text-[#6f7b70]">Status: <span className="font-medium">{selectedOrder.status}</span></div>
+
+            <div className="mt-4 space-y-3">
+              {selectedOrder.items && selectedOrder.items.length > 0 ? selectedOrder.items.map(it => (
+                <div key={it.order_detail_id || it.product_id} className="flex items-center justify-between border-b pb-2">
+                  <div>
+                    <div className="font-medium">{it.tea_name || it.name || `Product ${it.product_id || ''}`}</div>
+                    <div className="text-sm text-[#6f7b70]">x{it.quantity} • {formatPrice(it.unit_price)}</div>
+                  </div>
+                  <div className="font-medium">{formatPrice(it.subtotal)}</div>
+                </div>
+              )) : <div className="text-[#6f7b70]">ไม่มีสินค้า</div>}
+            </div>
+
+            <div className="mt-4 text-right font-semibold">Total: {formatPrice(selectedOrder.total || selectedOrder.total_amount)}</div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -19,14 +19,16 @@ const organizerRoutes = require("./routes/organizerRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const sponsorRoutes = require("./routes/sponsorRoutes");
+const reviewRoutes = require("./routes/reviewRoutes");
 
 const app = express();
 const port = Number(process.env.PORT) || 3001;
 
 // Ensure users.avatar column exists (best-effort)
 const { query } = require("./utils/dbHelpers");
-(async function ensureAvatarColumn() {
+(async function ensureTables() {
   try {
+    // Ensure users.avatar column exists
     const columns = await query(
       `SELECT COLUMN_NAME
        FROM INFORMATION_SCHEMA.COLUMNS
@@ -40,8 +42,34 @@ const { query } = require("./utils/dbHelpers");
       await query("ALTER TABLE users ADD COLUMN avatar VARCHAR(255) NULL");
       console.log("Added users.avatar column");
     }
+
+    // Ensure product_review table exists
+    const tables = await query(
+      `SELECT TABLE_NAME
+       FROM INFORMATION_SCHEMA.TABLES
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'product_review'
+       LIMIT 1`
+    );
+
+    if (tables.length === 0) {
+      await query(`
+        CREATE TABLE product_review (
+          review_id INT AUTO_INCREMENT PRIMARY KEY,
+          user_id INT NOT NULL,
+          product_id INT NOT NULL,
+          rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
+          comment TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+          FOREIGN KEY (product_id) REFERENCES tea_product(product_id) ON DELETE CASCADE,
+          UNIQUE KEY unique_user_product (user_id, product_id)
+        )
+      `);
+      console.log("Created product_review table");
+    }
   } catch (err) {
-    console.warn("Could not ensure users.avatar column:", err.message);
+    console.warn("Could not ensure tables:", err.message);
   }
 })();
 
@@ -95,6 +123,7 @@ app.use("/api/organizers", organizerRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/sponsors", sponsorRoutes);
+app.use("/api/reviews", reviewRoutes);
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

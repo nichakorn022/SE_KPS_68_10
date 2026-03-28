@@ -1,71 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { apiUrl } from "../../lib/api";
 
-const REVIEWS = [
-  {
-    id: 1,
-    name: "Sarah Chen",
-    verified: true,
-    date: "March 15, 2026",
-    rating: 5,
-    text: "Absolutely divine! The premium sencha has a delicate sweetness with subtle umami notes. The leaves are vibrant and fresh. This has become my daily ritual, and I've noticed a wonderful calm energy throughout my day.",
-    photo: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=200&h=200&fit=crop",
-    avatar: "https://randomuser.me/api/portraits/women/44.jpg",
-    helpful: 24,
-    featured: true,
-  },
-  {
-    id: 2,
-    name: "Michael Rodriguez",
-    verified: true,
-    date: "March 12, 2026",
-    rating: 5,
-    text: "As a tea sommelier, I'm incredibly particular about quality. This matcha exceeds all expectations - vibrant color, smooth texture, and authentic ceremonial grade. Worth every penny for the craftsmanship.",
-    photo: "https://images.unsplash.com/photo-1582793988951-9aed5509eb97?w=200&h=200&fit=crop",
-    avatar: "https://randomuser.me/api/portraits/men/32.jpg",
-    helpful: 31,
-    featured: true,
-  },
-  {
-    id: 3,
-    name: "Emily Tanaka",
-    verified: true,
-    date: "March 8, 2026",
-    rating: 4,
-    text: "Beautiful tea with a lovely floral aroma. The packaging is elegant and the leaves are clearly high quality. Steep time is a bit finicky but once you get it right, the flavor is wonderful.",
-    photo: null,
-    avatar: "https://randomuser.me/api/portraits/women/68.jpg",
-    helpful: 12,
-    featured: false,
-  },
-  {
-    id: 4,
-    name: "James Park",
-    verified: true,
-    date: "March 5, 2026",
-    rating: 5,
-    text: "I've tried many premium teas and this is genuinely exceptional. The depth of flavor is remarkable and it holds up beautifully for multiple steeps. My entire household is now converted.",
-    photo: "https://images.unsplash.com/photo-1544787219-7f47ccb76574?w=200&h=200&fit=crop",
-    avatar: "https://randomuser.me/api/portraits/men/54.jpg",
-    helpful: 18,
-    featured: false,
-  },
-  {
-    id: 5,
-    name: "Priya Sharma",
-    verified: false,
-    date: "Feb 28, 2026",
-    rating: 4,
-    text: "Great taste and aroma. Delivery was fast and the tea arrived in perfect condition. Will definitely be ordering again!",
-    photo: null,
-    avatar: "https://randomuser.me/api/portraits/women/29.jpg",
-    helpful: 7,
-    featured: false,
-  },
-];
-
-const RATING_DIST = { 5: 6, 4: 2, 3: 0, 2: 0, 1: 0 };
-const TOTAL = Object.values(RATING_DIST).reduce((a, b) => a + b, 0);
-const AVG = 4.6;
+const FILTERS = ["All Reviews", "5 Stars", "4 Stars", "With Photos"];
+const SORTS = ["Latest", "Most Helpful", "Highest Rated", "Lowest Rated"];
 
 // ── Icons ──────────────────────────────────────────
 const StarFull = ({ size = 16, color = "#d97706" }) => (
@@ -141,24 +78,109 @@ const ChatIcon = () => (
   </svg>
 );
 
-const FILTERS = ["All Reviews", "5 Stars", "4 Stars", "With Photos"];
-const SORTS = ["Latest", "Most Helpful", "Highest Rated", "Lowest Rated"];
-
 // ── Main Component ─────────────────────────────────
-export default function ProductReview({ isEmpty = false }) {
+export default function ProductReview({ productId }) {
+  const [reviews, setReviews] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState("All Reviews");
   const [sortOpen, setSortOpen] = useState(false);
   const [sort, setSort] = useState("Latest");
-  const [showDemo, setShowDemo] = useState(false);
+  const [showWriteModal, setShowWriteModal] = useState(false);
+  const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
+  const [submitting, setSubmitting] = useState(false);
 
-  const displayEmpty = isEmpty && !showDemo;
+  // Check if user is logged in
+  const isLoggedIn = !!localStorage.getItem("token");
 
-  const filtered = REVIEWS.filter((r) => {
+  // Calculate rating stats
+  const totalReviews = reviews.length;
+  const avgRating = totalReviews > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews : 0;
+  const ratingDist = [5, 4, 3, 2, 1].reduce((dist, star) => {
+    dist[star] = reviews.filter(r => r.rating === star).length;
+    return dist;
+  }, {});
+
+  // Fetch reviews on mount
+  useEffect(() => {
+    if (!productId) return;
+
+    const fetchReviews = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(apiUrl(`/reviews/${productId}`));
+        if (!response.ok) throw new Error("Failed to fetch reviews");
+        const data = await response.json();
+        setReviews(data);
+      } catch (err) {
+        console.warn("Error fetching reviews:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchReviews();
+  }, [productId]);
+
+  // Handle write review
+  const handleWriteReview = async () => {
+    if (!isLoggedIn) {
+      alert("Please login to write a review");
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const token = localStorage.getItem("token");
+      const response = await fetch(apiUrl(`/reviews/${productId}`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify(reviewForm),
+      });
+
+      if (!response.ok) {
+        let errorMessage = "Failed to submit review";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.message || errorMessage;
+        } catch (jsonError) {
+          // If response is not JSON (e.g., HTML error page), use status text
+          errorMessage = `Server error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      alert("Review submitted successfully!");
+      setShowWriteModal(false);
+      setReviewForm({ rating: 5, comment: "" });
+
+      // Refresh reviews
+      const refreshResponse = await fetch(apiUrl(`/reviews/${productId}`));
+      if (refreshResponse.ok) {
+        const data = await refreshResponse.json();
+        setReviews(data);
+      }
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const filtered = reviews.filter((r) => {
     if (activeFilter === "5 Stars") return r.rating === 5;
     if (activeFilter === "4 Stars") return r.rating === 4;
     if (activeFilter === "With Photos") return !!r.photo;
     return true;
   });
+
+  const displayEmpty = totalReviews === 0;
+
+  console.log("ProductReview rendering", { productId, reviews, loading, error });
 
   return (
     <div style={s.page}>
@@ -167,14 +189,14 @@ export default function ProductReview({ isEmpty = false }) {
         {/* ── Rating Summary ── */}
         <div style={s.ratingCard}>
           <div style={s.ratingLeft}>
-            <div style={s.avgScore}>{AVG}</div>
-            <StarRow rating={AVG} size={22} />
-            <p style={s.basedOn}>Based on {TOTAL} reviews</p>
+            <div style={s.avgScore}>{avgRating.toFixed(1)}</div>
+            <StarRow rating={avgRating} size={22} />
+            <p style={s.basedOn}>Based on {totalReviews} reviews</p>
           </div>
           <div style={s.ratingBars}>
             {[5, 4, 3, 2, 1].map((star) => {
-              const count = RATING_DIST[star] || 0;
-              const pct = TOTAL > 0 ? (count / TOTAL) * 100 : 0;
+              const count = ratingDist[star] || 0;
+              const pct = totalReviews > 0 ? (count / totalReviews) * 100 : 0;
               return (
                 <div key={star} style={s.barRow}>
                   <span style={s.barLabel}>{star} {star === 1 ? "star" : "stars"}</span>
@@ -203,6 +225,7 @@ export default function ProductReview({ isEmpty = false }) {
             style={s.ctaBtn}
             onMouseEnter={(e) => (e.currentTarget.style.background = "#2d4428")}
             onMouseLeave={(e) => (e.currentTarget.style.background = "#3d5a37")}
+            onClick={() => isLoggedIn ? setShowWriteModal(true) : alert("Please login to write a review")}
           >
             <StarOutlineIcon />
             Write a Review
@@ -221,12 +244,12 @@ export default function ProductReview({ isEmpty = false }) {
             </div>
           </div>
           <div style={s.featuredGrid}>
-            {REVIEWS.filter((r) => r.featured).map((review) => (
+            {reviews.slice(0, 2).map((review) => (
               <div key={review.id} style={s.featuredCard}>
                 <div style={s.reviewHeader}>
                   <div style={s.reviewerInfo}>
                     <img
-                      src={review.avatar}
+                      src={review.avatar || "https://randomuser.me/api/portraits/lego/1.jpg"}
                       alt={review.name}
                       style={s.avatar}
                       onError={(e) => { e.target.style.display = "none"; }}
@@ -252,7 +275,7 @@ export default function ProductReview({ isEmpty = false }) {
                     />
                   </div>
                 )}
-                <p style={s.helpfulText}>{review.helpful} people found this helpful</p>
+                <p style={s.helpfulText}>{review.helpful || 0} people found this helpful</p>
               </div>
             ))}
           </div>
@@ -318,6 +341,7 @@ export default function ProductReview({ isEmpty = false }) {
               style={s.emptyBtn}
               onMouseEnter={(e) => (e.currentTarget.style.background = "#2d4428")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "#3d5a37")}
+              onClick={() => isLoggedIn ? setShowWriteModal(true) : alert("Please login to write the first review")}
             >
               <StarOutlineIcon />
               Write the First Review
@@ -330,7 +354,7 @@ export default function ProductReview({ isEmpty = false }) {
                 <div style={s.reviewHeader}>
                   <div style={s.reviewerInfo}>
                     <img
-                      src={review.avatar}
+                      src={review.avatar || "https://randomuser.me/api/portraits/lego/1.jpg"}
                       alt={review.name}
                       style={s.avatar}
                       onError={(e) => { e.target.style.display = "none"; }}
@@ -357,11 +381,11 @@ export default function ProductReview({ isEmpty = false }) {
                   </div>
                 )}
                 <p style={{ ...s.helpfulText, color: "#78716c", marginTop: 16 }}>
-                  {review.helpful} people found this helpful
+                  {review.helpful || 0} people found this helpful
                 </p>
               </div>
             ))}
-            {filtered.length === 0 && (
+            {filtered.length === 0 && totalReviews > 0 && (
               <div style={{ textAlign: "center", padding: "40px 0", color: "#a8a29e", fontFamily: "sans-serif" }}>
                 No reviews match this filter.
               </div>
@@ -369,17 +393,60 @@ export default function ProductReview({ isEmpty = false }) {
           </div>
         )}
 
-        {/* ── Demo toggle ── */}
-        <div style={s.demoRow}>
-          <div style={s.demoDivider} />
-          <button
-            style={s.demoBtn}
-            onClick={() => setShowDemo(!showDemo)}
-          >
-            ← {showDemo ? "Hide reviews demo" : "Show reviews demo"}
-          </button>
-          <div style={s.demoDivider} />
-        </div>
+        {/* ── Write Review Modal ── */}
+        {showWriteModal && (
+          <div style={s.modalOverlay} onClick={() => setShowWriteModal(false)}>
+            <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
+              <h3 style={s.modalTitle}>Write a Review</h3>
+              <div style={s.modalBody}>
+                <div style={s.ratingInput}>
+                  <label style={s.ratingLabel}>Rating:</label>
+                  <div style={s.starInput}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setReviewForm({ ...reviewForm, rating: star })}
+                        style={{
+                          ...s.starBtn,
+                          color: star <= reviewForm.rating ? "#d97706" : "#e7e3db",
+                        }}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div style={s.commentInput}>
+                  <label style={s.commentLabel}>Comment:</label>
+                  <textarea
+                    value={reviewForm.comment}
+                    onChange={(e) => setReviewForm({ ...reviewForm, comment: e.target.value })}
+                    placeholder="Share your experience with this product..."
+                    style={s.commentTextarea}
+                    rows={4}
+                  />
+                </div>
+              </div>
+              <div style={s.modalActions}>
+                <button
+                  onClick={() => setShowWriteModal(false)}
+                  style={s.cancelBtn}
+                  disabled={submitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleWriteReview}
+                  style={s.submitBtn}
+                  disabled={submitting || !reviewForm.comment.trim()}
+                >
+                  {submitting ? "Submitting..." : "Submit Review"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>
@@ -463,7 +530,7 @@ const s = {
   },
   barFill: {
     height: "100%",
-    background: "#4a7a42",
+    background: "#485B3B",
     borderRadius: 6,
     transition: "width 0.4s ease",
   },
@@ -494,7 +561,7 @@ const s = {
     width: 52,
     height: 52,
     borderRadius: 12,
-    background: "#5a7a52",
+    background: "#6B8E5A",
     color: "#ffffff",
     display: "flex",
     alignItems: "center",
@@ -520,7 +587,7 @@ const s = {
     padding: "12px 22px",
     border: "none",
     borderRadius: 10,
-    background: "#3d5a37",
+    background: "#6B8E5A",
     color: "#ffffff",
     fontSize: 14,
     fontWeight: 600,
@@ -532,10 +599,10 @@ const s = {
   },
   // Featured section
   featuredSection: {
-    background: "#4a6b43",
+    background: "#6B8E5A",
     borderRadius: 14,
     padding: "24px 28px",
-    border: "1px solid #3d5a37",
+    border: "1px solid #485B3B",
   },
   featuredHeader: {
     display: "flex",
@@ -625,7 +692,7 @@ const s = {
   verifiedBadge: {
     fontSize: 11,
     fontWeight: 500,
-    color: "#3d5a37",
+    color: "#6B8E5A",
     background: "rgba(255,255,255,0.2)",
     border: "1px solid rgba(255,255,255,0.3)",
     padding: "2px 8px",
@@ -634,7 +701,7 @@ const s = {
   verifiedBadgeDark: {
     fontSize: 11,
     fontWeight: 500,
-    color: "#3d5a37",
+    color: "#6B8E5A",
     background: "#f0fdf4",
     border: "1px solid #bbf7d0",
     padding: "2px 8px",
@@ -694,9 +761,9 @@ const s = {
     transition: "all 0.15s",
   },
   filterTabActive: {
-    background: "#3d5a37",
+    background: "#6B8E5A",
     color: "#ffffff",
-    borderColor: "#3d5a37",
+    borderColor: "#6B8E5A",
   },
   filterTabInactive: {
     background: "#ffffff",
@@ -762,7 +829,7 @@ const s = {
     margin: 0,
     fontSize: 20,
     fontWeight: 700,
-    color: "#3d5a37",
+    color: "#6B8E5A",
     fontFamily: FONT_SERIF,
   },
   emptyText: {
@@ -778,7 +845,7 @@ const s = {
     padding: "13px 26px",
     border: "none",
     borderRadius: 10,
-    background: "#3d5a37",
+    background: "#6B8E5A",
     color: "#ffffff",
     fontSize: 14,
     fontWeight: 600,
@@ -787,26 +854,109 @@ const s = {
     transition: "background 0.15s",
     marginTop: 4,
   },
-  // Demo toggle
-  demoRow: {
+  // Modal styles
+  modalOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: "rgba(0,0,0,0.5)",
     display: "flex",
     alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1000,
+  },
+  modalContent: {
+    background: "#ffffff",
+    borderRadius: 12,
+    padding: 24,
+    maxWidth: 500,
+    width: "90%",
+    maxHeight: "80vh",
+    overflow: "auto",
+  },
+  modalTitle: {
+    margin: "0 0 20px",
+    fontSize: 20,
+    fontWeight: 700,
+    color: "#1c1917",
+    fontFamily: FONT_SERIF,
+  },
+  modalBody: {
+    display: "flex",
+    flexDirection: "column",
     gap: 16,
   },
-  demoDivider: {
-    flex: 1,
-    height: 1,
-    background: "#e0dbd0",
+  ratingInput: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
   },
-  demoBtn: {
-    fontSize: 13,
-    color: "#a8a29e",
+  ratingLabel: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: "#374151",
+  },
+  starInput: {
+    display: "flex",
+    gap: 4,
+  },
+  starBtn: {
+    fontSize: 24,
     background: "none",
     border: "none",
     cursor: "pointer",
-    fontFamily: FONT_SANS,
-    padding: "4px 8px",
-    whiteSpace: "nowrap",
     transition: "color 0.15s",
+  },
+  commentInput: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 8,
+  },
+  commentLabel: {
+    fontSize: 14,
+    fontWeight: 600,
+    color: "#374151",
+  },
+  commentTextarea: {
+    padding: 12,
+    border: "1px solid #d1d5db",
+    borderRadius: 6,
+    fontSize: 14,
+    fontFamily: FONT_SANS,
+    resize: "vertical",
+    outline: "none",
+    transition: "border-color 0.15s",
+  },
+  modalActions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 12,
+    marginTop: 24,
+  },
+  cancelBtn: {
+    padding: "8px 16px",
+    border: "1px solid #d1d5db",
+    background: "#ffffff",
+    color: "#374151",
+    borderRadius: 6,
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: "pointer",
+    fontFamily: FONT_SANS,
+    transition: "background 0.15s",
+  },
+  submitBtn: {
+    padding: "8px 16px",
+    border: "none",
+    background: "#6B8E5A",
+    color: "#ffffff",
+    borderRadius: 6,
+    fontSize: 14,
+    fontWeight: 500,
+    cursor: "pointer",
+    fontFamily: FONT_SANS,
+    transition: "background 0.15s",
   },
 };

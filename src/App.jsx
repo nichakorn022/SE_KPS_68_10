@@ -23,6 +23,7 @@ import AdminInboxPage from "./frontend/admin/AdminInboxPage.jsx";
 import AdminProductsPage from "./frontend/admin/AdminProductsPage.jsx";
 import AdminEventsPage from "./frontend/admin/AdminEventsPage.jsx";
 import AdminOrdersPage from "./frontend/admin/AdminOrdersPage.jsx";
+import AdminSponsorsPage from "./frontend/admin/AdminSponsorsPage.jsx";
 import UserProfile from "./frontend/Profile/userProfile.jsx";
 
 export const AuthModalContext = createContext(null);
@@ -130,6 +131,7 @@ function App() {
             <Route path="products" element={<AdminProductsPage />} />
             <Route path="events" element={<AdminEventsPage />} />
             <Route path="orders" element={<AdminOrdersPage />} />
+            <Route path="sponsors" element={<AdminSponsorsPage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

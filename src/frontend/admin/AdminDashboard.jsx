@@ -12,6 +12,10 @@ const quickLinks = [
     description: "Prepare product CRUD, image upload, and stock updates here.",
   },
   {
+    title: "Sponsors",
+    description: "Review sponsor requests between shops and events, then approve or reject them.",
+  },
+  {
     title: "Events",
     description: "Manage event listings, schedules, and registration settings.",
   },
@@ -27,6 +31,7 @@ export default function AdminDashboard() {
     { label: "Pending Shops", value: "-", href: "/admin/inbox" },
     { label: "Pending Organizers", value: "-", href: "/admin/inbox" },
     { label: "Pending Reports", value: "-", href: "/admin/inbox" },
+    { label: "Pending Sponsors", value: "-", href: "/admin/sponsors" },
     { label: "Products", value: "-", href: "/admin/products" },
     { label: "Events", value: "-", href: "/admin/events" },
     { label: "Orders", value: "-", href: "/admin/orders" },
@@ -38,13 +43,14 @@ export default function AdminDashboard() {
 
     async function loadStats() {
       try {
-        const [products, events, orders, shops, organizers, reports] = await Promise.all([
+        const [products, events, orders, shops, organizers, reports, sponsors] = await Promise.all([
           adminApi.getProducts(adminToken),
           adminApi.getEvents(adminToken),
           adminApi.getOrders(adminToken),
           adminApi.getShops(adminToken),
           adminApi.getOrganizers(adminToken),
           adminApi.getReports(adminToken),
+          adminApi.getSponsors(adminToken),
         ]);
 
         if (!cancelled) {
@@ -52,6 +58,7 @@ export default function AdminDashboard() {
             { label: "Pending Shops", value: shops.filter((shop) => !Number(shop.verified_status)).length, href: "/admin/inbox" },
             { label: "Pending Organizers", value: organizers.filter((organizer) => !Number(organizer.verified_status)).length, href: "/admin/inbox" },
             { label: "Pending Reports", value: reports.filter((report) => String(report.status).toLowerCase() === "pending").length, href: "/admin/inbox" },
+            { label: "Pending Sponsors", value: sponsors.filter((sponsor) => String(sponsor.status).toLowerCase() === "pending").length, href: "/admin/sponsors" },
             { label: "Products", value: products.length, href: "/admin/products" },
             { label: "Events", value: events.length, href: "/admin/events" },
             { label: "Orders", value: orders.length, href: "/admin/orders" },

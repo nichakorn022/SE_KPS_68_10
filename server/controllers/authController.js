@@ -77,10 +77,11 @@ exports.registerUser = async (req, res) => {
     await ensureUniqueUser(username, email);
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    await query("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, 'user')", [
+    await query("INSERT INTO users (username, email, password, role, imageprofile) VALUES (?, ?, ?, 'user', ?)", [
       username,
       email,
       hashedPassword,
+      "",
     ]);
 
     res.json({ message: "Register success" });
@@ -117,8 +118,8 @@ exports.registerMerchant = async (req, res) => {
     await beginTransaction();
 
     const userResult = await query(
-      "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, 'shop')",
-      [username, email, hashedPassword]
+      "INSERT INTO users (username, email, password, role, imageprofile) VALUES (?, ?, ?, 'shop', ?)",
+      [username, email, hashedPassword, ""]
     );
 
     await query(

@@ -113,4 +113,13 @@ export const adminApi = {
       body: JSON.stringify({ status }),
     });
   },
+  getSponsors(adminToken) {
+    return adminFetch("/sponsors", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
+  },
+  updateSponsorStatus(adminToken, sponsorId, status) {
+    return adminFetch(`/sponsors/${sponsorId}/status`, adminToken, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  },
 };

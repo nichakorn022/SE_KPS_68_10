@@ -17,6 +17,7 @@ const userRoutes = require("./routes/userRoutes");
 const organizerRoutes = require("./routes/organizerRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const chatRoutes = require("./routes/chatRoutes");
+const sponsorRoutes = require("./routes/sponsorRoutes");
 
 const app = express();
 const port = Number(process.env.PORT) || 3001;
@@ -25,8 +26,19 @@ const port = Number(process.env.PORT) || 3001;
 const { query } = require("./utils/dbHelpers");
 (async function ensureAvatarColumn() {
   try {
-    await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar VARCHAR(255) NULL");
-    console.log("Ensured users.avatar column exists");
+    const columns = await query(
+      `SELECT COLUMN_NAME
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'users'
+         AND COLUMN_NAME = 'avatar'
+       LIMIT 1`
+    );
+
+    if (columns.length === 0) {
+      await query("ALTER TABLE users ADD COLUMN avatar VARCHAR(255) NULL");
+      console.log("Added users.avatar column");
+    }
   } catch (err) {
     console.warn("Could not ensure users.avatar column:", err.message);
   }
@@ -51,6 +63,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/organizers", organizerRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/sponsors", sponsorRoutes);
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

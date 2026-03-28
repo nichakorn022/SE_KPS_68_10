@@ -1,30 +1,30 @@
-import { useEffect, useState, createContext, useContext } from "react";
+import { Suspense, lazy, useEffect, useState, createContext, useContext } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Layout from "./frontend/components/Layout";
-import Home from "./frontend/Home.jsx";
-import Shop from "./frontend/Shop/ShopHome.jsx";
-import Events from "./frontend/Event/EventPage.jsx";
 import Login from "./frontend/Login.jsx";
 import Register from "./frontend/Regist.jsx";
-import EventDetails from "./frontend/Event/Eventdetails.jsx";
-import EventReview from "./frontend/Event/EventReview.jsx";
-import ShopProfile from "./frontend/Shop/ShopProfile.jsx";
-import ShopChatPage from "./frontend/Shop/ShopChatPage.jsx";
-import SellerDashboard from "./frontend/Shop/SellerDashboard.jsx";
-import SellerProductsPage from "./frontend/Shop/SellerProductsPage.jsx";
-import ProductDetail from "./frontend/Shop/ProductDetail.jsx";
-import CheckoutPage from "./frontend/Shop/CheckoutPage.jsx";
-import CheckoutAddressPage from "./frontend/Shop/CheckoutAddressPage.jsx";
-import CheckoutAddressFormPage from "./frontend/Shop/CheckoutAddressFormPage.jsx";
-import OrderSuccessPage from "./frontend/Shop/OrderSuccessPage.jsx";
-import AdminRoute from "./frontend/admin/AdminRoute.jsx";
-import AdminDashboard from "./frontend/admin/AdminDashboard.jsx";
-import AdminInboxPage from "./frontend/admin/AdminInboxPage.jsx";
-import AdminProductsPage from "./frontend/admin/AdminProductsPage.jsx";
-import AdminEventsPage from "./frontend/admin/AdminEventsPage.jsx";
-import AdminOrdersPage from "./frontend/admin/AdminOrdersPage.jsx";
-import AdminSponsorsPage from "./frontend/admin/AdminSponsorsPage.jsx";
-import UserProfile from "./frontend/Profile/userProfile.jsx";
+
+const Layout = lazy(() => import("./frontend/components/Layout"));
+const Home = lazy(() => import("./frontend/Home.jsx"));
+const Shop = lazy(() => import("./frontend/Shop/ShopHome.jsx"));
+const Events = lazy(() => import("./frontend/Event/EventPage.jsx"));
+const EventDetails = lazy(() => import("./frontend/Event/Eventdetails.jsx"));
+const EventReview = lazy(() => import("./frontend/Event/EventReview.jsx"));
+const ShopProfile = lazy(() => import("./frontend/Shop/ShopProfile.jsx"));
+const ShopChatPage = lazy(() => import("./frontend/Shop/ShopChatPage.jsx"));
+const SellerDashboard = lazy(() => import("./frontend/Shop/SellerDashboard.jsx"));
+const SellerProductsPage = lazy(() => import("./frontend/Shop/SellerProductsPage.jsx"));
+const ProductDetail = lazy(() => import("./frontend/Shop/ProductDetail.jsx"));
+const CheckoutPage = lazy(() => import("./frontend/Shop/CheckoutPage.jsx"));
+const CheckoutAddressPage = lazy(() => import("./frontend/Shop/CheckoutAddressPage.jsx"));
+const CheckoutAddressFormPage = lazy(() => import("./frontend/Shop/CheckoutAddressFormPage.jsx"));
+const OrderSuccessPage = lazy(() => import("./frontend/Shop/OrderSuccessPage.jsx"));
+const UserProfile = lazy(() => import("./frontend/Profile/userProfile.jsx"));
+const AdminRoute = lazy(() => import("./frontend/admin/AdminRoute.jsx"));
+const AdminDashboard = lazy(() => import("./frontend/admin/AdminDashboard.jsx"));
+const AdminInboxPage = lazy(() => import("./frontend/admin/AdminInboxPage.jsx"));
+const AdminProductsPage = lazy(() => import("./frontend/admin/AdminProductsPage.jsx"));
+const AdminEventsPage = lazy(() => import("./frontend/admin/AdminEventsPage.jsx"));
+const AdminOrdersPage = lazy(() => import("./frontend/admin/AdminOrdersPage.jsx"));
 
 export const AuthModalContext = createContext(null);
 export const useAuthModal = () => useContext(AuthModalContext);
@@ -93,49 +93,49 @@ function App() {
       }}
     >
       <BrowserRouter>
-        <Routes>
-          <Route element={<Layout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/shop" element={<Shop />} />
-            <Route path="/shop/:id" element={<ShopProfile />} />
-            <Route path="/shop/:id/chat" element={<ShopChatPage />} />
-            <Route path="/seller" element={<SellerDashboard />} />
-            <Route path="/seller/products" element={<SellerProductsPage />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/events/:id" element={<EventDetails />} />
-            <Route path="/review/:id" element={<EventReview />} />
-            <Route path="/product/:id" element={<ProductDetail />} />
-            <Route path="/checkout" element={<CheckoutPage />} />
-            <Route path="/checkout/address" element={<CheckoutAddressPage />} />
-            <Route path="/checkout/address/new" element={<CheckoutAddressFormPage />} />
-            <Route path="/checkout/success/:orderId" element={<OrderSuccessPage />} />
-            <Route path="/profile" element={<UserProfile />} />
-          </Route>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route element={<Layout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/home" element={<Home />} />
+              <Route path="/shop" element={<Shop />} />
+              <Route path="/shop/:id" element={<ShopProfile />} />
+              <Route path="/shop/:id/chat" element={<ShopChatPage />} />
+              <Route path="/seller" element={<SellerDashboard />} />
+              <Route path="/seller/products" element={<SellerProductsPage />} />
+              <Route path="/events" element={<Events />} />
+              <Route path="/events/:id" element={<EventDetails />} />
+              <Route path="/review/:id" element={<EventReview />} />
+              <Route path="/product/:id" element={<ProductDetail />} />
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/checkout/address" element={<CheckoutAddressPage />} />
+              <Route path="/checkout/address/new" element={<CheckoutAddressFormPage />} />
+              <Route path="/checkout/success/:orderId" element={<OrderSuccessPage />} />
+              <Route path="/profile" element={<UserProfile />} />
+            </Route>
 
-          <Route
-            path="/admin/login"
-            element={
-              adminToken ? <Navigate to="/admin" replace /> : <Navigate to="/?adminLogin=1" replace />
-            }
-          />
+            <Route
+              path="/admin/login"
+              element={
+                adminToken ? <Navigate to="/admin" replace /> : <Navigate to="/?adminLogin=1" replace />
+              }
+            />
 
-          <Route
-            path="/admin"
-            element={<AdminRoute adminToken={adminToken} onLogout={handleAdminLogout} openLogin={openLogin} />}
-          >
-            <Route index element={<AdminDashboard />} />
-            <Route path="inbox" element={<AdminInboxPage />} />
-            <Route path="approvals" element={<Navigate to="/admin/inbox" replace />} />
-            <Route path="reports" element={<Navigate to="/admin/inbox" replace />} />
-            <Route path="products" element={<AdminProductsPage />} />
-            <Route path="events" element={<AdminEventsPage />} />
-            <Route path="orders" element={<AdminOrdersPage />} />
-            <Route path="sponsors" element={<AdminSponsorsPage />} />
-          </Route>
+            <Route
+              path="/admin"
+              element={<AdminRoute adminToken={adminToken} onLogout={handleAdminLogout} openLogin={openLogin} />}
+            >
+              <Route index element={<AdminDashboard />} />
+              <Route path="approvals" element={<AdminInboxPage />} />
+              <Route path="requests-reports" element={<AdminInboxPage />} />
+              <Route path="products" element={<AdminProductsPage />} />
+              <Route path="events" element={<AdminEventsPage />} />
+              <Route path="orders" element={<AdminOrdersPage />} />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
 
         <Login
           isOpen={isLoginOpen}
@@ -146,6 +146,14 @@ function App() {
         <Register isOpen={isRegisterOpen} onClose={closeAll} />
       </BrowserRouter>
     </AuthModalContext.Provider>
+  );
+}
+
+function RouteFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#f6f2e8] text-sm text-[#485b3b]">
+      Loading...
+    </div>
   );
 }
 

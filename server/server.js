@@ -8,6 +8,7 @@ const productRoutes = require("./routes/productRoutes");
 const productImageRoutes = require("./routes/productImageRoutes");
 const shopRoutes = require("./routes/shopRoutes");
 const eventRoutes = require("./routes/eventRoutes");
+const eventImageRoutes = require("./routes/eventImageRoutes");
 const shopImageRoutes = require("./routes/shopImageRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const orderDetailRoutes = require("./routes/orderDetailRoutes");
@@ -44,6 +45,35 @@ const { query } = require("./utils/dbHelpers");
   }
 })();
 
+(async function ensureAdminNoteColumns() {
+  const targets = [
+    { table: "tea_shop", column: "admin_note" },
+    { table: "organizer", column: "admin_note" },
+    { table: "report", column: "admin_note" },
+    { table: "sponsor", column: "admin_note" },
+  ];
+
+  for (const target of targets) {
+    try {
+      const rows = await query(
+        `SELECT COLUMN_NAME
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?
+           AND COLUMN_NAME = ?
+         LIMIT 1`,
+        [target.table, target.column]
+      );
+
+      if (rows.length === 0) {
+        await query(`ALTER TABLE ${target.table} ADD COLUMN ${target.column} TEXT NULL`);
+      }
+    } catch (err) {
+      console.warn(`Could not ensure ${target.table}.${target.column} column:`, err.message);
+    }
+  }
+})();
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -54,6 +84,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/product-images", productImageRoutes);
 app.use("/api/shops", shopRoutes);
 app.use("/api/events", eventRoutes);
+app.use("/api/event-images", eventImageRoutes);
 app.use("/api/shop-images", shopImageRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/order-details", orderDetailRoutes);

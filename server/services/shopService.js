@@ -3,7 +3,7 @@ const { query } = require("../utils/dbHelpers");
 async function getShops() {
   return query(
     `SELECT ts.shop_id, ts.user_id, u.email, ts.shop_name, ts.description, ts.contact_info, ts.phone, ts.address,
-            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status
+            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status, ts.admin_note
      FROM tea_shop ts
      LEFT JOIN users u ON u.user_id = ts.user_id
      ORDER BY shop_id DESC`
@@ -13,7 +13,7 @@ async function getShops() {
 async function getShopById(id) {
   const rows = await query(
     `SELECT ts.shop_id, ts.user_id, u.email, ts.shop_name, ts.description, ts.contact_info, ts.phone, ts.address,
-            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status
+            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status, ts.admin_note
      FROM tea_shop ts
      LEFT JOIN users u ON u.user_id = ts.user_id
      WHERE ts.shop_id = ?`,
@@ -72,12 +72,12 @@ async function createShop({
   };
 }
 
-async function updateShopVerification(shopId, verifiedStatus) {
+async function updateShopVerification(shopId, verifiedStatus, adminNote) {
   const result = await query(
     `UPDATE tea_shop
-     SET verified_status = ?
+     SET verified_status = ?, admin_note = ?
      WHERE shop_id = ?`,
-    [verifiedStatus ? 1 : 0, shopId]
+    [verifiedStatus ? 1 : 0, adminNote ?? null, shopId]
   );
 
   if (result.affectedRows === 0) {

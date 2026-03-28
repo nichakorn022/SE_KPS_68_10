@@ -31,7 +31,7 @@ exports.updateShopVerification = (req, res) => {
   const { id } = req.params;
 
   shopService
-    .updateShopVerification(id, req.body.verified_status)
+    .updateShopVerification(id, req.body.verified_status, req.body.admin_note)
     .then((result) => res.json(result))
     .catch((error) =>
       res

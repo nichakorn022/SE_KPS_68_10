@@ -13,12 +13,24 @@ const orderRoutes = require("./routes/orderRoutes");
 const orderDetailRoutes = require("./routes/orderDetailRoutes");
 const registrationRoutes = require("./routes/registrationRoutes");
 const userAddressRoutes = require("./routes/userAddressRoutes");
+const userRoutes = require("./routes/userRoutes");
 const organizerRoutes = require("./routes/organizerRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 
 const app = express();
 const port = Number(process.env.PORT) || 3001;
+
+// Ensure users.avatar column exists (best-effort)
+const { query } = require("./utils/dbHelpers");
+(async function ensureAvatarColumn() {
+  try {
+    await query("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar VARCHAR(255) NULL");
+    console.log("Ensured users.avatar column exists");
+  } catch (err) {
+    console.warn("Could not ensure users.avatar column:", err.message);
+  }
+})();
 
 app.use(cors());
 app.use(express.json());
@@ -35,6 +47,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/order-details", orderDetailRoutes);
 app.use("/api/registrations", registrationRoutes);
 app.use("/api/user-addresses", userAddressRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/organizers", organizerRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/chat", chatRoutes);

@@ -76,7 +76,7 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
             <>
               <Link to="/profile" className="flex items-center gap-3 rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]">
                 <img
-                  src={getTokenPayload()?.avatar || "/Pictrue/default-avatar.png"}
+                  src={localStorage.getItem('avatar') || getTokenPayload()?.avatar || "/Pictrue/default-avatar.png"}
                   alt="avatar"
                   className="h-8 w-8 rounded-full object-cover"
                 />

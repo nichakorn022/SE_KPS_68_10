@@ -42,6 +42,9 @@ export default function UserProfile() {
 
   const tokenPayload = getTokenPayload();
   const userId = getUserIdFromToken();
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -131,12 +134,64 @@ export default function UserProfile() {
 
         <div className="-mt-24 flex items-end gap-6">
           <div className="h-40 w-40 rounded-full overflow-hidden border-4 border-white bg-white shadow-sm">
-            <img src={user?.avatar || tokenPayload?.avatar || "/Pictrue/default-avatar.png"} alt="avatar" className="h-full w-full object-cover" />
+            <img src={previewUrl || user?.avatar || tokenPayload?.avatar || "/Pictrue/default-avatar.png"} alt="avatar" className="h-full w-full object-cover" />
           </div>
 
           <div>
             <h1 className="font-serif text-3xl text-[#24321F]">{user?.name || tokenPayload?.name || "User"}</h1>
             <p className="mt-2 text-[#6f7b70]">{user?.bio || tokenPayload?.bio || "ยังไม่มีคำอธิบายเพิ่มเติม"}</p>
+
+            <div className="mt-4 flex items-center gap-3">
+              <label className="cursor-pointer rounded-md bg-white px-3 py-2 text-sm border border-[#e6e3da] hover:bg-[#fbfdf7]">
+                เลือกรูป
+                <input
+                  type="file"
+                  name="avatar"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      setSelectedFile(f);
+                      setPreviewUrl(URL.createObjectURL(f));
+                    }
+                  }}
+                />
+              </label>
+
+              <button
+                disabled={!selectedFile || uploading}
+                onClick={async () => {
+                  if (!selectedFile) return;
+                  setUploading(true);
+                  try {
+                    const fd = new FormData();
+                    fd.append('avatar', selectedFile);
+
+                    const headers = getAuthHeaders();
+                    const res = await fetch(apiUrl(`/users/${userId}/avatar`), {
+                      method: 'POST',
+                      headers,
+                      body: fd,
+                    });
+
+                    if (!res.ok) throw new Error('Upload failed');
+                    const data = await res.json();
+                    // store avatar path locally so navbar shows new image immediately
+                    if (data && data.avatar) {
+                      try { localStorage.setItem('avatar', data.avatar); } catch {}
+                    }
+                    window.location.reload();
+                  } catch (err) {
+                    console.error(err);
+                    alert('อัปโหลดไม่สำเร็จ');
+                  } finally {
+                    setUploading(false);
+                  }
+                }}
+                className="rounded-md bg-[#485B3B] text-white px-4 py-2 text-sm disabled:opacity-60"
+              >{uploading ? 'Uploading...' : 'อัปโหลด'}</button>
+            </div>
           </div>
         </div>
 

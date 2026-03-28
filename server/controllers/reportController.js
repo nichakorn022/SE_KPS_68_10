@@ -15,7 +15,7 @@ exports.updateReportStatus = (req, res) => {
   const { id } = req.params;
 
   reportService
-    .updateReportStatus(id, req.body.status)
+    .updateReportStatus(id, req.body.status, req.body.admin_note)
     .then((result) => res.json(result))
     .catch((error) =>
       res

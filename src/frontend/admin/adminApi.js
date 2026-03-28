@@ -23,10 +23,14 @@ async function parseResponse(response) {
 }
 
 export async function adminFetch(path, adminToken, options = {}) {
+  const useJsonContentType =
+    !(options.body instanceof FormData) &&
+    (!options.headers || !("Content-Type" in options.headers));
+
   const response = await fetch(apiUrl(path), {
     ...options,
     headers: {
-      ...getAdminHeaders(adminToken, !options.headers || !("Content-Type" in options.headers)),
+      ...getAdminHeaders(adminToken, useJsonContentType),
       ...(options.headers || {}),
     },
   });
@@ -37,6 +41,26 @@ export async function adminFetch(path, adminToken, options = {}) {
 export const adminApi = {
   getProducts(adminToken) {
     return adminFetch("/products", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
+  },
+  getProductImages(adminToken) {
+    return adminFetch("/product-images", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
+  },
+  uploadProductImage(adminToken, productId, file) {
+    const formData = new FormData();
+    formData.append("product_id", String(productId));
+    formData.append("image", file);
+
+    return adminFetch("/product-images", adminToken, {
+      method: "POST",
+      body: formData,
+      headers: {},
+    });
+  },
+  deleteProductImage(adminToken, imageId) {
+    return adminFetch(`/product-images/${imageId}`, adminToken, {
+      method: "DELETE",
+      body: JSON.stringify({}),
+    });
   },
   createProduct(adminToken, payload) {
     return adminFetch("/products", adminToken, {
@@ -59,6 +83,26 @@ export const adminApi = {
   getEvents(adminToken) {
     return adminFetch("/events", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
+  getEventImages(adminToken) {
+    return adminFetch("/event-images", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
+  },
+  uploadEventImage(adminToken, eventId, file) {
+    const formData = new FormData();
+    formData.append("event_id", String(eventId));
+    formData.append("image", file);
+
+    return adminFetch("/event-images", adminToken, {
+      method: "POST",
+      body: formData,
+      headers: {},
+    });
+  },
+  deleteEventImage(adminToken, imageId) {
+    return adminFetch(`/event-images/${imageId}`, adminToken, {
+      method: "DELETE",
+      body: JSON.stringify({}),
+    });
+  },
   createEvent(adminToken, payload) {
     return adminFetch("/events", adminToken, {
       method: "POST",
@@ -80,6 +124,9 @@ export const adminApi = {
   getOrders(adminToken) {
     return adminFetch("/orders", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
+  getOrderDetail(adminToken, orderId) {
+    return adminFetch(`/orders/${orderId}`, adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
+  },
   updateOrderStatus(adminToken, orderId, status) {
     return adminFetch(`/orders/${orderId}/status`, adminToken, {
       method: "PATCH",
@@ -89,37 +136,57 @@ export const adminApi = {
   getShops(adminToken) {
     return adminFetch("/shops", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
-  updateShopVerification(adminToken, shopId, verifiedStatus) {
+  getShopImages(adminToken) {
+    return adminFetch("/shop-images", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
+  },
+  uploadShopImage(adminToken, shopId, file) {
+    const formData = new FormData();
+    formData.append("shop_id", String(shopId));
+    formData.append("image", file);
+
+    return adminFetch("/shop-images", adminToken, {
+      method: "POST",
+      body: formData,
+      headers: {},
+    });
+  },
+  deleteShopImage(adminToken, imageId) {
+    return adminFetch(`/shop-images/${imageId}`, adminToken, {
+      method: "DELETE",
+      body: JSON.stringify({}),
+    });
+  },
+  updateShopVerification(adminToken, shopId, verifiedStatus, adminNote = null) {
     return adminFetch(`/shops/${shopId}/verification`, adminToken, {
       method: "PATCH",
-      body: JSON.stringify({ verified_status: verifiedStatus }),
+      body: JSON.stringify({ verified_status: verifiedStatus, admin_note: adminNote }),
     });
   },
   getOrganizers(adminToken) {
     return adminFetch("/organizers", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
-  updateOrganizerVerification(adminToken, organizerId, verifiedStatus) {
+  updateOrganizerVerification(adminToken, organizerId, verifiedStatus, adminNote = null) {
     return adminFetch(`/organizers/${organizerId}/verification`, adminToken, {
       method: "PATCH",
-      body: JSON.stringify({ verified_status: verifiedStatus }),
+      body: JSON.stringify({ verified_status: verifiedStatus, admin_note: adminNote }),
     });
   },
   getReports(adminToken) {
     return adminFetch("/reports", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
-  updateReportStatus(adminToken, reportId, status) {
+  updateReportStatus(adminToken, reportId, status, adminNote = null) {
     return adminFetch(`/reports/${reportId}/status`, adminToken, {
       method: "PATCH",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, admin_note: adminNote }),
     });
   },
   getSponsors(adminToken) {
     return adminFetch("/sponsors", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
-  updateSponsorStatus(adminToken, sponsorId, status) {
+  updateSponsorStatus(adminToken, sponsorId, status, adminNote = null) {
     return adminFetch(`/sponsors/${sponsorId}/status`, adminToken, {
       method: "PATCH",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, admin_note: adminNote }),
     });
   },
 };

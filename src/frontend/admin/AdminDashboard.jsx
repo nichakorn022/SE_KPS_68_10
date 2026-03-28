@@ -4,39 +4,44 @@ import { adminApi } from "./adminApi";
 
 const quickLinks = [
   {
-    title: "Inbox",
-    description: "Review approvals and reports in one email-style moderation queue.",
+    title: "Requests & Reports",
+    description: "Review requests and reports that need moderation in one queue.",
+    href: "/admin/requests-reports",
   },
   {
     title: "Products",
     description: "Prepare product CRUD, image upload, and stock updates here.",
-  },
-  {
-    title: "Sponsors",
-    description: "Review sponsor requests between shops and events, then approve or reject them.",
+    href: "/admin/products",
   },
   {
     title: "Events",
     description: "Manage event listings, schedules, and registration settings.",
+    href: "/admin/events",
   },
   {
     title: "Orders",
     description: "Track payment states, fulfillment, and customer issues.",
+    href: "/admin/orders",
   },
 ];
 
 export default function AdminDashboard() {
   const { adminUser, adminToken } = useOutletContext();
   const [stats, setStats] = useState([
-    { label: "Pending Shops", value: "-", href: "/admin/inbox" },
-    { label: "Pending Organizers", value: "-", href: "/admin/inbox" },
-    { label: "Pending Reports", value: "-", href: "/admin/inbox" },
-    { label: "Pending Sponsors", value: "-", href: "/admin/sponsors" },
+    { label: "Pending Shops", value: "-", href: "/admin/requests-reports?type=shop&status=pending" },
+    { label: "Pending Organizers", value: "-", href: "/admin/requests-reports?type=organizer&status=pending" },
+    { label: "Pending Reports", value: "-", href: "/admin/requests-reports?type=report&status=pending" },
+    { label: "Pending Sponsors", value: "-", href: "/admin/requests-reports?type=sponsor&status=pending" },
     { label: "Products", value: "-", href: "/admin/products" },
     { label: "Events", value: "-", href: "/admin/events" },
     { label: "Orders", value: "-", href: "/admin/orders" },
   ]);
   const [error, setError] = useState("");
+  const [overview, setOverview] = useState({
+    newRequests: "-",
+    pendingRequests: "-",
+    pendingReports: "-",
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -54,11 +59,32 @@ export default function AdminDashboard() {
         ]);
 
         if (!cancelled) {
+          const pendingShops = shops.filter((shop) => !Number(shop.verified_status)).length;
+          const pendingOrganizers = organizers.filter((organizer) => !Number(organizer.verified_status)).length;
+          const pendingReports = reports.filter((report) => String(report.status).toLowerCase() === "pending").length;
+          const pendingSponsors = sponsors.filter((sponsor) => String(sponsor.status).toLowerCase() === "pending").length;
+          const newRequests = [
+            ...shops,
+            ...organizers,
+            ...reports,
+            ...sponsors,
+          ].filter((item) => {
+            const createdAt = item.created_at ? new Date(item.created_at).getTime() : 0;
+            return createdAt >= Date.now() - (24 * 60 * 60 * 1000);
+          }).length;
+          const pendingRequests = pendingShops + pendingOrganizers + pendingReports + pendingSponsors;
+
+          setOverview({
+            newRequests,
+            pendingRequests,
+            pendingReports,
+          });
+
           setStats([
-            { label: "Pending Shops", value: shops.filter((shop) => !Number(shop.verified_status)).length, href: "/admin/inbox" },
-            { label: "Pending Organizers", value: organizers.filter((organizer) => !Number(organizer.verified_status)).length, href: "/admin/inbox" },
-            { label: "Pending Reports", value: reports.filter((report) => String(report.status).toLowerCase() === "pending").length, href: "/admin/inbox" },
-            { label: "Pending Sponsors", value: sponsors.filter((sponsor) => String(sponsor.status).toLowerCase() === "pending").length, href: "/admin/sponsors" },
+            { label: "Pending Shops", value: pendingShops, href: "/admin/requests-reports?type=shop&status=pending" },
+            { label: "Pending Organizers", value: pendingOrganizers, href: "/admin/requests-reports?type=organizer&status=pending" },
+            { label: "Pending Reports", value: pendingReports, href: "/admin/requests-reports?type=report&status=pending" },
+            { label: "Pending Sponsors", value: pendingSponsors, href: "/admin/requests-reports?type=sponsor&status=pending" },
             { label: "Products", value: products.length, href: "/admin/products" },
             { label: "Events", value: events.length, href: "/admin/events" },
             { label: "Orders", value: orders.length, href: "/admin/orders" },
@@ -84,11 +110,25 @@ export default function AdminDashboard() {
         <div className="rounded-[32px] bg-[#485b3b] p-8 text-white shadow-lg">
           <p className="text-sm uppercase tracking-[0.35em] text-white/70">Overview</p>
           <h3 className="mt-4 max-w-xl text-4xl font-semibold leading-tight">
-            Admin access is ready for approvals, moderation, and operations.
+            Requests that need attention are tracked here first.
           </h3>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-white/80">
-            Logged in as {adminUser?.email || "admin"}. Use this area to approve shops and organizers,
-            review reports, and manage products, events, and orders.
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            <Link to="/admin/requests-reports?status=pending" className="rounded-[24px] bg-white/10 px-5 py-5 transition hover:bg-white/15">
+              <p className="text-xs uppercase tracking-[0.25em] text-white/65">New Requests</p>
+              <p className="mt-3 text-4xl font-semibold text-white">{overview.newRequests}</p>
+              <p className="mt-2 text-sm text-white/75">Items created in the last 24 hours.</p>
+              <p className="mt-1 text-sm text-white/75">
+                Pending reports: {overview.pendingReports}
+              </p>
+            </Link>
+            <Link to="/admin/requests-reports?status=pending" className="rounded-[24px] bg-white/10 px-5 py-5 transition hover:bg-white/15">
+              <p className="text-xs uppercase tracking-[0.25em] text-white/65">Pending Action</p>
+              <p className="mt-3 text-4xl font-semibold text-white">{overview.pendingRequests}</p>
+              <p className="mt-2 text-sm text-white/75">Requests and reports still waiting for review.</p>
+            </Link>
+          </div>
+          <p className="mt-5 text-sm leading-7 text-white/80">
+            Signed in as {adminUser?.email || "admin"}.
           </p>
           {error && <p className="mt-4 text-sm text-[#f8d5cd]">Stats unavailable: {error}</p>}
         </div>
@@ -108,10 +148,10 @@ export default function AdminDashboard() {
 
       <div className="grid gap-5 md:grid-cols-3">
         {quickLinks.map((item) => (
-          <article key={item.title} className="rounded-[28px] bg-white p-6 shadow-sm ring-1 ring-[#e6ddc9]">
+          <Link key={item.title} to={item.href} className="block rounded-[28px] bg-white p-6 shadow-sm ring-1 ring-[#e6ddc9] transition hover:-translate-y-0.5 hover:shadow-md">
             <p className="text-sm uppercase tracking-[0.3em] text-[#8d9577]">{item.title}</p>
             <p className="mt-4 text-sm leading-7 text-[#4b5541]">{item.description}</p>
-          </article>
+          </Link>
         ))}
       </div>
     </section>

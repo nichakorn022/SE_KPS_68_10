@@ -43,6 +43,7 @@ async function getSponsorRequests() {
         s.quantity,
         s.request_by,
         s.status,
+        s.admin_note,
         s.created_at,
         s.updated_at,
         e.title AS event_title,
@@ -56,13 +57,13 @@ async function getSponsorRequests() {
   );
 }
 
-async function updateSponsorStatus(id, status) {
+async function updateSponsorStatus(id, status, adminNote) {
   const nextStatus = normalizeStatus(status);
   const result = await query(
     `UPDATE sponsor
-     SET status = ?, updated_at = CURRENT_TIMESTAMP
+     SET status = ?, admin_note = ?, updated_at = CURRENT_TIMESTAMP
      WHERE sponsor_id = ?`,
-    [nextStatus, id]
+    [nextStatus, adminNote ?? null, id]
   );
 
   if (result.affectedRows === 0) {

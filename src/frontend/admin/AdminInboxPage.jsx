@@ -1,42 +1,78 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useOutletContext } from "react-router-dom";
+import { Link, useLocation, useOutletContext, useSearchParams } from "react-router-dom";
 import { adminApi } from "./adminApi";
+import { assetUrl } from "../../lib/api";
 
 const reportStatuses = ["pending", "reviewed", "resolved", "dismissed"];
 const eventStatuses = ["draft", "open", "closed", "cancelled"];
+
+const typeStyles = {
+  shop: "bg-[#eef6ea] text-[#386132]",
+  organizer: "bg-[#eef2ff] text-[#3d4f93]",
+  sponsor: "bg-[#fff4e2] text-[#a46317]",
+  report: "bg-[#fff0ed] text-[#b33a24]",
+};
+
+const statusStyles = {
+  pending: "bg-[#fff4e2] text-[#a46317]",
+  approved: "bg-[#eef6ea] text-[#386132]",
+  reviewed: "bg-[#eef2ff] text-[#3d4f93]",
+  resolved: "bg-[#eef6ea] text-[#386132]",
+  dismissed: "bg-[#f0ede7] text-[#6f685c]",
+  rejected: "bg-[#fff0ed] text-[#b33a24]",
+};
 
 function getItemTimestamp(item) {
   return item.createdAt ? new Date(item.createdAt).getTime() : 0;
 }
 
+function formatDateTime(value) {
+  if (!value) return "No timestamp";
+  return new Date(value).toLocaleString();
+}
+
 export default function AdminInboxPage() {
   const { adminToken } = useOutletContext();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [shops, setShops] = useState([]);
+  const [shopImages, setShopImages] = useState([]);
   const [organizers, setOrganizers] = useState([]);
   const [reports, setReports] = useState([]);
   const [events, setEvents] = useState([]);
+  const [sponsors, setSponsors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState({ type: "", message: "" });
   const [selectedId, setSelectedId] = useState("");
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [notesById, setNotesById] = useState({});
+  const [searchTerm, setSearchTerm] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [page, setPage] = useState(1);
 
-  const initialFilter = location.pathname.includes("/reports") ? "reports" : "all";
+  const isRequestsReportsPage = location.pathname.includes("/requests-reports");
+  const initialFilter = isRequestsReportsPage ? "all" : "all";
   const [filter, setFilter] = useState(initialFilter);
 
   async function loadData() {
     setLoading(true);
 
     try {
-      const [shopRows, organizerRows, reportRows, eventRows] = await Promise.all([
+      const [shopRows, shopImageRows, organizerRows, reportRows, eventRows, sponsorRows] = await Promise.all([
         adminApi.getShops(adminToken),
+        adminApi.getShopImages(adminToken),
         adminApi.getOrganizers(adminToken),
         adminApi.getReports(adminToken),
         adminApi.getEvents(adminToken),
+        adminApi.getSponsors(adminToken),
       ]);
       setShops(shopRows);
+      setShopImages(shopImageRows);
       setOrganizers(organizerRows);
       setReports(reportRows);
       setEvents(eventRows);
+      setSponsors(sponsorRows);
       setStatus({ type: "", message: "" });
     } catch (error) {
       setStatus({ type: "error", message: error.message });
@@ -52,6 +88,30 @@ export default function AdminInboxPage() {
   useEffect(() => {
     setFilter(initialFilter);
   }, [initialFilter]);
+
+  useEffect(() => {
+    const queryFilter = searchParams.get("view");
+    const queryType = searchParams.get("type");
+    const queryStatus = searchParams.get("status");
+
+    if (["all", "pending", "approvals", "reports"].includes(queryFilter || "")) {
+      setFilter(queryFilter);
+    } else {
+      setFilter(initialFilter);
+    }
+
+    if (["all", "shop", "organizer", "sponsor", "report"].includes(queryType || "")) {
+      setTypeFilter(queryType);
+    } else {
+      setTypeFilter("all");
+    }
+
+    if (["all", "pending", "approved", "reviewed", "resolved", "dismissed", "rejected"].includes(queryStatus || "")) {
+      setStatusFilter(queryStatus);
+    } else {
+      setStatusFilter("all");
+    }
+  }, [initialFilter, searchParams]);
 
   const items = useMemo(() => {
     const shopItems = shops.map((shop) => ({
@@ -88,21 +148,58 @@ export default function AdminInboxPage() {
       raw: report,
     }));
 
-    const merged = [...shopItems, ...organizerItems, ...reportItems].sort(
+    const sponsorItems = sponsors.map((sponsor) => ({
+      id: `sponsor-${sponsor.sponsor_id}`,
+      type: "sponsor",
+      status: sponsor.status || "pending",
+      title: sponsor.event_title || `Event #${sponsor.event_id}`,
+      subtitle: sponsor.shop_name || `Shop #${sponsor.shop_id}`,
+      createdAt: sponsor.created_at || null,
+      raw: sponsor,
+    }));
+
+    const merged = [...shopItems, ...organizerItems, ...reportItems, ...sponsorItems].sort(
       (a, b) => getItemTimestamp(b) - getItemTimestamp(a)
     );
 
     return merged.filter((item) => {
-      if (filter === "reports") return item.type === "report";
-      if (filter === "approvals") return item.type === "shop" || item.type === "organizer";
-      if (filter === "pending") return item.status === "pending";
-      return true;
+      if (filter === "reports" && item.type !== "report") return false;
+      if (filter === "approvals" && !["shop", "organizer", "sponsor"].includes(item.type)) return false;
+      if (filter === "pending" && item.status !== "pending") return false;
+      if (typeFilter !== "all" && item.type !== typeFilter) return false;
+      if (statusFilter !== "all" && String(item.status).toLowerCase() !== statusFilter) return false;
+
+      if (!searchTerm.trim()) return true;
+
+      const haystack = [
+        item.title,
+        item.subtitle,
+        item.type,
+        item.status,
+        item.raw?.email,
+        item.raw?.username,
+        item.raw?.organization_name,
+        item.raw?.shop_name,
+        item.raw?.event_title,
+        item.raw?.product_name,
+        item.raw?.report_type,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return haystack.includes(searchTerm.trim().toLowerCase());
     });
-  }, [filter, organizers, reports, shops]);
+  }, [filter, organizers, reports, searchTerm, shops, sponsors, statusFilter, typeFilter]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filter, searchTerm, statusFilter, typeFilter]);
 
   useEffect(() => {
     if (!items.length) {
       setSelectedId("");
+      setIsDetailModalOpen(false);
       return;
     }
 
@@ -112,10 +209,45 @@ export default function AdminInboxPage() {
   }, [items, selectedId]);
 
   const selectedItem = items.find((item) => item.id === selectedId) || null;
+  const summaryCards = useMemo(
+    () => [
+      {
+        label: "Pending Shops",
+        value: shops.filter((shop) => !Number(shop.verified_status)).length,
+        tone: "shop",
+      },
+      {
+        label: "Pending Organizers",
+        value: organizers.filter((organizer) => !Number(organizer.verified_status)).length,
+        tone: "organizer",
+      },
+      {
+        label: "Pending Sponsors",
+        value: sponsors.filter((sponsor) => String(sponsor.status).toLowerCase() === "pending").length,
+        tone: "sponsor",
+      },
+      {
+        label: "Pending Reports",
+        value: reports.filter((report) => String(report.status).toLowerCase() === "pending").length,
+        tone: "report",
+      },
+    ],
+    [organizers, reports, shops, sponsors]
+  );
+  const paginatedItems = useMemo(() => paginate(items, page), [items, page]);
+
+  const openDetail = (itemId) => {
+    setSelectedId(itemId);
+    setIsDetailModalOpen(true);
+  };
+
+  const closeDetail = () => {
+    setIsDetailModalOpen(false);
+  };
 
   const handleShopVerification = async (shopId, nextValue) => {
     try {
-      await adminApi.updateShopVerification(adminToken, shopId, nextValue);
+      await adminApi.updateShopVerification(adminToken, shopId, nextValue, notesById[`shop-${shopId}`] || null);
       setStatus({ type: "success", message: `Shop #${shopId} updated` });
       loadData();
     } catch (error) {
@@ -125,7 +257,7 @@ export default function AdminInboxPage() {
 
   const handleOrganizerVerification = async (organizerId, nextValue) => {
     try {
-      await adminApi.updateOrganizerVerification(adminToken, organizerId, nextValue);
+      await adminApi.updateOrganizerVerification(adminToken, organizerId, nextValue, notesById[`organizer-${organizerId}`] || null);
       setStatus({ type: "success", message: `Organizer #${organizerId} updated` });
       loadData();
     } catch (error) {
@@ -135,7 +267,7 @@ export default function AdminInboxPage() {
 
   const handleReportStatusChange = async (reportId, nextStatus) => {
     try {
-      await adminApi.updateReportStatus(adminToken, reportId, nextStatus);
+      await adminApi.updateReportStatus(adminToken, reportId, nextStatus, notesById[`report-${reportId}`] || null);
       setStatus({ type: "success", message: `Report #${reportId} updated` });
       loadData();
     } catch (error) {
@@ -165,6 +297,40 @@ export default function AdminInboxPage() {
     }
   };
 
+  const handleSponsorStatusChange = async (sponsorId, nextStatus) => {
+    try {
+      await adminApi.updateSponsorStatus(adminToken, sponsorId, nextStatus, notesById[`sponsor-${sponsorId}`] || null);
+      setStatus({ type: "success", message: `Sponsor #${sponsorId} updated` });
+      loadData();
+    } catch (error) {
+      setStatus({ type: "error", message: error.message });
+    }
+  };
+
+  const handleNoteChange = (itemId, value) => {
+    setNotesById((current) => ({ ...current, [itemId]: value }));
+  };
+
+  const handleShopImageUpload = async (shopId, file) => {
+    try {
+      await adminApi.uploadShopImage(adminToken, shopId, file);
+      setStatus({ type: "success", message: `Shop #${shopId} image uploaded` });
+      loadData();
+    } catch (error) {
+      setStatus({ type: "error", message: error.message });
+    }
+  };
+
+  const handleShopImageDelete = async (imageId) => {
+    try {
+      await adminApi.deleteShopImage(adminToken, imageId);
+      setStatus({ type: "success", message: `Shop image #${imageId} deleted` });
+      loadData();
+    } catch (error) {
+      setStatus({ type: "error", message: error.message });
+    }
+  };
+
   return (
     <section className="space-y-6">
       {status.message && (
@@ -173,12 +339,11 @@ export default function AdminInboxPage() {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[380px_1fr]">
-        <div className="rounded-[32px] bg-white p-6 shadow-sm ring-1 ring-[#e6ddc9]">
+      <div className="rounded-[32px] bg-white p-6 shadow-sm ring-1 ring-[#e6ddc9]">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">Inbox</p>
-              <h3 className="mt-3 text-3xl font-semibold text-[#2f3529]">Approvals & Reports</h3>
+              <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">Moderation</p>
+              <h3 className="mt-3 text-3xl font-semibold text-[#2f3529]">Requests & Reports</h3>
             </div>
             <span className="rounded-full bg-[#f8f4eb] px-4 py-2 text-xs font-medium text-[#6d7759]">
               {items.length} item{items.length === 1 ? "" : "s"}
@@ -189,7 +354,7 @@ export default function AdminInboxPage() {
             {[
               { value: "all", label: "All" },
               { value: "pending", label: "Pending" },
-              { value: "approvals", label: "Approvals" },
+              { value: "approvals", label: "Requests" },
               { value: "reports", label: "Reports" },
             ].map((option) => (
               <button
@@ -207,55 +372,151 @@ export default function AdminInboxPage() {
             ))}
           </div>
 
+          <div className="mt-5 space-y-3">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {summaryCards.map((card) => (
+                <div key={card.label} className="rounded-[24px] bg-[#f8f4eb] px-4 py-4">
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-[#8d9577]">{card.label}</p>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <p className="text-2xl font-semibold text-[#2f3529]">{card.value}</p>
+                    <span className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${typeStyles[card.tone]}`}>
+                      {card.tone}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <input
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search by shop, organizer, event, product, email..."
+              className="admin-input"
+            />
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="block">
+                <span className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#8d9577]">Type</span>
+                <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="admin-input">
+                  <option value="all">All types</option>
+                  <option value="shop">Shop</option>
+                  <option value="organizer">Organizer</option>
+                  <option value="sponsor">Sponsor</option>
+                  <option value="report">Report</option>
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#8d9577]">Status</span>
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="admin-input">
+                  <option value="all">All statuses</option>
+                  <option value="pending">Pending</option>
+                  <option value="approved">Approved</option>
+                  <option value="reviewed">Reviewed</option>
+                  <option value="resolved">Resolved</option>
+                  <option value="dismissed">Dismissed</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
           <div className="mt-6 space-y-3">
             {loading ? (
-              <div className="rounded-2xl bg-[#f8f4eb] px-4 py-10 text-sm text-[#7a8368]">Loading inbox...</div>
+              <div className="rounded-2xl bg-[#f8f4eb] px-4 py-10 text-sm text-[#7a8368]">Loading requests...</div>
             ) : items.length === 0 ? (
               <div className="rounded-2xl bg-[#f8f4eb] px-4 py-10 text-sm text-[#7a8368]">No matching items.</div>
             ) : (
-              items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setSelectedId(item.id)}
-                  className={`block w-full rounded-[24px] border px-4 py-4 text-left transition ${
-                    item.id === selectedId
-                      ? "border-[#485b3b] bg-[#eef4e8]"
-                      : "border-[#efe8d8] bg-[#fcfbf7] hover:border-[#d7ceb8]"
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="rounded-full bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#8d9577]">
-                      {item.type}
-                    </span>
-                    <span className="text-[11px] text-[#8d9577]">{item.status}</span>
-                  </div>
-                  <p className="mt-3 font-semibold text-[#2f3529]">{item.title}</p>
-                  <p className="mt-1 text-sm text-[#657056]">{item.subtitle}</p>
-                </button>
-              ))
+              <div className="space-y-4">
+                {paginatedItems.items.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => openDetail(item.id)}
+                    className={`block w-full rounded-[24px] border px-5 py-5 text-left transition ${
+                      item.id === selectedId && isDetailModalOpen
+                        ? "border-[#485b3b] bg-[#eef4e8]"
+                        : "border-[#efe8d8] bg-[#fcfbf7] hover:border-[#d7ceb8]"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${typeStyles[item.type] || "bg-white text-[#8d9577]"}`}>
+                          {item.type}
+                        </span>
+                        <span className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${statusStyles[String(item.status).toLowerCase()] || "bg-[#f0ede7] text-[#6f685c]"}`}>
+                          {item.status}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-[#8d9577]">{formatDateTime(item.createdAt)}</span>
+                    </div>
+                    <p className="mt-4 font-semibold text-[#2f3529]">{item.title}</p>
+                    <p className="mt-1 text-sm text-[#657056]">{item.subtitle}</p>
+                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[#8d9577]">Click to review</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <Pagination currentPage={paginatedItems.page} totalPages={paginatedItems.totalPages} onPageChange={setPage} />
+      </div>
+
+      {isDetailModalOpen && selectedItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6" onClick={closeDetail}>
+          <div
+            className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[32px] bg-white p-7 shadow-2xl ring-1 ring-[#e6ddc9]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">Review Detail</p>
+                <h3 className="mt-3 text-3xl font-semibold text-[#2f3529]">{selectedItem.title}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={closeDetail}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#efe8d8] text-lg font-medium text-[#485b3b]"
+              >
+                X
+              </button>
+            </div>
+
+            {selectedItem.type === "shop" ? (
+              <ShopDetail
+                item={selectedItem.raw}
+                images={shopImages.filter((image) => String(image.shop_id) === String(selectedItem.raw.shop_id))}
+                note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
+                onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
+                onUploadImage={handleShopImageUpload}
+                onDeleteImage={handleShopImageDelete}
+                onAction={handleShopVerification}
+              />
+            ) : selectedItem.type === "organizer" ? (
+              <OrganizerDetail
+                item={selectedItem.raw}
+                note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
+                onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
+                onAction={handleOrganizerVerification}
+              />
+            ) : selectedItem.type === "sponsor" ? (
+              <SponsorDetail
+                item={selectedItem.raw}
+                note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
+                onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
+                onStatusChange={handleSponsorStatusChange}
+              />
+            ) : (
+              <ReportDetail
+                item={selectedItem.raw}
+                note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
+                onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
+                onReportStatusChange={handleReportStatusChange}
+                onEventStatusChange={handleEventStatusChange}
+              />
             )}
           </div>
         </div>
-
-        <div className="rounded-[32px] bg-white p-7 shadow-sm ring-1 ring-[#e6ddc9]">
-          {!selectedItem ? (
-            <div className="flex min-h-[420px] items-center justify-center rounded-[24px] bg-[#f8f4eb] text-sm text-[#7a8368]">
-              Select an item from the inbox.
-            </div>
-          ) : selectedItem.type === "shop" ? (
-            <ShopDetail item={selectedItem.raw} onAction={handleShopVerification} />
-          ) : selectedItem.type === "organizer" ? (
-            <OrganizerDetail item={selectedItem.raw} onAction={handleOrganizerVerification} />
-          ) : (
-            <ReportDetail
-              item={selectedItem.raw}
-              onReportStatusChange={handleReportStatusChange}
-              onEventStatusChange={handleEventStatusChange}
-            />
-          )}
-        </div>
-      </div>
+      )}
     </section>
   );
 }
@@ -301,7 +562,7 @@ function ActionButton({ onClick, tone = "neutral", children }) {
   );
 }
 
-function ShopDetail({ item, onAction }) {
+function ShopDetail({ item, images, note, onNoteChange, onUploadImage, onDeleteImage, onAction }) {
   return (
     <DetailShell
       badge="Shop Approval"
@@ -322,6 +583,49 @@ function ShopDetail({ item, onAction }) {
         <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Description</p>
         <p className="mt-3 text-sm leading-7 text-[#4b5541]">{item.description || "No description provided."}</p>
       </div>
+      <div className="space-y-4 rounded-[24px] bg-[#f8f4eb] p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Shop Images</p>
+            <p className="mt-2 text-sm text-[#4b5541]">Review store images before approval.</p>
+          </div>
+          <label className="rounded-full bg-[#485b3b] px-4 py-2 text-xs font-medium text-white">
+            Upload
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) onUploadImage(item.shop_id, file);
+                event.target.value = "";
+              }}
+            />
+          </label>
+        </div>
+        {!images.length ? (
+          <div className="rounded-2xl bg-white px-4 py-6 text-sm text-[#7a8368]">No shop images yet.</div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {images.map((image) => (
+              <div key={image.image_id} className="overflow-hidden rounded-[24px] bg-white ring-1 ring-[#e6ddc9]">
+                <img src={assetUrl(image.image_path)} alt="" className="h-40 w-full object-cover" />
+                <div className="flex items-center justify-between gap-3 px-4 py-3">
+                  <p className="text-xs text-[#7a8368]">Image #{image.image_id}</p>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteImage(image.image_id)}
+                    className="rounded-full bg-[#fff0ed] px-3 py-2 text-xs font-medium text-[#b33a24]"
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <NoteField value={note} onChange={onNoteChange} placeholder="Add approval note or rejection reason..." />
       <div className="flex gap-3">
         <ActionButton tone="positive" onClick={() => onAction(item.shop_id, 1)}>Approve Shop</ActionButton>
         <ActionButton tone="danger" onClick={() => onAction(item.shop_id, 0)}>Hold Request</ActionButton>
@@ -330,7 +634,7 @@ function ShopDetail({ item, onAction }) {
   );
 }
 
-function OrganizerDetail({ item, onAction }) {
+function OrganizerDetail({ item, note, onNoteChange, onAction }) {
   return (
     <DetailShell
       badge="Organizer Approval"
@@ -350,6 +654,7 @@ function OrganizerDetail({ item, onAction }) {
         <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Description</p>
         <p className="mt-3 text-sm leading-7 text-[#4b5541]">{item.description || "No description provided."}</p>
       </div>
+      <NoteField value={note} onChange={onNoteChange} placeholder="Add approval note or rejection reason..." />
       <div className="flex gap-3">
         <ActionButton tone="positive" onClick={() => onAction(item.organizer_id, 1)}>Approve Organizer</ActionButton>
         <ActionButton tone="danger" onClick={() => onAction(item.organizer_id, 0)}>Hold Request</ActionButton>
@@ -358,7 +663,7 @@ function OrganizerDetail({ item, onAction }) {
   );
 }
 
-function ReportDetail({ item, onReportStatusChange, onEventStatusChange }) {
+function ReportDetail({ item, note, onNoteChange, onReportStatusChange, onEventStatusChange }) {
   return (
     <DetailShell
       badge="Event Report"
@@ -368,6 +673,7 @@ function ReportDetail({ item, onReportStatusChange, onEventStatusChange }) {
       <MetaGrid
         rows={[
           { label: "Report ID", value: `#${item.report_id}` },
+          { label: "Event ID", value: `#${item.event_id}` },
           { label: "Reporter", value: item.email || `User #${item.user_id}` },
           { label: "Username", value: item.username || "-" },
           { label: "Type", value: item.report_type || "-" },
@@ -375,10 +681,30 @@ function ReportDetail({ item, onReportStatusChange, onEventStatusChange }) {
           { label: "Current Event Status", value: item.event_status || "draft" },
         ]}
       />
+      <div className="rounded-[24px] bg-[#f8f4eb] p-5">
+        <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Event Moderation</p>
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div className="rounded-2xl bg-white px-4 py-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Suggested Action</p>
+            <p className="mt-2 text-sm text-[#2f3529]">
+              {String(item.status || "").toLowerCase() === "pending" ? "Review and update the event status if needed." : "Report is already being handled."}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-white px-4 py-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Report Status</p>
+            <p className="mt-2 text-sm text-[#2f3529]">{item.status || "pending"}</p>
+          </div>
+          <div className="rounded-2xl bg-white px-4 py-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Event Status</p>
+            <p className="mt-2 text-sm text-[#2f3529]">{item.event_status || "draft"}</p>
+          </div>
+        </div>
+      </div>
       <div className="rounded-[24px] bg-[#fcfbf7] p-5">
         <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Report Detail</p>
         <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[#4b5541]">{item.report_detail}</p>
       </div>
+      <NoteField value={note} onChange={onNoteChange} placeholder="Add review note or resolution reason..." />
       <div className="grid gap-4 md:grid-cols-2">
         <label className="block">
           <span className="mb-2 block text-sm font-medium text-[#4b5541]">Report Status</span>
@@ -410,5 +736,89 @@ function ReportDetail({ item, onReportStatusChange, onEventStatusChange }) {
         Open Event Management
       </Link>
     </DetailShell>
+  );
+}
+
+function SponsorDetail({ item, note, onNoteChange, onStatusChange }) {
+  return (
+    <DetailShell
+      badge="Sponsor Request"
+      title={item.event_title || `Event #${item.event_id}`}
+      subtitle="Review sponsor requests from shops and update the request status after verification."
+    >
+      <MetaGrid
+        rows={[
+          { label: "Sponsor ID", value: `#${item.sponsor_id}` },
+          { label: "Shop", value: item.shop_name || `Shop #${item.shop_id}` },
+          { label: "Product", value: item.product_name || `Product #${item.product_id}` },
+          { label: "Quantity", value: item.quantity || "-" },
+          { label: "Requested By", value: item.request_by || "-" },
+          { label: "Status", value: item.status || "pending" },
+        ]}
+      />
+      <NoteField value={note} onChange={onNoteChange} placeholder="Add sponsor review note or rejection reason..." />
+      <div className="grid gap-4 md:grid-cols-3">
+        <ActionButton tone="positive" onClick={() => onStatusChange(item.sponsor_id, "approved")}>
+          Approve Sponsor
+        </ActionButton>
+        <ActionButton onClick={() => onStatusChange(item.sponsor_id, "pending")}>
+          Keep Pending
+        </ActionButton>
+        <ActionButton tone="danger" onClick={() => onStatusChange(item.sponsor_id, "rejected")}>
+          Reject Sponsor
+        </ActionButton>
+      </div>
+    </DetailShell>
+  );
+}
+
+function NoteField({ value, onChange, placeholder }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-[#4b5541]">Admin Note</span>
+      <textarea
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="admin-input min-h-28"
+      />
+    </label>
+  );
+}
+
+function paginate(items, page, pageSize = 10) {
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const start = (safePage - 1) * pageSize;
+  return {
+    items: items.slice(start, start + pageSize),
+    page: safePage,
+    totalPages,
+  };
+}
+
+function Pagination({ currentPage, totalPages, onPageChange }) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="mt-6 flex items-center justify-center gap-3">
+      <button
+        type="button"
+        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+        disabled={currentPage === 1}
+        className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Prev
+      </button>
+      <span className="text-sm text-[#657056]">Page {currentPage} / {totalPages}</span>
+      <button
+        type="button"
+        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+        disabled={currentPage === totalPages}
+        className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        Next
+      </button>
+    </div>
   );
 }

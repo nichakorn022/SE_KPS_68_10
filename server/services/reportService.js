@@ -2,7 +2,7 @@ const { query } = require("../utils/dbHelpers");
 
 async function getReports() {
   return query(
-    `SELECT r.report_id, r.event_id, r.user_id, r.report_type, r.report_detail, r.status, r.created_at,
+    `SELECT r.report_id, r.event_id, r.user_id, r.report_type, r.report_detail, r.status, r.admin_note, r.created_at,
             e.title AS event_title, e.status AS event_status,
             u.username, u.email
      FROM report r
@@ -12,12 +12,12 @@ async function getReports() {
   );
 }
 
-async function updateReportStatus(reportId, status) {
+async function updateReportStatus(reportId, status, adminNote) {
   const result = await query(
     `UPDATE report
-     SET status = ?
+     SET status = ?, admin_note = ?
      WHERE report_id = ?`,
-    [status, reportId]
+    [status, adminNote ?? null, reportId]
   );
 
   if (result.affectedRows === 0) {

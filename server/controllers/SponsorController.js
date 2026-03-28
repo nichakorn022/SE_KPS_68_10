@@ -25,7 +25,7 @@ class SponsorController {
 
   static async updateSponsorStatus(req, res) {
     try {
-      const result = await sponsorService.updateSponsorStatus(req.params.id, req.body.status);
+      const result = await sponsorService.updateSponsorStatus(req.params.id, req.body.status, req.body.admin_note);
       res.json(result);
     } catch (error) {
       res

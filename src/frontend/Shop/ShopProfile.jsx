@@ -4,6 +4,7 @@ import { apiUrl, assetUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
 import FloatingCartButton from "../components/FloatingCartButton";
 import usePersistentCart from "../hooks/usePersistentCart";
+import { getAuthHeaders, getUserIdFromToken, getUserRoleFromToken } from "./authClient";
 
 const api = {
   getShop: (id) =>
@@ -61,6 +62,19 @@ function createImageMap(rows) {
   return map;
 }
 
+function createShopForm(shop) {
+  return {
+    shop_name: shop?.shop_name || "",
+    description: shop?.description || "",
+    contact_info: shop?.contact_info || "",
+    phone: shop?.phone || "",
+    address: shop?.address || "",
+    province: shop?.province || "",
+    district: shop?.district || "",
+    subdistrict: shop?.subdistrict || "",
+  };
+}
+
 function createShopProfile(shop, shopImages, products) {
   const cover = shopImages[0] || null;
   const avatar = shopImages[1] || shopImages[0] || null;
@@ -69,6 +83,7 @@ function createShopProfile(shop, shopImages, products) {
 
   return {
     id: shop.shop_id,
+    ownerUserId: Number(shop.user_id),
     name: shop.shop_name,
     description: shop.description?.trim() || "ร้านนี้ยังไม่มีคำอธิบายเพิ่มเติม",
     shortTag:
@@ -352,8 +367,13 @@ export default function ShopProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [profile, setProfile] = useState(null);
+  const [shopForm, setShopForm] = useState(createShopForm());
+  const [savingShop, setSavingShop] = useState(false);
+  const [shopNotice, setShopNotice] = useState({ type: "", message: "" });
   const [products, setProducts] = useState([]);
   const [events, setEvents] = useState([]);
+  const currentUserId = getUserIdFromToken();
+  const currentUserRole = getUserRoleFromToken();
 
   useEffect(() => {
     let ignore = false;
@@ -394,6 +414,8 @@ export default function ShopProfile() {
         setProducts(storeProducts);
         setEvents(storeEvents);
         setProfile(createShopProfile(shopRow, storeImages, storeProducts));
+        setShopForm(createShopForm(shopRow));
+        setShopNotice({ type: "", message: "" });
         setError("");
       })
       .catch((fetchError) => {
@@ -415,6 +437,7 @@ export default function ShopProfile() {
   const aboutItems = profile ? createAbout(profile) : [];
   const specialItems = profile ? createSpecialItems(profile, products) : [];
   const mapEmbed = profile ? createMapEmbed(profile.address) : null;
+  const isOwner = currentUserRole === "shop" && profile && Number(profile.ownerUserId) === Number(currentUserId);
 
   const addToCart = (product) => {
     setCart((previous) => {
@@ -434,6 +457,52 @@ export default function ShopProfile() {
     }
 
     setCart((previous) => previous.map((item) => (item.id === productId ? { ...item, qty } : item)));
+  };
+
+  const saveShopProfile = async ({ submitForVerification = false } = {}) => {
+    if (!profile?.id) return;
+
+    try {
+      setSavingShop(true);
+      setShopNotice({ type: "", message: "" });
+
+      const response = await fetch(apiUrl(`/shops/${profile.id}`), {
+        method: "PATCH",
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(shopForm),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update shop");
+      }
+
+      setProfile((current) => ({
+        ...current,
+        name: data.shop_name,
+        description: data.description?.trim() || current.description,
+        shortTag:
+          data.contact_info?.trim() ||
+          (Number(data.verified_status) === 1 ? "Verified tea shop on ATC marketplace" : "Independent tea shop"),
+        location: getLocation(data),
+        address: data.address?.trim() || "-",
+        phone: data.phone?.trim() || "-",
+        email: data.email?.trim() || "-",
+        contactInfo: data.contact_info?.trim() || "",
+        verified: Number(data.verified_status) === 1,
+      }));
+      setShopForm(createShopForm(data));
+      setShopNotice({
+        type: "success",
+        message: submitForVerification
+          ? "Saved. Your shop is ready for admin review in the approvals inbox."
+          : "Shop details updated.",
+      });
+    } catch (saveError) {
+      setShopNotice({ type: "error", message: saveError.message || "Failed to update shop" });
+    } finally {
+      setSavingShop(false);
+    }
   };
 
   if (loading) {
@@ -510,6 +579,75 @@ export default function ShopProfile() {
       </section>
 
       <main className="mx-auto max-w-[1280px] px-6 pb-20">
+        {isOwner ? (
+          <section className="mb-10 rounded-[34px] border border-[#DFE5D6] bg-white/92 px-8 py-8 shadow-[0_18px_50px_rgba(195,170,128,0.10)]">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-[#829473]">Shop Owner</p>
+                <h2 className="mt-3 font-serif text-[2rem] tracking-[-0.03em] text-[#24321F]">Edit Shop Profile</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-[#61705C]">
+                  Update the storefront your customers see here. Unverified shops already appear in the admin approval inbox.
+                </p>
+              </div>
+              <span className={`rounded-full px-4 py-2 text-sm font-semibold ${profile.verified ? "bg-[#E6F1DA] text-[#4A6B34]" : "bg-[#F6E7D9] text-[#A15E3C]"}`}>
+                {profile.verified ? "Verified by admin" : "Pending admin verification"}
+              </span>
+            </div>
+
+            {shopNotice.message ? (
+              <div className={`mt-6 rounded-2xl px-4 py-3 text-sm ${shopNotice.type === "error" ? "bg-[#fff0ed] text-[#b33a24]" : "bg-[#eef6ea] text-[#386132]"}`}>
+                {shopNotice.message}
+              </div>
+            ) : null}
+
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              <label className="text-sm text-[#55604f]">
+                <span className="mb-1 block font-medium">Shop Name</span>
+                <input value={shopForm.shop_name} onChange={(event) => setShopForm((current) => ({ ...current, shop_name: event.target.value }))} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f]">
+                <span className="mb-1 block font-medium">Phone</span>
+                <input value={shopForm.phone} onChange={(event) => setShopForm((current) => ({ ...current, phone: event.target.value }))} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f] md:col-span-2">
+                <span className="mb-1 block font-medium">Description</span>
+                <textarea value={shopForm.description} onChange={(event) => setShopForm((current) => ({ ...current, description: event.target.value }))} rows={4} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f] md:col-span-2">
+                <span className="mb-1 block font-medium">Contact Info</span>
+                <input value={shopForm.contact_info} onChange={(event) => setShopForm((current) => ({ ...current, contact_info: event.target.value }))} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f] md:col-span-2">
+                <span className="mb-1 block font-medium">Address</span>
+                <textarea value={shopForm.address} onChange={(event) => setShopForm((current) => ({ ...current, address: event.target.value }))} rows={3} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f]">
+                <span className="mb-1 block font-medium">Province</span>
+                <input value={shopForm.province} onChange={(event) => setShopForm((current) => ({ ...current, province: event.target.value }))} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f]">
+                <span className="mb-1 block font-medium">District</span>
+                <input value={shopForm.district} onChange={(event) => setShopForm((current) => ({ ...current, district: event.target.value }))} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f] md:col-span-2">
+                <span className="mb-1 block font-medium">Subdistrict</span>
+                <input value={shopForm.subdistrict} onChange={(event) => setShopForm((current) => ({ ...current, subdistrict: event.target.value }))} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button type="button" onClick={() => saveShopProfile()} disabled={savingShop || !shopForm.shop_name.trim()} className="rounded-full bg-[#485B3B] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
+                {savingShop ? "Saving..." : "Save changes"}
+              </button>
+              {!profile.verified ? (
+                <button type="button" onClick={() => saveShopProfile({ submitForVerification: true })} disabled={savingShop || !shopForm.shop_name.trim()} className="rounded-full border border-[#D4DDC9] bg-white px-5 py-3 text-sm font-semibold text-[#51684A] disabled:opacity-60">
+                  {savingShop ? "Saving..." : "Save and send to admin"}
+                </button>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
         <section className="rounded-[34px] bg-[#EEF4EC] px-8 py-10 shadow-[0_18px_50px_rgba(195,170,128,0.10)] sm:px-14 sm:py-14">
           <SectionTitle centered>Our Story</SectionTitle>
           <p className="mx-auto mt-8 max-w-4xl text-center text-[1.2rem] leading-[2.15] text-[#516356]">

@@ -15,6 +15,11 @@ const api = {
       if (!response.ok) throw new Error(`Products ${response.status}`);
       return response.json();
     }),
+  getProductImages: () =>
+    fetch(apiUrl("/product-images")).then((response) => {
+      if (!response.ok) throw new Error(`Product images ${response.status}`);
+      return response.json();
+    }),
   getShopImages: () =>
     fetch(apiUrl("/shop-images")).then((response) => {
       if (!response.ok) throw new Error(`Shop images ${response.status}`);
@@ -28,6 +33,19 @@ function getLocation(shop) {
 
 function formatStock(value) {
   return `${Number(value || 0).toLocaleString("th-TH")} units`;
+}
+
+function createProductImageMap(rows) {
+  const map = new Map();
+
+  for (const image of Array.isArray(rows) ? rows : []) {
+    const productId = Number(image.product_id);
+    if (!map.has(productId) && image.image_path) {
+      map.set(productId, assetUrl(image.image_path));
+    }
+  }
+
+  return map;
 }
 
 function StatCard({ label, value, tone = "olive", hint }) {
@@ -109,9 +127,11 @@ export default function SellerDashboard() {
       };
     }
 
-    Promise.all([api.getShops(), api.getProducts(), api.getShopImages().catch(() => [])])
-      .then(([shopRows, productRows, imageRows]) => {
+    Promise.all([api.getShops(), api.getProducts(), api.getProductImages().catch(() => []), api.getShopImages().catch(() => [])])
+      .then(([shopRows, productRows, productImageRows, imageRows]) => {
         if (ignore) return;
+
+        const productImageMap = createProductImageMap(productImageRows);
 
         const ownedShop = (Array.isArray(shopRows) ? shopRows : []).find(
           (item) => Number(item.user_id) === Number(userId)
@@ -135,7 +155,7 @@ export default function SellerDashboard() {
             type: item.tea_type,
             price: Number(item.price || 0),
             stock: Number(item.stock || 0),
-            img: null,
+            img: productImageMap.get(Number(item.product_id)) || null,
           }));
 
         setShop({

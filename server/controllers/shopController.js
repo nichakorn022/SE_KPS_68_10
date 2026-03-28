@@ -27,6 +27,17 @@ exports.createShop = (req, res) => {
     );
 };
 
+exports.updateShopByOwner = (req, res) => {
+  const { id } = req.params;
+
+  shopService
+    .updateShopByOwner(req.user.user_id, id, req.body)
+    .then((result) => res.json(result))
+    .catch((error) =>
+      res.status(error.statusCode || 500).json({ message: error.message || "Failed to update shop" })
+    );
+};
+
 exports.updateShopVerification = (req, res) => {
   const { id } = req.params;
 

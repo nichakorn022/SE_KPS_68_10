@@ -5,6 +5,7 @@ import SiteNavbar from "../components/SiteNavbar";
 import FloatingCartButton from "../components/FloatingCartButton";
 import usePersistentCart from "../hooks/usePersistentCart";
 import ShopHome from "./ShopHome";
+import ProductReview from "./ProductReview";
 import { getUserIdFromToken } from "./authClient";
 
 const api = {
@@ -347,6 +348,9 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
 
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
 
+  const [reviews, setReviews] = useState([]);
+  const [rating, setRating] = useState({ avg: 0, count: 0 });
+
   // ── Fetch data ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!id) return;
@@ -405,6 +409,18 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
         }
 
         setLoading(false);
+
+        // Fetch reviews and calculate rating
+        try {
+          const reviewsData = await fetch(apiUrl(`/reviews/${id}`)).then(r => r.json());
+          setReviews(reviewsData);
+          const total = reviewsData.length;
+          const avg = total > 0 ? reviewsData.reduce((sum, r) => sum + r.rating, 0) / total : 0;
+          setRating({ avg, count: total });
+        } catch (reviewErr) {
+          console.warn("Could not fetch reviews:", reviewErr);
+          setRating({ avg: 0, count: 0 });
+        }
       })
       .catch((err) => {
         setError(err.message);
@@ -473,6 +489,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
 
   return (
     <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800">
+      {console.log("ProductDetail rendering", { product, loading, error })}
       <SiteNavbar active="shop" />
 
 
@@ -499,7 +516,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
 
               {/* Rating placeholder */}
               <div className="flex items-center gap-3 mb-4">
-                <StarRating rating={4.5} count={0} />
+                <StarRating rating={rating.avg} count={rating.count} />
                 <span className="text-[12px] text-gray-300">|</span>
                 <span className={`text-[12px] font-semibold ${inStock ? "text-green-600" : "text-red-400"}`}>
                   {inStock ? `มีสินค้า (${stock})` : "สินค้าหมด"}
@@ -582,6 +599,9 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
             </div>
           </div>
         </div>
+
+        {/* ── Product Reviews ── */}
+        <ProductReview productId={id} />
 
         {/* ── Related Products ── */}
         {related.length > 0 && (

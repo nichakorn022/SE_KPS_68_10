@@ -1,4 +1,6 @@
 const eventService = require("../services/eventService");
+const { query } = require("../utils/dbHelpers");
+const { sendRegistrationConfirmation } = require("../utils/mailer");
 
 
 function toLegacyEventShape(event) {
@@ -212,6 +214,25 @@ exports.registerEvent = async (req, res) => {
 
   try {
     const registrationId = await eventService.registerEvent(userId, eventId);
+
+    // Send payment reminder email
+    try {
+      const [[user], [event]] = await Promise.all([
+        query("SELECT username, email FROM users WHERE user_id = ? LIMIT 1", [userId]),
+        query("SELECT title, event_date FROM event WHERE event_id = ? LIMIT 1", [eventId]),
+      ]);
+      if (user?.email && event?.title) {
+        sendRegistrationConfirmation({
+          to: user.email,
+          username: user.username,
+          eventTitle: event.title,
+          eventDate: event.event_date,
+        }).catch((err) => console.error("Registration email failed:", err.message));
+      }
+    } catch (mailErr) {
+      console.error("Registration email lookup failed:", mailErr.message);
+    }
+
     res.json({
       message: "Registration created. Waiting for payment.",
       registration_id: registrationId

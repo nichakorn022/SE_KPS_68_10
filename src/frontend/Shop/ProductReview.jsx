@@ -325,6 +325,15 @@ export default function ProductReview({ productId }) {
                   </div>
                 </div>
                 <p style={s.reviewText}>{review.text}</p>
+                {review.reply?.text && (
+                  <div style={s.replyBox}>
+                    <div style={s.replyHeader}>
+                      <span style={s.replyLabel}>Shop reply</span>
+                      {review.reply?.date && <span style={s.replyDate}>{review.reply.date}</span>}
+                    </div>
+                    <p style={s.replyText}>{review.reply.text}</p>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -426,6 +435,15 @@ export default function ProductReview({ productId }) {
                   </div>
                 </div>
                 <p style={{ ...s.reviewText, color: "#374151", marginTop: 12 }}>{review.text}</p>
+                {review.reply?.text && (
+                  <div style={s.replyBox}>
+                    <div style={s.replyHeader}>
+                      <span style={s.replyLabel}>Shop reply</span>
+                      {review.reply?.date && <span style={s.replyDate}>{review.reply.date}</span>}
+                    </div>
+                    <p style={s.replyText}>{review.reply.text}</p>
+                  </div>
+                )}
               </div>
             ))}
             {filtered.length === 0 && totalReviews > 0 && (
@@ -801,6 +819,38 @@ const s = {
     margin: "8px 0 0",
     fontSize: 14,
     color: "#44403c",
+    lineHeight: 1.7,
+    overflowWrap: "anywhere",
+  },
+  replyBox: {
+    marginTop: 12,
+    padding: "12px 14px",
+    background: "#f0fdf4",
+    border: "1px solid #bbf7d0",
+    borderRadius: 12,
+  },
+  replyHeader: {
+    display: "flex",
+    alignItems: "baseline",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  replyLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#14532d",
+    letterSpacing: "0.02em",
+    textTransform: "uppercase",
+  },
+  replyDate: {
+    fontSize: 12,
+    color: "#4d7c0f",
+    whiteSpace: "nowrap",
+  },
+  replyText: {
+    margin: "8px 0 0",
+    fontSize: 14,
+    color: "#14532d",
     lineHeight: 1.7,
     overflowWrap: "anywhere",
   },

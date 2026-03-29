@@ -19,22 +19,53 @@ exports.getReviews = async (req, res) => {
       return res.status(400).json({ message: "Product ID is required" });
     }
 
-    const reviews = await query(`
-      SELECT
-        pr.review_id,
-        pr.rating,
-        pr.comment,
-        pr.created_at,
-        u.user_id as user_id,
-        u.username,
-        u.imageprofile as avatar
-      FROM product_review pr
-      JOIN order_details od ON pr.order_detail_id = od.order_detail_id
-      JOIN orders o ON od.order_id = o.order_id
-      JOIN users u ON o.user_id = u.user_id
-      WHERE od.product_id = ?
-      ORDER BY pr.created_at DESC
-    `, [product_id]);
+    let reviews;
+    try {
+      reviews = await query(
+        `SELECT
+          pr.review_id,
+          pr.rating,
+          pr.comment,
+          pr.created_at,
+          u.user_id as user_id,
+          u.username,
+          u.imageprofile as avatar,
+          rr.reply_text,
+          rr.created_at AS reply_created_at,
+          rr.updated_at AS reply_updated_at
+        FROM product_review pr
+        JOIN order_details od ON pr.order_detail_id = od.order_detail_id
+        JOIN orders o ON od.order_id = o.order_id
+        JOIN users u ON o.user_id = u.user_id
+        LEFT JOIN product_review_reply rr ON rr.review_id = pr.review_id
+        WHERE od.product_id = ?
+        ORDER BY pr.created_at DESC`,
+        [product_id]
+      );
+    } catch (err) {
+      // Backward compatible: if the reply table doesn't exist yet, still return reviews.
+      if (String(err?.message || "").toLowerCase().includes("product_review_reply")) {
+        reviews = await query(
+          `SELECT
+            pr.review_id,
+            pr.rating,
+            pr.comment,
+            pr.created_at,
+            u.user_id as user_id,
+            u.username,
+            u.imageprofile as avatar
+          FROM product_review pr
+          JOIN order_details od ON pr.order_detail_id = od.order_detail_id
+          JOIN orders o ON od.order_id = o.order_id
+          JOIN users u ON o.user_id = u.user_id
+          WHERE od.product_id = ?
+          ORDER BY pr.created_at DESC`,
+          [product_id]
+        );
+      } else {
+        throw err;
+      }
+    }
 
     // Format the reviews
     const formattedReviews = reviews.map(review => ({
@@ -52,6 +83,24 @@ exports.getReviews = async (req, res) => {
       verified: true, // Assume all reviews are from verified buyers
       helpful: 0, // Placeholder
       featured: false, // Placeholder
+      reply: review.reply_text
+        ? {
+            text: repairLikelyMojibake(review.reply_text),
+            date: review.reply_updated_at
+              ? new Date(review.reply_updated_at).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })
+              : new Date(review.reply_created_at).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                }),
+            createdAt: review.reply_created_at || null,
+            updatedAt: review.reply_updated_at || null,
+          }
+        : null,
     }));
 
     res.json(formattedReviews);

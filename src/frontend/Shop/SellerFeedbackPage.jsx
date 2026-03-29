@@ -248,7 +248,9 @@ export default function SellerFeedbackPage() {
           {showEmpty ? (
             <div className="rounded-[34px] border border-[#DFE5D6] bg-white p-10 text-center shadow-[0_16px_36px_rgba(72,91,59,0.06)]">
               <p className="text-[1.15rem] font-semibold text-[#253622]">No reviews yet</p>
-              <p className="mt-2 text-sm text-[#6F7C69]">Once customers leave reviews, they will appear here.</p>
+              <p className="mt-2 text-sm text-[#6F7C69]">
+                Reviews appear after customers purchase your products and leave feedback on the product page.
+              </p>
               <button
                 type="button"
                 onClick={() => navigate("/seller/dashboard")}

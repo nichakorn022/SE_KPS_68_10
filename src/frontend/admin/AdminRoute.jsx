@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { apiUrl } from "../../lib/api";
-import AdminLayout from "./AdminLayout";
+import AdminLayout from "./components/AdminLayout";
 
 export default function AdminRoute({ adminToken, onLogout, openLogin }) {
   const [status, setStatus] = useState(adminToken ? "loading" : "unauthorized");

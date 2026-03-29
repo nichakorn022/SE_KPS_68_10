@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useLocation, useOutletContext, useSearchParams } from "react-router-dom";
+import { useLocation, useOutletContext, useSearchParams } from "react-router-dom";
 import { adminApi } from "./adminApi";
-import { assetUrl } from "../../lib/api";
+import AdminPagination, { paginate } from "./components/AdminPagination";
+import AdminConfirmActionModal from "./components/AdminConfirmActionModal";
+import { OrganizerDetail, ReportDetail, ShopDetail, SponsorDetail } from "./components/AdminInboxDetails";
 
 function getVerificationStatusLabel(value) {
   return Number(value) === 1 ? "approved" : Number(value) === 2 ? "rejected" : "pending";
@@ -876,7 +878,7 @@ export default function AdminInboxPage() {
               </div>
             )}
           </div>
-          <Pagination currentPage={paginatedItems.page} totalPages={paginatedItems.totalPages} onPageChange={setPage} />
+          <AdminPagination currentPage={paginatedItems.page} totalPages={paginatedItems.totalPages} onPageChange={setPage} />
       </div>
 
       {isDetailModalOpen && selectedItem && (
@@ -900,14 +902,15 @@ export default function AdminInboxPage() {
             </div>
 
             {selectedItem.type === "shop" ? (
-              <ShopDetail
-                item={selectedItem.raw}
-                images={shopImages.filter((image) => String(image.shop_id) === String(selectedItem.raw.shop_id))}
-                note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
-                onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
-                onUploadImage={handleShopImageUpload}
-                onDeleteImage={(imageId) =>
-                  requestConfirmation({
+                <ShopDetail
+                  item={selectedItem.raw}
+                  images={shopImages.filter((image) => String(image.shop_id) === String(selectedItem.raw.shop_id))}
+                  note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
+                  onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
+                  onUploadImage={handleShopImageUpload}
+                  getVerificationStatusLabel={getVerificationStatusLabel}
+                  onDeleteImage={(imageId) =>
+                    requestConfirmation({
                     title: "Delete shop image",
                     message: `Delete image #${imageId}?`,
                     confirmLabel: "Delete image",
@@ -932,12 +935,13 @@ export default function AdminInboxPage() {
                 }
               />
             ) : selectedItem.type === "organizer" ? (
-              <OrganizerDetail
-                item={selectedItem.raw}
-                note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
-                onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
-                onAction={(organizerId, nextValue) =>
-                  requestConfirmation({
+                <OrganizerDetail
+                  item={selectedItem.raw}
+                  note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
+                  onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
+                  getVerificationStatusLabel={getVerificationStatusLabel}
+                  onAction={(organizerId, nextValue) =>
+                    requestConfirmation({
                     title: Number(nextValue) === 1 ? "Approve organizer" : "Reject organizer",
                     message: `Confirm this action for organizer #${organizerId}?`,
                     confirmLabel: Number(nextValue) === 1 ? "Approve organizer" : "Reject organizer",
@@ -996,6 +1000,8 @@ export default function AdminInboxPage() {
                     },
                   })
                 }
+                reportStatuses={reportStatuses}
+                eventStatuses={eventStatuses}
               />
             )}
           </div>
@@ -1003,13 +1009,13 @@ export default function AdminInboxPage() {
       )}
 
       {confirmAction ? (
-        <ConfirmationModal
+        <AdminConfirmActionModal
           title={confirmAction.title}
           message={confirmAction.message}
           confirmLabel={confirmAction.confirmLabel}
           tone={confirmAction.tone}
           busy={bulkRunning}
-          onCancel={closeConfirmation}
+          onClose={closeConfirmation}
           onConfirm={executeConfirmedAction}
         />
       ) : null}
@@ -1017,345 +1023,4 @@ export default function AdminInboxPage() {
   );
 }
 
-function DetailShell({ badge, title, subtitle, children }) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">{badge}</p>
-        <h3 className="mt-3 text-3xl font-semibold text-[#2f3529]">{title}</h3>
-        <p className="mt-3 text-sm leading-7 text-[#5d6550]">{subtitle}</p>
-      </div>
-      {children}
-    </div>
-  );
-}
 
-function MetaGrid({ rows }) {
-  return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {rows.map((row) => (
-        <div key={row.label} className="rounded-2xl bg-[#f8f4eb] px-4 py-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">{row.label}</p>
-          <p className="mt-2 text-sm text-[#2f3529]">{row.value}</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ActionButton({ onClick, tone = "neutral", children }) {
-  const className =
-    tone === "positive"
-      ? "bg-[#eef6ea] text-[#386132]"
-      : tone === "danger"
-        ? "bg-[#fff0ed] text-[#b33a24]"
-        : "bg-[#efe8d8] text-[#485b3b]";
-
-  return (
-    <button type="button" onClick={onClick} className={`rounded-full px-5 py-3 text-sm font-medium ${className}`}>
-      {children}
-    </button>
-  );
-}
-
-function ShopDetail({ item, images, note, onNoteChange, onUploadImage, onDeleteImage, onAction }) {
-  return (
-    <DetailShell
-      badge="Shop Approval"
-      title={item.shop_name || `Shop #${item.shop_id}`}
-      subtitle="Review shop ownership and verify whether this account should be allowed to operate as a tea shop."
-    >
-      <MetaGrid
-        rows={[
-          { label: "Shop ID", value: `#${item.shop_id}` },
-          { label: "Owner", value: item.email || `User #${item.user_id}` },
-          { label: "Phone", value: item.phone || "-" },
-          { label: "Contact", value: item.contact_info || "-" },
-          { label: "National ID", value: item.national_id || "-" },
-          { label: "Status", value: getVerificationStatusLabel(item.verified_status) },
-        ]}
-      />
-      <div className="rounded-[24px] bg-[#fcfbf7] p-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Description</p>
-        <p className="mt-3 text-sm leading-7 text-[#4b5541]">{item.description || "No description provided."}</p>
-      </div>
-      <div className="space-y-4 rounded-[24px] bg-[#f8f4eb] p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Shop Images</p>
-            <p className="mt-2 text-sm text-[#4b5541]">Review store images before approval.</p>
-          </div>
-          <label className="rounded-full bg-[#485b3b] px-4 py-2 text-xs font-medium text-white">
-            Upload
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) onUploadImage(item.shop_id, file);
-                event.target.value = "";
-              }}
-            />
-          </label>
-        </div>
-        {!images.length ? (
-          <div className="rounded-2xl bg-white px-4 py-6 text-sm text-[#7a8368]">No shop images yet.</div>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            {images.map((image) => (
-              <div key={image.image_id} className="overflow-hidden rounded-[24px] bg-white ring-1 ring-[#e6ddc9]">
-                <img src={assetUrl(image.image_path)} alt="" className="h-40 w-full object-cover" />
-                <div className="flex items-center justify-between gap-3 px-4 py-3">
-                  <p className="text-xs text-[#7a8368]">Image #{image.image_id}</p>
-                  <button
-                    type="button"
-                    onClick={() => onDeleteImage(image.image_id)}
-                    className="rounded-full bg-[#fff0ed] px-3 py-2 text-xs font-medium text-[#b33a24]"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-      <NoteField value={note} onChange={onNoteChange} placeholder="Add approval note or rejection reason..." />
-      <div className="flex gap-3">
-        <ActionButton tone="positive" onClick={() => onAction(item.shop_id, 1)}>Approve Shop</ActionButton>
-        <ActionButton tone="danger" onClick={() => onAction(item.shop_id, 2)}>Reject Shop</ActionButton>
-      </div>
-    </DetailShell>
-  );
-}
-
-function ConfirmationModal({ title, message, confirmLabel, tone = "neutral", busy = false, onCancel, onConfirm }) {
-  const confirmClass =
-    tone === "positive"
-      ? "bg-[#386132] text-white"
-      : tone === "danger"
-        ? "bg-[#b33a24] text-white"
-        : "bg-[#485b3b] text-white";
-
-  return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4 py-6" onClick={onCancel}>
-      <div
-        className="w-full max-w-md rounded-[32px] bg-white p-7 shadow-2xl ring-1 ring-[#e6ddc9]"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">Confirm Action</p>
-        <h3 className="mt-3 text-2xl font-semibold text-[#2f3529]">{title}</h3>
-        <p className="mt-4 text-sm leading-7 text-[#5d6550]">{message}</p>
-
-        <div className="mt-6 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={busy}
-            className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={busy}
-            className={`rounded-full px-4 py-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 ${confirmClass}`}
-          >
-            {busy ? "Processing..." : confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function OrganizerDetail({ item, note, onNoteChange, onAction }) {
-  return (
-    <DetailShell
-      badge="Organizer Approval"
-      title={[item.first_name, item.last_name].filter(Boolean).join(" ") || item.organization_name || `Organizer #${item.organizer_id}`}
-      subtitle="Review organizer identity, organization context, and approval status before allowing event management access."
-    >
-      <MetaGrid
-        rows={[
-          { label: "Organizer ID", value: `#${item.organizer_id}` },
-          { label: "User", value: item.email || `User #${item.user_id}` },
-          { label: "Organization", value: item.organization_name || "-" },
-          { label: "Phone", value: item.phone || "-" },
-          { label: "Status", value: getVerificationStatusLabel(item.verified_status) },
-        ]}
-      />
-      <div className="rounded-[24px] bg-[#fcfbf7] p-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Description</p>
-        <p className="mt-3 text-sm leading-7 text-[#4b5541]">{item.description || "No description provided."}</p>
-      </div>
-      <NoteField value={note} onChange={onNoteChange} placeholder="Add approval note or rejection reason..." />
-      <div className="flex gap-3">
-        <ActionButton tone="positive" onClick={() => onAction(item.organizer_id, 1)}>Approve Organizer</ActionButton>
-        <ActionButton tone="danger" onClick={() => onAction(item.organizer_id, 2)}>Reject Organizer</ActionButton>
-      </div>
-    </DetailShell>
-  );
-}
-
-function ReportDetail({ item, note, onNoteChange, onReportStatusChange, onEventStatusChange }) {
-  return (
-    <DetailShell
-      badge="Event Report"
-      title={item.event_title || `Event #${item.event_id}`}
-      subtitle="Inspect the report details, update report handling status, and moderate the related event if needed."
-    >
-      <MetaGrid
-        rows={[
-          { label: "Report ID", value: `#${item.report_id}` },
-          { label: "Event ID", value: `#${item.event_id}` },
-          { label: "Reporter", value: item.email || `User #${item.user_id}` },
-          { label: "Username", value: item.username || "-" },
-          { label: "Type", value: item.report_type || "-" },
-          { label: "Created", value: item.created_at ? new Date(item.created_at).toLocaleString() : "-" },
-          { label: "Current Event Status", value: item.event_status || "draft" },
-        ]}
-      />
-      <div className="rounded-[24px] bg-[#f8f4eb] p-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Event Moderation</p>
-        <div className="mt-4 grid gap-4 md:grid-cols-3">
-          <div className="rounded-2xl bg-white px-4 py-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Suggested Action</p>
-            <p className="mt-2 text-sm text-[#2f3529]">
-              {String(item.status || "").toLowerCase() === "pending" ? "Review and update the event status if needed." : "Report is already being handled."}
-            </p>
-          </div>
-          <div className="rounded-2xl bg-white px-4 py-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Report Status</p>
-            <p className="mt-2 text-sm text-[#2f3529]">{item.status || "pending"}</p>
-          </div>
-          <div className="rounded-2xl bg-white px-4 py-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Event Status</p>
-            <p className="mt-2 text-sm text-[#2f3529]">{item.event_status || "draft"}</p>
-          </div>
-        </div>
-      </div>
-      <div className="rounded-[24px] bg-[#fcfbf7] p-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Report Detail</p>
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[#4b5541]">{item.report_detail}</p>
-      </div>
-      <NoteField value={note} onChange={onNoteChange} placeholder="Add review note or resolution reason..." />
-      <div className="grid gap-4 md:grid-cols-2">
-        <label className="block">
-          <span className="mb-2 block text-sm font-medium text-[#4b5541]">Report Status</span>
-          <select
-            value={item.status}
-            onChange={(event) => onReportStatusChange(item.report_id, event.target.value)}
-            className="admin-input"
-          >
-            {reportStatuses.map((status) => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block">
-          <span className="mb-2 block text-sm font-medium text-[#4b5541]">Event Status</span>
-          <select
-            value={item.event_status || "draft"}
-            onChange={(event) => onEventStatusChange(item.event_id, event.target.value)}
-            className="admin-input"
-          >
-            {eventStatuses.map((status) => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
-        </label>
-      </div>
-      <Link to="/admin/events" className="inline-flex rounded-full bg-[#efe8d8] px-5 py-3 text-sm font-medium text-[#485b3b]">
-        Open Event Management
-      </Link>
-    </DetailShell>
-  );
-}
-
-function SponsorDetail({ item, note, onNoteChange, onStatusChange }) {
-  return (
-    <DetailShell
-      badge="Sponsor Request"
-      title={item.event_title || `Event #${item.event_id}`}
-      subtitle="Review sponsor requests from shops and update the request status after verification."
-    >
-      <MetaGrid
-        rows={[
-          { label: "Sponsor ID", value: `#${item.sponsor_id}` },
-          { label: "Shop", value: item.shop_name || `Shop #${item.shop_id}` },
-          { label: "Product", value: item.product_name || `Product #${item.product_id}` },
-          { label: "Quantity", value: item.quantity || "-" },
-          { label: "Requested By", value: item.request_by || "-" },
-          { label: "Status", value: item.status || "pending" },
-        ]}
-      />
-      <NoteField value={note} onChange={onNoteChange} placeholder="Add sponsor review note or rejection reason..." />
-      <div className="grid gap-4 md:grid-cols-3">
-        <ActionButton tone="positive" onClick={() => onStatusChange(item.sponsor_id, "approved")}>
-          Approve Sponsor
-        </ActionButton>
-        <ActionButton onClick={() => onStatusChange(item.sponsor_id, "pending")}>
-          Keep Pending
-        </ActionButton>
-        <ActionButton tone="danger" onClick={() => onStatusChange(item.sponsor_id, "rejected")}>
-          Reject Sponsor
-        </ActionButton>
-      </div>
-    </DetailShell>
-  );
-}
-
-function NoteField({ value, onChange, placeholder }) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-medium text-[#4b5541]">Admin Note</span>
-      <textarea
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="admin-input min-h-28"
-      />
-    </label>
-  );
-}
-
-function paginate(items, page, pageSize = 10) {
-  const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const start = (safePage - 1) * pageSize;
-  return {
-    items: items.slice(start, start + pageSize),
-    page: safePage,
-    totalPages,
-  };
-}
-
-function Pagination({ currentPage, totalPages, onPageChange }) {
-  if (totalPages <= 1) return null;
-
-  return (
-    <div className="mt-6 flex items-center justify-center gap-3">
-      <button
-        type="button"
-        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-        disabled={currentPage === 1}
-        className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b] disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Prev
-      </button>
-      <span className="text-sm text-[#657056]">Page {currentPage} / {totalPages}</span>
-      <button
-        type="button"
-        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-        disabled={currentPage === totalPages}
-        className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b] disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Next
-      </button>
-    </div>
-  );
-}

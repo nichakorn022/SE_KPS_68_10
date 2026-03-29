@@ -37,12 +37,18 @@ export default function MyEventsPage() {
         }
       });
 
-      if (!res.ok) throw new Error("Delete failed");
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(`Cannot delete: ${data.message}`);
+        return;
+      }
 
       setEvents(prev => prev.filter(e => e.event_id !== id));
+      alert("Event deleted successfully");
 
     } catch (err) {
-      alert(err.message);
+      alert("Error: " + err.message);
     }
   };
 
@@ -84,27 +90,44 @@ export default function MyEventsPage() {
               <div key={e.event_id}
                 className="bg-white rounded-xl shadow p-4">
 
-                <h3 className="font-bold">{e.title}</h3>
-                <p>{e.location}</p>
+                <h3 className="font-bold text-lg">{e.title}</h3>
+                <p className="text-sm text-gray-600 mb-2">{e.location}</p>
+
+                {/* ด้านหลัง info */}
+                <div className="text-xs text-gray-500 mb-3">
+                  <p>Registrations: <span className="font-semibold">{e.registration_count || 0}</span></p>
+                </div>
+
+                {/* warning ถ้ามีคนสมัคร */}
+                {(e.registration_count || 0) > 0 && (
+                  <div className="bg-orange-50 border border-orange-200 rounded p-2 mb-3 text-xs text-orange-700">
+                    ⚠ Cannot delete: {e.registration_count} person{e.registration_count > 1 ? 's' : ''} registered
+                  </div>
+                )}
 
                 <div className="flex gap-2 mt-3">
 
                   <Link to={`/events/${e.event_id}`}>
-                    <button className="px-3 py-1 bg-gray-200 rounded">
+                    <button className="px-3 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300">
                       View
                     </button>
                   </Link>
 
                   <button
                     onClick={() => navigate(`/edit-event/${e.event_id}`)}
-                    className="px-3 py-1 bg-yellow-400 rounded"
+                    className="px-3 py-1 bg-yellow-400 rounded text-sm hover:bg-yellow-500"
                   >
                     Edit
                   </button>
 
                   <button
                     onClick={() => handleDelete(e.event_id)}
-                    className="px-3 py-1 bg-red-500 text-white rounded"
+                    disabled={(e.registration_count || 0) > 0}
+                    className={`px-3 py-1 rounded text-sm text-white ${
+                      (e.registration_count || 0) > 0
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-red-500 hover:bg-red-600"
+                    }`}
                   >
                     Delete
                   </button>

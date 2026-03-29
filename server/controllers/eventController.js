@@ -49,6 +49,21 @@ exports.searchEvents = (req, res) => {
 // ================= CREATE =================
 exports.createEvent = async (req, res) => {
   try {
+    const userId = req.user.user_id;
+
+    // Check if user is verified organizer
+    const org = await eventService.getVerifiedOrganizer(userId);
+    
+    if (!org) {
+      return res.status(403).json({ 
+        message: "You must be a verified organizer to create events. Please complete organizer approval first.",
+        code: "NOT_VERIFIED_ORGANIZER"
+      });
+    }
+
+    // Add organizer_id to request body
+    req.body.organizer_id = org.organizer_id;
+    
     const id = await eventService.createEvent(req.body);
     res.json({ message: "created", event_id: id });
   } catch (err) {
@@ -59,24 +74,74 @@ exports.createEvent = async (req, res) => {
 // ================= UPDATE =================
 exports.updateEvent = async (req, res) => {
   const { id } = req.params;
+  const userId = req.user.user_id;
 
   try {
+    // Check if user is verified organizer
+    const org = await eventService.getVerifiedOrganizer(userId);
+    
+    if (!org) {
+      return res.status(403).json({ 
+        message: "You must be a verified organizer to update events" 
+      });
+    }
+
+    // Check if user owns this event
+    const event = await eventService.getEventById(id);
+    
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    if (event.organizer_id !== org.organizer_id) {
+      return res.status(403).json({ 
+        message: "You can only update your own events" 
+      });
+    }
+
     await eventService.updateEvent(id, req.body);
     res.json({ message: "updated" });
   } catch (err) {
-    res.status(500).json({ message: "update failed", error: err.message });
+    res.status(err.statusCode || 500).json({ 
+      message: "update failed", 
+      error: err.message 
+    });
   }
 };
 
 // ================= DELETE =================
 exports.deleteEvent = async (req, res) => {
   const { id } = req.params;
+  const userId = req.user.user_id;
 
   try {
+    // Check if user is verified organizer
+    const org = await eventService.getVerifiedOrganizer(userId);
+    
+    if (!org) {
+      return res.status(403).json({ 
+        message: "You must be a verified organizer to delete events" 
+      });
+    }
+
+    // Check if user owns this event
+    const event = await eventService.getEventById(id);
+    
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    if (event.organizer_id !== org.organizer_id) {
+      return res.status(403).json({ 
+        message: "You can only delete your own events" 
+      });
+    }
+
     await eventService.deleteEvent(id);
     res.json({ message: "deleted" });
   } catch (err) {
-    res.status(500).json({ message: "delete failed", error: err.message });
+    const statusCode = err.statusCode || 500;
+    res.status(statusCode).json({ message: err.message, error: err.message });
   }
 };
 

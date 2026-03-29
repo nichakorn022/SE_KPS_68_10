@@ -197,6 +197,7 @@ export default function Eventdetails() {
   const { token } = useAuthModal();
   const [error, setError] = useState(null);
   const [registrationStatus, setRegistrationStatus] = useState(null);
+  const [registrationId, setRegistrationId] = useState(null);
   const [showPromptPay, setShowPromptPay] = useState(false);
   const [confirmingPromptPay, setConfirmingPromptPay] = useState(false);
 
@@ -253,7 +254,10 @@ export default function Eventdetails() {
         headers: { Authorization: `Bearer ${token}` }
       })
         .then(res => res.json())
-        .then(data => setRegistrationStatus(data.registration_status));
+        .then(data => {
+          setRegistrationStatus(data.registration_status);
+          setRegistrationId(data.registration_id);
+        });
 
       fetch(apiUrl(`/events/${id}/sponsor/check`), {
         headers: { Authorization: `Bearer ${token}` }
@@ -289,7 +293,13 @@ export default function Eventdetails() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
-      setRegistrationStatus(method === "POST" ? "pending" : "cancelled");
+      if (method === "POST") {
+        setRegistrationStatus("pending");
+        setRegistrationId(data.registration_id);
+      } else {
+        setRegistrationStatus("cancelled");
+        setRegistrationId(null);
+      }
     } catch (err) { alert(err.message); }
   };
 
@@ -326,13 +336,37 @@ export default function Eventdetails() {
     setShowPromptPay(true);
   };
 
-  const handleConfirmPromptPay = () => {
+  const handleConfirmPromptPay = async () => {
     setConfirmingPromptPay(true);
-    setTimeout(() => {
+    try {
+      // Send confirmation to backend
+      const res = await fetch(apiUrl(`/registrations/${registrationId}/confirm-payment`), {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          event_id: event.event_id,
+          user_id: user.user_id
+        })
+      });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.message || "Payment confirmation failed");
+      }
+
+      // Update state after successful backend confirmation
       setRegistrationStatus("confirmed");
       setConfirmingPromptPay(false);
       setShowPromptPay(false);
-    }, 700);
+      alert("Payment confirmed! You are now registered for this event.");
+    } catch (err) {
+      setConfirmingPromptPay(false);
+      alert("Payment confirmation failed: " + err.message);
+    }
   };
 
   if (error) return (
@@ -482,7 +516,7 @@ export default function Eventdetails() {
             )}
 
             {/* ── PRIMARY CTA ──────────────────────────────────── */}
-            <div className="flex flex-wrap gap-3 mt-auto">
+            <div className="flex flex-wrap gap-3 mt-auto items-center">
               {role === "shop" ? (
                 <button
                   onClick={sendSponsor}
@@ -492,22 +526,34 @@ export default function Eventdetails() {
                   {sBtn.label}
                 </button>
               ) : (
-                <button
-                  onClick={handleRegisterClick}
-                  className={`rounded-full px-6 py-2.5 text-sm font-semibold shadow-[0_8px_20px_rgba(72,91,59,0.15)] transition-all duration-300 ${
-                    registrationStatus === "confirmed"
-                      ? "bg-green-500 text-white"
-                      : registrationStatus === "pending"
-                      ? "bg-amber-400 text-white"
-                      : "bg-[#485B3B] text-white hover:bg-[#394A31]"
-                  }`}
-                >
-                  {registrationStatus === "pending"
-                    ? "Waiting for payment"
-                    : registrationStatus === "confirmed"
-                    ? "✓ Registered"
-                    : "Register for event"}
-                </button>
+                <>
+                  <button
+                    onClick={handleRegisterClick}
+                    disabled={registrationStatus === "pending" || registrationStatus === "confirmed"}
+                    className={`rounded-full px-6 py-2.5 text-sm font-semibold shadow-[0_8px_20px_rgba(72,91,59,0.15)] transition-all duration-300 ${
+                      registrationStatus === "confirmed"
+                        ? "bg-green-500 text-white cursor-not-allowed"
+                        : registrationStatus === "pending"
+                        ? "bg-amber-400 text-white cursor-not-allowed"
+                        : "bg-[#485B3B] text-white hover:bg-[#394A31]"
+                    }`}
+                  >
+                    {registrationStatus === "pending"
+                      ? "Waiting for payment"
+                      : registrationStatus === "confirmed"
+                      ? "✓ Registered"
+                      : "Register for event"}
+                  </button>
+
+                  {(registrationStatus === "pending" || registrationStatus === "confirmed") && (
+                    <button
+                      onClick={toggleRegister}
+                      className="rounded-full px-6 py-2.5 text-sm font-semibold shadow-[0_8px_20px_rgba(239,68,68,0.15)] bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-all duration-300"
+                    >
+                      Cancel Registration
+                    </button>
+                  )}
+                </>
               )}
 
               {registrationStatus === "cancelled" && (

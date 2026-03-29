@@ -10,6 +10,7 @@ router.post("/", RegistrationController.registerEvent);
 router.delete("/:id", RegistrationController.cancelRegistration);
 router.get("/user/:userId", authMiddleware, RegistrationController.getUserRegistrations);
 router.patch("/:id/status", adminMiddleware, RegistrationController.updateRegistrationStatus);
+router.patch("/:id/confirm-payment", authMiddleware, RegistrationController.confirmPayment);
 router.delete("/:id/hard-delete", adminMiddleware, RegistrationController.deleteRegistration);
 
 module.exports = router;

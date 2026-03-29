@@ -111,6 +111,42 @@ class RegistrationController {
 
   }
 
+  static async confirmPayment(req,res){
+
+    try{
+
+      const { id } = req.params;
+      const userId = req.user.user_id;
+
+      // Verify the registration exists and belongs to this user
+      const registrationRows = await query(
+        `SELECT user_id FROM event_registration WHERE registration_id = ? LIMIT 1`,
+        [id]
+      );
+
+      if (registrationRows.length === 0) {
+        return res.status(404).json({message: "Registration not found"});
+      }
+
+      if (String(registrationRows[0].user_id) !== String(userId)) {
+        return res.status(403).json({message: "You can only confirm your own payment"});
+      }
+
+      const data = await registrationService.updateRegistrationStatus(id, "confirmed");
+
+      res.json({
+        message: "Payment confirmed",
+        registration_status: "confirmed"
+      });
+
+    }catch(err){
+
+      res.status(err.statusCode || 500).json({error:err.message});
+
+    }
+
+  }
+
   static async deleteRegistration(req,res){
 
     try{

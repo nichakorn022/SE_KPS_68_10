@@ -2,7 +2,11 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
-require("dotenv").config({ path: path.join(__dirname, ".env") });
+const dotenv = require("dotenv");
+
+const localEnvPath = path.join(__dirname, ".env.local");
+const envPath = fs.existsSync(localEnvPath) ? localEnvPath : path.join(__dirname, ".env");
+dotenv.config({ path: envPath });
 
 const authRoutes = require("./routes/authRoutes");
 const productRoutes = require("./routes/productRoutes");
@@ -57,14 +61,12 @@ const { query } = require("./utils/dbHelpers");
       await query(`
         CREATE TABLE product_review (
           review_id INT AUTO_INCREMENT PRIMARY KEY,
-          user_id INT NOT NULL,
-          product_id INT NOT NULL,
           rating INT NOT NULL CHECK (rating >= 1 AND rating <= 5),
           comment TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-          FOREIGN KEY (product_id) REFERENCES tea_product(product_id) ON DELETE CASCADE,
-          UNIQUE KEY unique_user_product (user_id, product_id)
+          order_detail_id INT NOT NULL,
+          FOREIGN KEY (order_detail_id) REFERENCES order_details(order_detail_id) ON DELETE CASCADE,
+          UNIQUE KEY unique_order_detail (order_detail_id)
         )
       `);
       console.log("Created product_review table");
@@ -99,6 +101,35 @@ const { query } = require("./utils/dbHelpers");
     }
   } catch (err) {
     console.warn("Could not ensure tables:", err.message);
+  }
+})();
+
+(async function ensureProductReviewReplyTable() {
+  try {
+    const tables = await query(
+      `SELECT TABLE_NAME
+       FROM INFORMATION_SCHEMA.TABLES
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'product_review_reply'
+       LIMIT 1`
+    );
+
+    if (tables.length === 0) {
+      await query(`
+        CREATE TABLE product_review_reply (
+          reply_id INT AUTO_INCREMENT PRIMARY KEY,
+          review_id INT NOT NULL,
+          shop_user_id INT NOT NULL,
+          reply_text TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          UNIQUE KEY unique_review (review_id)
+        )
+      `);
+      console.log("Created product_review_reply table");
+    }
+  } catch (err) {
+    console.warn("Could not ensure product_review_reply table:", err.message);
   }
 })();
 
@@ -265,15 +296,10 @@ app.use("/api/reviews", reviewRoutes);
 const distPath = path.join(__dirname, "..", "dist");
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
-<<<<<<< Updated upstream
   // SPA fallback: serve index.html for non-API, non-upload routes.
   app.get(/^\/(?!api|uploads).*/, (req, res, next) => {
     const accept = String(req.headers.accept || "");
     if (accept && !accept.includes("text/html")) return next();
-=======
-  app.get("/{*path}", (req, res, next) => {
-    if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) return next();
->>>>>>> Stashed changes
     return res.sendFile(path.join(distPath, "index.html"));
   });
 }

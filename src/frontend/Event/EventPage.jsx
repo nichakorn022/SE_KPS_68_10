@@ -175,7 +175,7 @@ useEffect(() => {
                   {organizerStatus === null && (
                     <Link to="/become-organizer">
                       <button className="bg-[#6f8b5d] text-white px-5 py-2 rounded-full">
-                        Become Organizers
+                        Become Organizer
                       </button>
                     </Link>
                   )}

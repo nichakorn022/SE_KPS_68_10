@@ -199,6 +199,16 @@ useEffect(() => {
                 </div>
               )}
 
+              {role === "shop" && (
+                <div className="flex justify-center mb-6">
+                  <Link to="/my-sponsor">
+                    <button className="bg-[#6f8b5d] text-white px-5 py-2 rounded-full">
+                      My Sponsor Events
+                    </button>
+                  </Link>
+                </div>
+              )}
+
         <h2 className="text-center text-2xl mb-8">
           Events
         </h2>

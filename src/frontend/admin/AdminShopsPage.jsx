@@ -3,6 +3,18 @@ import { useOutletContext } from "react-router-dom";
 import { adminApi } from "./adminApi";
 import { assetUrl } from "../../lib/api";
 
+function getVerificationStatusLabel(value) {
+  return Number(value) === 1 ? "approved" : Number(value) === 2 ? "rejected" : "pending";
+}
+
+function getVerificationTone(value) {
+  return Number(value) === 1
+    ? "bg-[#eef6ea] text-[#386132]"
+    : Number(value) === 2
+      ? "bg-[#fff0ed] text-[#b33a24]"
+      : "bg-[#fff4e2] text-[#a46317]";
+}
+
 export default function AdminShopsPage() {
   const { adminToken } = useOutletContext();
   const [shops, setShops] = useState([]);
@@ -14,6 +26,8 @@ export default function AdminShopsPage() {
   const [provinceFilter, setProvinceFilter] = useState("all");
   const [productFilter, setProductFilter] = useState("all");
   const [page, setPage] = useState(1);
+  const [shopImagesPage, setShopImagesPage] = useState(1);
+  const [shopProductsPage, setShopProductsPage] = useState(1);
   const [selectedShop, setSelectedShop] = useState(null);
   const [activeProduct, setActiveProduct] = useState(null);
   const [shopForm, setShopForm] = useState({
@@ -91,11 +105,17 @@ export default function AdminShopsPage() {
     });
   }, [activeProduct]);
 
+  useEffect(() => {
+    setShopImagesPage(1);
+    setShopProductsPage(1);
+  }, [selectedShop]);
+
   const summaryCards = useMemo(
     () => [
       { label: "Total Shops", value: shops.length },
-      { label: "Pending", value: shops.filter((shop) => !Number(shop.verified_status)).length },
-      { label: "Approved", value: shops.filter((shop) => Number(shop.verified_status)).length },
+      { label: "Pending", value: shops.filter((shop) => Number(shop.verified_status) === 0).length },
+      { label: "Approved", value: shops.filter((shop) => Number(shop.verified_status) === 1).length },
+      { label: "Rejected", value: shops.filter((shop) => Number(shop.verified_status) === 2).length },
     ],
     [shops]
   );
@@ -105,7 +125,7 @@ export default function AdminShopsPage() {
       const shopProducts = products.filter((product) => String(product.shop_id) === String(shop.shop_id));
 
       if (statusFilter !== "all") {
-        const statusValue = Number(shop.verified_status) ? "approved" : "pending";
+        const statusValue = getVerificationStatusLabel(shop.verified_status);
         if (statusValue !== statusFilter) return false;
       }
 
@@ -130,7 +150,7 @@ export default function AdminShopsPage() {
         shop.subdistrict,
         `shop ${shop.shop_id}`,
         `user ${shop.user_id}`,
-        Number(shop.verified_status) ? "approved" : "pending",
+        getVerificationStatusLabel(shop.verified_status),
       ]
         .filter(Boolean)
         .join(" ")
@@ -251,6 +271,8 @@ export default function AdminShopsPage() {
   const activeProductImages = activeProduct
     ? productImages.filter((image) => String(image.product_id) === String(activeProduct.product_id))
     : [];
+  const paginatedShopImages = useMemo(() => paginate(selectedImages, shopImagesPage), [selectedImages, shopImagesPage]);
+  const paginatedShopProducts = useMemo(() => paginate(selectedProducts, shopProductsPage), [selectedProducts, shopProductsPage]);
 
   return (
     <section className="space-y-6">
@@ -287,6 +309,7 @@ export default function AdminShopsPage() {
               <option value="all">All statuses</option>
               <option value="approved">Approved</option>
               <option value="pending">Pending</option>
+              <option value="rejected">Rejected</option>
             </select>
           </label>
           <label className="block">
@@ -368,10 +391,8 @@ export default function AdminShopsPage() {
                     <td className="py-4">{shop.phone || shop.contact_info || "-"}</td>
                     <td className="py-4">{[shop.province, shop.district, shop.subdistrict].filter(Boolean).join(", ") || "-"}</td>
                     <td className="py-4">
-                      <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${
-                        Number(shop.verified_status) ? "bg-[#eef6ea] text-[#386132]" : "bg-[#fff4e2] text-[#a46317]"
-                      }`}>
-                        {Number(shop.verified_status) ? "approved" : "pending"}
+                      <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${getVerificationTone(shop.verified_status)}`}>
+                        {getVerificationStatusLabel(shop.verified_status)}
                       </span>
                     </td>
                     <td className="py-4 text-right">
@@ -428,7 +449,7 @@ export default function AdminShopsPage() {
               <MetaCard label="Owner Email" value={selectedShop.email || "-"} />
               <MetaCard label="Phone" value={selectedShop.phone || "-"} />
               <MetaCard label="Contact Info" value={selectedShop.contact_info || "-"} />
-              <MetaCard label="Status" value={Number(selectedShop.verified_status) ? "Approved" : "Pending"} />
+              <MetaCard label="Status" value={getVerificationStatusLabel(selectedShop.verified_status)} />
               <MetaCard label="Address" value={selectedShop.address || "-"} />
               <MetaCard label="Location" value={[selectedShop.province, selectedShop.district, selectedShop.subdistrict].filter(Boolean).join(", ") || "-"} />
             </div>
@@ -510,13 +531,20 @@ export default function AdminShopsPage() {
               {!selectedImages.length ? (
                 <div className="mt-3 rounded-2xl bg-[#f8f4eb] px-4 py-6 text-sm text-[#7a8368]">No shop images yet.</div>
               ) : (
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  {selectedImages.map((image) => (
+                <div className="mt-4 space-y-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                  {paginatedShopImages.items.map((image) => (
                     <div key={image.image_id} className="overflow-hidden rounded-[24px] bg-white ring-1 ring-[#e6ddc9]">
                       <img src={assetUrl(image.image_path)} alt="" className="h-44 w-full object-cover" />
                       <div className="px-4 py-3 text-xs text-[#7a8368]">Image #{image.image_id}</div>
                     </div>
                   ))}
+                  </div>
+                  <Pagination
+                    currentPage={paginatedShopImages.page}
+                    totalPages={paginatedShopImages.totalPages}
+                    onPageChange={setShopImagesPage}
+                  />
                 </div>
               )}
             </div>
@@ -531,8 +559,9 @@ export default function AdminShopsPage() {
               {!selectedProducts.length ? (
                 <div className="mt-3 rounded-2xl bg-[#f8f4eb] px-4 py-6 text-sm text-[#7a8368]">No products in this shop.</div>
               ) : (
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  {selectedProducts.map((product) => {
+                <div className="mt-4 space-y-4">
+                  <div className="grid gap-3 md:grid-cols-2">
+                  {paginatedShopProducts.items.map((product) => {
                     const previewImage = productImages.find((image) => String(image.product_id) === String(product.product_id));
                     return (
                       <button
@@ -567,6 +596,12 @@ export default function AdminShopsPage() {
                       </button>
                     );
                   })}
+                  </div>
+                  <Pagination
+                    currentPage={paginatedShopProducts.page}
+                    totalPages={paginatedShopProducts.totalPages}
+                    onPageChange={setShopProductsPage}
+                  />
                 </div>
               )}
             </div>
@@ -595,7 +630,7 @@ export default function AdminShopsPage() {
                     message: `Reject shop #${selectedShop.shop_id}?`,
                     confirmLabel: "Reject Shop",
                     tone: "danger",
-                    onConfirm: () => handleStatusChange(selectedShop.shop_id, 0),
+                    onConfirm: () => handleStatusChange(selectedShop.shop_id, 2),
                   })
                 }
                 className="rounded-full bg-[#fff0ed] px-5 py-3 text-sm font-medium text-[#b33a24]"
@@ -636,6 +671,12 @@ export default function AdminShopsPage() {
 
 function ProductDetailModal({ product, images, form, onFieldChange, onUpdate, onDelete, saving, deleting, onClose }) {
   const [confirmAction, setConfirmAction] = useState(null);
+  const [imagesPage, setImagesPage] = useState(1);
+  const paginatedImages = useMemo(() => paginate(images, imagesPage), [images, imagesPage]);
+
+  useEffect(() => {
+    setImagesPage(1);
+  }, [images]);
 
   return (
     <>
@@ -738,13 +779,16 @@ function ProductDetailModal({ product, images, form, onFieldChange, onUpdate, on
           {!images.length ? (
             <div className="mt-3 rounded-2xl bg-[#f8f4eb] px-4 py-6 text-sm text-[#7a8368]">No product images yet.</div>
           ) : (
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              {images.map((image) => (
-                <div key={image.image_id} className="overflow-hidden rounded-[24px] bg-white ring-1 ring-[#e6ddc9]">
-                  <img src={assetUrl(image.image_path)} alt="" className="h-48 w-full object-cover" />
-                  <div className="px-4 py-3 text-xs text-[#7a8368]">Image #{image.image_id}</div>
-                </div>
-              ))}
+            <div className="mt-4 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {paginatedImages.items.map((image) => (
+                  <div key={image.image_id} className="overflow-hidden rounded-[24px] bg-white ring-1 ring-[#e6ddc9]">
+                    <img src={assetUrl(image.image_path)} alt="" className="h-48 w-full object-cover" />
+                    <div className="px-4 py-3 text-xs text-[#7a8368]">Image #{image.image_id}</div>
+                  </div>
+                ))}
+              </div>
+              <Pagination currentPage={paginatedImages.page} totalPages={paginatedImages.totalPages} onPageChange={setImagesPage} />
             </div>
           )}
         </div>

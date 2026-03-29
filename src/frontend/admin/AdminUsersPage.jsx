@@ -3,6 +3,10 @@ import { useOutletContext } from "react-router-dom";
 import { adminApi } from "./adminApi";
 import { assetUrl } from "../../lib/api";
 
+function getVerificationStatusLabel(value) {
+  return Number(value) === 1 ? "Approved" : Number(value) === 2 ? "Rejected" : "Pending";
+}
+
 const orderStatuses = ["pending", "paid", "cancelled"];
 const registrationStatuses = ["REGISTERED", "CANCELLED"];
 
@@ -448,7 +452,7 @@ export default function AdminUsersPage() {
               <div className="mt-6 grid gap-4 md:grid-cols-3">
                 <MetaCard label="Organization" value={selectedUser.organization_name || "-"} />
                 <MetaCard label="Phone" value={selectedUser.phone || "-"} />
-                <MetaCard label="Verified" value={Number(selectedUser.verified_status) ? "Approved" : "Pending"} />
+                <MetaCard label="Verified" value={getVerificationStatusLabel(selectedUser.verified_status)} />
               </div>
             ) : null}
 
@@ -590,6 +594,13 @@ export default function AdminUsersPage() {
 }
 
 function OrdersSection({ orders, activeOrder, onOpenOrder, onCloseOrder, onUpdateOrder, onDeleteOrder }) {
+  const [page, setPage] = useState(1);
+  const paginatedOrders = useMemo(() => paginate(orders, page), [orders, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [orders]);
+
   return (
     <>
       <SectionHeader title="Orders" count={orders.length} />
@@ -597,7 +608,7 @@ function OrdersSection({ orders, activeOrder, onOpenOrder, onCloseOrder, onUpdat
         <EmptyState label="No orders found." />
       ) : (
         <div className="mt-5 space-y-3">
-          {orders.map((order) => (
+          {paginatedOrders.items.map((order) => (
             <button
               key={order.order_id}
               type="button"
@@ -619,6 +630,7 @@ function OrdersSection({ orders, activeOrder, onOpenOrder, onCloseOrder, onUpdat
               </div>
             </button>
           ))}
+          <Pagination currentPage={paginatedOrders.page} totalPages={paginatedOrders.totalPages} onPageChange={setPage} />
         </div>
       )}
       {activeOrder ? (
@@ -641,6 +653,13 @@ function RegistrationsSection({
   onUpdateRegistration,
   onDeleteRegistration,
 }) {
+  const [page, setPage] = useState(1);
+  const paginatedRegistrations = useMemo(() => paginate(registrations, page), [registrations, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [registrations]);
+
   return (
     <>
       <SectionHeader title="Event Registrations" count={registrations.length} />
@@ -648,7 +667,7 @@ function RegistrationsSection({
         <EmptyState label="No event registrations found." />
       ) : (
         <div className="mt-5 space-y-3">
-          {registrations.map((registration) => (
+          {paginatedRegistrations.items.map((registration) => (
             <button
               key={registration.registration_id}
               type="button"
@@ -669,6 +688,11 @@ function RegistrationsSection({
               </div>
             </button>
           ))}
+          <Pagination
+            currentPage={paginatedRegistrations.page}
+            totalPages={paginatedRegistrations.totalPages}
+            onPageChange={setPage}
+          />
         </div>
       )}
       {activeRegistration ? (
@@ -684,6 +708,13 @@ function RegistrationsSection({
 }
 
 function OrganizerEventsSection({ events }) {
+  const [page, setPage] = useState(1);
+  const paginatedEvents = useMemo(() => paginate(events, page), [events, page]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [events]);
+
   return (
     <>
       <SectionHeader title="Organized Events" count={events.length} />
@@ -691,7 +722,7 @@ function OrganizerEventsSection({ events }) {
         <EmptyState label="No organized events found." />
       ) : (
         <div className="mt-5 space-y-3">
-          {events.map((event) => (
+          {paginatedEvents.items.map((event) => (
             <div key={event.event_id} className="rounded-2xl bg-white px-4 py-4 ring-1 ring-[#efe8d8]">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -709,6 +740,7 @@ function OrganizerEventsSection({ events }) {
               </div>
             </div>
           ))}
+          <Pagination currentPage={paginatedEvents.page} totalPages={paginatedEvents.totalPages} onPageChange={setPage} />
         </div>
       )}
     </>

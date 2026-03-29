@@ -132,6 +132,32 @@ router.get("/shop/available", authMiddleware, async (req, res) => {
 });
 
 
+// 🔥 GET MY EVENTS (organizer)
+router.get("/my-events", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+
+    const org = await query(
+      "SELECT organizer_id FROM organizer WHERE user_id = ? AND verified_status = 1",
+      [userId]
+    );
+
+    if (org.length === 0) {
+      return res.json([]);
+    }
+
+    const events = await query(
+      "SELECT * FROM event WHERE organizer_id = ? ORDER BY event_id DESC",
+      [org[0].organizer_id]
+    );
+
+    res.json(events);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error" });
+  }
+});
 
 
 

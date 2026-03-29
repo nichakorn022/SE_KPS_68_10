@@ -67,4 +67,31 @@ router.post("/register", authMiddleware, async (req, res) => {
   }
 });
 
+
+// ================== GET MY ORGANIZER ==================
+router.get("/me", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+
+    const rows = await query(
+      "SELECT organizer_id, verified_status FROM organizer WHERE user_id = ? LIMIT 1",
+      [userId]
+    );
+
+    if (rows.length === 0) {
+      return res.json({ exists: false });
+    }
+
+    res.json({
+      exists: true,
+      organizer_id: rows[0].organizer_id,
+      verified_status: rows[0].verified_status
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error fetching organizer" });
+  }
+});
+
 module.exports = router;

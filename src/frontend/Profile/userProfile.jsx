@@ -138,7 +138,7 @@ export default function UserProfile() {
       console.error(error);
       alert("Unable to load order details.");
     }
-  }
+  } 
 
   async function uploadAvatar() {
     if (!selectedFile || !userId) return;
@@ -225,9 +225,9 @@ export default function UserProfile() {
           <div className="text-sm text-[#6f7b70]">{formatPrice(order.total || order.total_amount)}</div>
           <div
             className="mt-2 inline-block rounded-full px-3 py-1 text-sm font-semibold text-white"
-            style={{ background: order.status === "delivered" ? "#6B8A5B" : "#87a179" }}
+            style={{ background: getStatusConfig(order.status).color }}
           >
-            {order.status || "pending"}
+            {getStatusConfig(order.status).label}
           </div>
         </div>
       </div>
@@ -494,8 +494,8 @@ export default function UserProfile() {
 
 const STATUS_CONFIG = {
   paid: { label: "Paid", color: "#6B8A5B", bg: "#6B8A5B18" },
-  pending: { label: "Preparing", color: "#D4A017", bg: "#D4A01718" },
-  preparing: { label: "Preparing", color: "#D4A017", bg: "#D4A01718" },
+  pending: { label: "Pending", color: "#D4A017", bg: "#D4A01718" },
+  preparing: { label: "Pending", color: "#D4A017", bg: "#D4A01718" },
   completed: { label: "Completed", color: "#6B8A5B", bg: "#6B8A5B18" },
   delivered: { label: "Completed", color: "#6B8A5B", bg: "#6B8A5B18" },
   cancelled: { label: "Cancelled", color: "#c0392b", bg: "#c0392b18" },

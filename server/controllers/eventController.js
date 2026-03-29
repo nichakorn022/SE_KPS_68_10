@@ -1,6 +1,6 @@
 const eventService = require("../services/eventService");
 const { query } = require("../utils/dbHelpers");
-const { sendRegistrationConfirmation } = require("../utils/mailer");
+const { sendRegistrationConfirmation, sendEventCancellationEmail } = require("../utils/mailer");
 
 
 function toLegacyEventShape(event) {
@@ -250,7 +250,36 @@ exports.cancelRegistration = async (req, res) => {
   const eventId = req.params.id;
 
   try {
+    // Check if the registration was confirmed (paid) before cancelling
+    const regRows = await query(
+      `SELECT r.registration_status, e.title, e.event_date
+       FROM event_registration r
+       JOIN event e ON e.event_id = r.event_id
+       WHERE r.user_id = ? AND r.event_id = ? LIMIT 1`,
+      [userId, eventId]
+    );
+    const wasPaid = regRows.length > 0 && regRows[0].registration_status === "confirmed";
+
     await eventService.cancelRegistration(userId, eventId);
+
+    // Send cancellation email if user had already paid
+    if (wasPaid) {
+      try {
+        const userRows = await query("SELECT username, email FROM users WHERE user_id = ? LIMIT 1", [userId]);
+        const user = userRows[0];
+        if (user?.email && regRows[0]?.title) {
+          sendEventCancellationEmail({
+            to: user.email,
+            username: user.username,
+            eventTitle: regRows[0].title,
+            eventDate: regRows[0].event_date,
+          }).catch((err) => console.error("Cancellation email failed:", err.message));
+        }
+      } catch (mailErr) {
+        console.error("Cancellation email lookup failed:", mailErr.message);
+      }
+    }
+
     res.json({ message: "Registration cancelled" });
   } catch (error) {
     res.status(500).json({

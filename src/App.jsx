@@ -11,6 +11,7 @@ const EventDetails = lazy(() => import("./frontend/Event/Eventdetails.jsx"));
 const EventReview = lazy(() => import("./frontend/Event/EventReview.jsx"));
 const MySponsorPage = lazy(() => import("./frontend/Event/MySponsorPage.jsx"));
 const BecomeOrganizer = lazy(() => import("./frontend/Event/BecomeOrganizer.jsx"));
+const MyEventsPage = lazy(() => import("./frontend/Event/MyEventsPage.jsx"));
 const ShopProfile = lazy(() => import("./frontend/Shop/ShopProfile.jsx"));
 const ShopChatPage = lazy(() => import("./frontend/Shop/ShopChatPage.jsx"));
 const SellerDashboard = lazy(() => import("./frontend/Shop/SellerDashboard.jsx"));
@@ -21,7 +22,7 @@ const CheckoutPage = lazy(() => import("./frontend/Shop/CheckoutPage.jsx"));
 const CheckoutAddressPage = lazy(() => import("./frontend/Shop/CheckoutAddressPage.jsx"));
 const CheckoutAddressFormPage = lazy(() => import("./frontend/Shop/CheckoutAddressFormPage.jsx"));
 const OrderSuccessPage = lazy(() => import("./frontend/Shop/OrderSuccessPage.jsx"));
-const ProfileEntry = lazy(() => import("./frontend/Profile/ProfileEntry.jsx"));
+const UserProfile = lazy(() => import("./frontend/Profile/userProfile.jsx"));
 const AdminRoute = lazy(() => import("./frontend/admin/AdminRoute.jsx"));
 const AdminDashboard = lazy(() => import("./frontend/admin/AdminDashboard.jsx"));
 const AdminInboxPage = lazy(() => import("./frontend/admin/AdminInboxPage.jsx"));
@@ -29,7 +30,6 @@ const AdminShopsPage = lazy(() => import("./frontend/admin/AdminShopsPage.jsx"))
 const AdminEventsPage = lazy(() => import("./frontend/admin/AdminEventsPage.jsx"));
 const AdminOrdersPage = lazy(() => import("./frontend/admin/AdminOrdersPage.jsx"));
 const AdminUsersPage = lazy(() => import("./frontend/admin/AdminUsersPage.jsx"));
-const AdminCommentsPage = lazy(() => import("./frontend/admin/AdminCommentsPage.jsx"));
 
 export const AuthModalContext = createContext(null);
 export const useAuthModal = () => useContext(AuthModalContext);
@@ -116,12 +116,13 @@ function App() {
               <Route path="/review/:id" element={<EventReview />} />
               <Route path="/my-sponsor" element={<MySponsorPage />} />
               <Route path="/become-organizer" element={<BecomeOrganizer />} />
+              <Route path="/my-events" element={<MyEventsPage />} />
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/checkout/address" element={<CheckoutAddressPage />} />
               <Route path="/checkout/address/new" element={<CheckoutAddressFormPage />} />
               <Route path="/checkout/success/:orderId" element={<OrderSuccessPage />} />
-              <Route path="/profile" element={<ProfileEntry />} />
+              <Route path="/profile" element={<UserProfile />} />
             </Route>
 
             <Route
@@ -142,7 +143,6 @@ function App() {
               <Route path="events" element={<AdminEventsPage />} />
               <Route path="orders" element={<AdminOrdersPage />} />
               <Route path="users" element={<AdminUsersPage />} />
-              <Route path="comments" element={<AdminCommentsPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

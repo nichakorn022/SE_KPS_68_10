@@ -122,15 +122,29 @@ const { query } = require("./utils/dbHelpers");
   }
 })();
 
-(async function ensureReviewStatusColumns() {
+(async function normalizeVerificationStatuses() {
   const targets = [
-    { table: "tea_shop", verifiedColumn: "verified_status" },
-    { table: "organizer", verifiedColumn: "verified_status" },
+    { table: "tea_shop" },
+    { table: "organizer" },
   ];
 
   for (const target of targets) {
     try {
-      const rows = await query(
+      const verifiedRows = await query(
+        `SELECT COLUMN_NAME
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?
+           AND COLUMN_NAME = 'verified_status'
+         LIMIT 1`,
+        [target.table]
+      );
+
+      if (verifiedRows.length === 0) {
+        continue;
+      }
+
+      const reviewRows = await query(
         `SELECT COLUMN_NAME
          FROM INFORMATION_SCHEMA.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE()
@@ -140,21 +154,28 @@ const { query } = require("./utils/dbHelpers");
         [target.table]
       );
 
-      if (rows.length === 0) {
-        await query(
-          `ALTER TABLE ${target.table}
-           ADD COLUMN review_status VARCHAR(20) NOT NULL DEFAULT 'pending'`
-        );
+      if (reviewRows.length > 0) {
         await query(
           `UPDATE ${target.table}
-           SET review_status = CASE
-             WHEN ${target.verifiedColumn} = 1 THEN 'approved'
-             ELSE 'pending'
+           SET verified_status = CASE
+             WHEN LOWER(COALESCE(review_status, '')) = 'approved' THEN 1
+             WHEN LOWER(COALESCE(review_status, '')) = 'rejected' THEN 2
+             WHEN verified_status NOT IN (0, 1, 2) OR verified_status IS NULL THEN 0
+             ELSE verified_status
+           END`
+        );
+      } else {
+        await query(
+          `UPDATE ${target.table}
+           SET verified_status = CASE
+             WHEN verified_status IN (0, 1, 2) THEN verified_status
+             WHEN verified_status = 1 THEN 1
+             ELSE 0
            END`
         );
       }
     } catch (err) {
-      console.warn(`Could not ensure ${target.table}.review_status column:`, err.message);
+      console.warn(`Could not normalize ${target.table}.verified_status values:`, err.message);
     }
   }
 })();

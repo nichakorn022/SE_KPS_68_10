@@ -34,6 +34,7 @@ export default function AdminEventsPage() {
   const [dateFilter, setDateFilter] = useState("all");
   const [organizerFilter, setOrganizerFilter] = useState("");
   const [page, setPage] = useState(1);
+  const [eventImagesPage, setEventImagesPage] = useState(1);
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -122,6 +123,10 @@ export default function AdminEventsPage() {
     setPage(1);
   }, [searchTerm, statusFilter, dateFilter, organizerFilter]);
 
+  useEffect(() => {
+    setEventImagesPage(1);
+  }, [editingId, eventImages]);
+
   const paginatedEvents = useMemo(() => paginate(filteredEvents, page), [filteredEvents, page]);
   const hasActiveFilters =
     Boolean(searchTerm.trim()) || statusFilter !== "all" || dateFilter !== "all" || Boolean(organizerFilter.trim());
@@ -195,6 +200,7 @@ export default function AdminEventsPage() {
   };
 
   const selectedEventImages = eventImages.filter((image) => String(image.event_id) === String(editingId));
+  const paginatedEventImages = useMemo(() => paginate(selectedEventImages, eventImagesPage), [selectedEventImages, eventImagesPage]);
 
   const handleImageUpload = async (event) => {
     const file = event.target.files?.[0];
@@ -480,30 +486,37 @@ export default function AdminEventsPage() {
                   {selectedEventImages.length === 0 ? (
                     <div className="rounded-2xl bg-white px-4 py-6 text-sm text-[#7a8368]">No images yet.</div>
                   ) : (
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      {selectedEventImages.map((image) => (
-                        <div key={image.image_id} className="overflow-hidden rounded-[24px] bg-white ring-1 ring-[#e6ddc9]">
-                          <img src={assetUrl(image.image_path)} alt="" className="h-40 w-full object-cover" />
-                          <div className="flex items-center justify-between gap-3 px-4 py-3">
-                            <p className="text-xs text-[#7a8368]">Image #{image.image_id}</p>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setConfirmAction({
-                                  title: "Delete Event Image",
-                                  message: `Delete image #${image.image_id}?`,
-                                  confirmLabel: "Delete Image",
-                                  tone: "danger",
-                                  onConfirm: () => handleImageDelete(image.image_id),
-                                })
-                              }
-                              className="rounded-full bg-[#fff0ed] px-3 py-2 text-xs font-medium text-[#b33a24]"
-                            >
-                              Delete
-                            </button>
+                    <div className="space-y-4">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {paginatedEventImages.items.map((image) => (
+                          <div key={image.image_id} className="overflow-hidden rounded-[24px] bg-white ring-1 ring-[#e6ddc9]">
+                            <img src={assetUrl(image.image_path)} alt="" className="h-40 w-full object-cover" />
+                            <div className="flex items-center justify-between gap-3 px-4 py-3">
+                              <p className="text-xs text-[#7a8368]">Image #{image.image_id}</p>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setConfirmAction({
+                                    title: "Delete Event Image",
+                                    message: `Delete image #${image.image_id}?`,
+                                    confirmLabel: "Delete Image",
+                                    tone: "danger",
+                                    onConfirm: () => handleImageDelete(image.image_id),
+                                  })
+                                }
+                                className="rounded-full bg-[#fff0ed] px-3 py-2 text-xs font-medium text-[#b33a24]"
+                              >
+                                Delete
+                              </button>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
+                      <Pagination
+                        currentPage={paginatedEventImages.page}
+                        totalPages={paginatedEventImages.totalPages}
+                        onPageChange={setEventImagesPage}
+                      />
                     </div>
                   )}
                 </div>

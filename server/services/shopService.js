@@ -4,7 +4,7 @@ async function getShops() {
   return query(
     `SELECT ts.shop_id, ts.user_id, u.email, ts.shop_name, ts.description, ts.contact_info, ts.phone, ts.address,
             ts.opening_hours,
-            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status, ts.review_status, ts.admin_note
+            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status, ts.admin_note
      FROM tea_shop ts
      LEFT JOIN users u ON u.user_id = ts.user_id
      ORDER BY shop_id DESC`
@@ -15,7 +15,7 @@ async function getShopById(id) {
   const rows = await query(
     `SELECT ts.shop_id, ts.user_id, u.email, ts.shop_name, ts.description, ts.contact_info, ts.phone, ts.address,
             ts.opening_hours,
-            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status, ts.review_status, ts.admin_note
+            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status, ts.admin_note
      FROM tea_shop ts
      LEFT JOIN users u ON u.user_id = ts.user_id
      WHERE ts.shop_id = ?`,
@@ -210,21 +210,15 @@ async function updateShopByAdmin(shopId, payload) {
   return getShopById(shopId);
 }
 
-async function updateShopVerification(shopId, verifiedStatus, adminNote, reviewStatus) {
-  const normalizedReviewStatus =
-    String(reviewStatus || "").toLowerCase() === "approved"
-      ? "approved"
-      : String(reviewStatus || "").toLowerCase() === "rejected"
-        ? "rejected"
-        : verifiedStatus
-          ? "approved"
-          : "pending";
+async function updateShopVerification(shopId, verifiedStatus, adminNote) {
+  const normalizedVerifiedStatus =
+    Number(verifiedStatus) === 1 ? 1 : Number(verifiedStatus) === 2 ? 2 : 0;
 
   const result = await query(
     `UPDATE tea_shop
-     SET verified_status = ?, review_status = ?, admin_note = ?
+     SET verified_status = ?, admin_note = ?
      WHERE shop_id = ?`,
-    [verifiedStatus ? 1 : 0, normalizedReviewStatus, adminNote ?? null, shopId]
+    [normalizedVerifiedStatus, adminNote ?? null, shopId]
   );
 
   if (result.affectedRows === 0) {

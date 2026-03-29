@@ -195,10 +195,10 @@ export const adminApi = {
       body: JSON.stringify({}),
     });
   },
-  updateShopVerification(adminToken, shopId, verifiedStatus, adminNote = null, reviewStatus = null) {
+  updateShopVerification(adminToken, shopId, verifiedStatus, adminNote = null) {
     return adminFetch(`/shops/${shopId}/verification`, adminToken, {
       method: "PATCH",
-      body: JSON.stringify({ verified_status: verifiedStatus, admin_note: adminNote, review_status: reviewStatus }),
+      body: JSON.stringify({ verified_status: verifiedStatus, admin_note: adminNote }),
     });
   },
   updateShop(adminToken, shopId, payload) {
@@ -210,10 +210,10 @@ export const adminApi = {
   getOrganizers(adminToken) {
     return adminFetch("/organizers", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
-  updateOrganizerVerification(adminToken, organizerId, verifiedStatus, adminNote = null, reviewStatus = null) {
+  updateOrganizerVerification(adminToken, organizerId, verifiedStatus, adminNote = null) {
     return adminFetch(`/organizers/${organizerId}/verification`, adminToken, {
       method: "PATCH",
-      body: JSON.stringify({ verified_status: verifiedStatus, admin_note: adminNote, review_status: reviewStatus }),
+      body: JSON.stringify({ verified_status: verifiedStatus, admin_note: adminNote }),
     });
   },
   getReports(adminToken) {

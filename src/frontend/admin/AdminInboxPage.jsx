@@ -3,6 +3,10 @@ import { Link, useLocation, useOutletContext, useSearchParams } from "react-rout
 import { adminApi } from "./adminApi";
 import { assetUrl } from "../../lib/api";
 
+function getVerificationStatusLabel(value) {
+  return Number(value) === 1 ? "approved" : Number(value) === 2 ? "rejected" : "pending";
+}
+
 const reportStatuses = ["pending", "reviewed", "resolved", "dismissed"];
 const eventStatuses = ["draft", "open", "closed", "cancelled"];
 
@@ -182,7 +186,7 @@ export default function AdminInboxPage() {
     const shopItems = shops.map((shop) => ({
       id: `shop-${shop.shop_id}`,
       type: "shop",
-      status: String(shop.review_status || (Number(shop.verified_status) ? "approved" : "pending")).toLowerCase(),
+      status: getVerificationStatusLabel(shop.verified_status),
       title: shop.shop_name || `Shop #${shop.shop_id}`,
       subtitle: shop.email || `User #${shop.user_id}`,
       createdAt: shop.created_at || null,
@@ -192,7 +196,7 @@ export default function AdminInboxPage() {
     const organizerItems = organizers.map((organizer) => ({
       id: `organizer-${organizer.organizer_id}`,
       type: "organizer",
-      status: String(organizer.review_status || (Number(organizer.verified_status) ? "approved" : "pending")).toLowerCase(),
+      status: getVerificationStatusLabel(organizer.verified_status),
       title:
         [organizer.first_name, organizer.last_name].filter(Boolean).join(" ") ||
         organizer.organization_name ||
@@ -314,12 +318,12 @@ export default function AdminInboxPage() {
     () => [
       {
         label: "Pending Shops",
-        value: shops.filter((shop) => String(shop.review_status || (Number(shop.verified_status) ? "approved" : "pending")).toLowerCase() === "pending").length,
+        value: shops.filter((shop) => getVerificationStatusLabel(shop.verified_status) === "pending").length,
         tone: "shop",
       },
       {
         label: "Pending Organizers",
-        value: organizers.filter((organizer) => String(organizer.review_status || (Number(organizer.verified_status) ? "approved" : "pending")).toLowerCase() === "pending").length,
+        value: organizers.filter((organizer) => getVerificationStatusLabel(organizer.verified_status) === "pending").length,
         tone: "organizer",
       },
       {
@@ -459,14 +463,13 @@ export default function AdminInboxPage() {
     }
   };
 
-  const handleShopVerification = async (shopId, nextValue, reviewStatus) => {
+  const handleShopVerification = async (shopId, nextValue) => {
     try {
       await adminApi.updateShopVerification(
         adminToken,
         shopId,
         nextValue,
-        notesById[`shop-${shopId}`] || null,
-        reviewStatus
+        notesById[`shop-${shopId}`] || null
       );
       setStatus({ type: "success", message: `Shop #${shopId} updated` });
       loadData();
@@ -475,14 +478,13 @@ export default function AdminInboxPage() {
     }
   };
 
-  const handleOrganizerVerification = async (organizerId, nextValue, reviewStatus) => {
+  const handleOrganizerVerification = async (organizerId, nextValue) => {
     try {
       await adminApi.updateOrganizerVerification(
         adminToken,
         organizerId,
         nextValue,
-        notesById[`organizer-${organizerId}`] || null,
-        reviewStatus
+        notesById[`organizer-${organizerId}`] || null
       );
       setStatus({ type: "success", message: `Organizer #${organizerId} updated` });
       loadData();
@@ -590,9 +592,8 @@ export default function AdminInboxPage() {
             adminApi.updateShopVerification(
               adminToken,
               item.raw.shop_id,
-              actionKey === "approve" ? 1 : 0,
-              notesById[item.id] || null,
-              actionKey === "approve" ? "approved" : "rejected"
+              actionKey === "approve" ? 1 : 2,
+              notesById[item.id] || null
             )
           )
         );
@@ -602,9 +603,8 @@ export default function AdminInboxPage() {
             adminApi.updateOrganizerVerification(
               adminToken,
               item.raw.organizer_id,
-              actionKey === "approve" ? 1 : 0,
-              notesById[item.id] || null,
-              actionKey === "approve" ? "approved" : "rejected"
+              actionKey === "approve" ? 1 : 2,
+              notesById[item.id] || null
             )
           )
         );
@@ -906,14 +906,14 @@ export default function AdminInboxPage() {
                     },
                   })
                 }
-                onAction={(shopId, nextValue, reviewStatus) =>
+                onAction={(shopId, nextValue) =>
                   requestConfirmation({
-                    title: nextValue ? "Approve shop" : "Reject shop",
+                    title: Number(nextValue) === 1 ? "Approve shop" : "Reject shop",
                     message: `Confirm this action for shop #${shopId}?`,
-                    confirmLabel: nextValue ? "Approve shop" : "Reject shop",
-                    tone: nextValue ? "positive" : "danger",
+                    confirmLabel: Number(nextValue) === 1 ? "Approve shop" : "Reject shop",
+                    tone: Number(nextValue) === 1 ? "positive" : "danger",
                     action: async () => {
-                      await handleShopVerification(shopId, nextValue, reviewStatus);
+                      await handleShopVerification(shopId, nextValue);
                       closeDetail();
                     },
                   })
@@ -924,14 +924,14 @@ export default function AdminInboxPage() {
                 item={selectedItem.raw}
                 note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
                 onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
-                onAction={(organizerId, nextValue, reviewStatus) =>
+                onAction={(organizerId, nextValue) =>
                   requestConfirmation({
-                    title: nextValue ? "Approve organizer" : "Reject organizer",
+                    title: Number(nextValue) === 1 ? "Approve organizer" : "Reject organizer",
                     message: `Confirm this action for organizer #${organizerId}?`,
-                    confirmLabel: nextValue ? "Approve organizer" : "Reject organizer",
-                    tone: nextValue ? "positive" : "danger",
+                    confirmLabel: Number(nextValue) === 1 ? "Approve organizer" : "Reject organizer",
+                    tone: Number(nextValue) === 1 ? "positive" : "danger",
                     action: async () => {
-                      await handleOrganizerVerification(organizerId, nextValue, reviewStatus);
+                      await handleOrganizerVerification(organizerId, nextValue);
                       closeDetail();
                     },
                   })
@@ -1060,7 +1060,7 @@ function ShopDetail({ item, images, note, onNoteChange, onUploadImage, onDeleteI
           { label: "Phone", value: item.phone || "-" },
           { label: "Contact", value: item.contact_info || "-" },
           { label: "National ID", value: item.national_id || "-" },
-          { label: "Status", value: item.review_status || (Number(item.verified_status) ? "Approved" : "Pending") },
+          { label: "Status", value: getVerificationStatusLabel(item.verified_status) },
         ]}
       />
       <div className="rounded-[24px] bg-[#fcfbf7] p-5">
@@ -1111,8 +1111,8 @@ function ShopDetail({ item, images, note, onNoteChange, onUploadImage, onDeleteI
       </div>
       <NoteField value={note} onChange={onNoteChange} placeholder="Add approval note or rejection reason..." />
       <div className="flex gap-3">
-        <ActionButton tone="positive" onClick={() => onAction(item.shop_id, 1, "approved")}>Approve Shop</ActionButton>
-        <ActionButton tone="danger" onClick={() => onAction(item.shop_id, 0, "rejected")}>Reject Shop</ActionButton>
+        <ActionButton tone="positive" onClick={() => onAction(item.shop_id, 1)}>Approve Shop</ActionButton>
+        <ActionButton tone="danger" onClick={() => onAction(item.shop_id, 2)}>Reject Shop</ActionButton>
       </div>
     </DetailShell>
   );
@@ -1172,7 +1172,7 @@ function OrganizerDetail({ item, note, onNoteChange, onAction }) {
           { label: "User", value: item.email || `User #${item.user_id}` },
           { label: "Organization", value: item.organization_name || "-" },
           { label: "Phone", value: item.phone || "-" },
-          { label: "Status", value: item.review_status || (Number(item.verified_status) ? "Approved" : "Pending") },
+          { label: "Status", value: getVerificationStatusLabel(item.verified_status) },
         ]}
       />
       <div className="rounded-[24px] bg-[#fcfbf7] p-5">
@@ -1181,8 +1181,8 @@ function OrganizerDetail({ item, note, onNoteChange, onAction }) {
       </div>
       <NoteField value={note} onChange={onNoteChange} placeholder="Add approval note or rejection reason..." />
       <div className="flex gap-3">
-        <ActionButton tone="positive" onClick={() => onAction(item.organizer_id, 1, "approved")}>Approve Organizer</ActionButton>
-        <ActionButton tone="danger" onClick={() => onAction(item.organizer_id, 0, "rejected")}>Reject Organizer</ActionButton>
+        <ActionButton tone="positive" onClick={() => onAction(item.organizer_id, 1)}>Approve Organizer</ActionButton>
+        <ActionButton tone="danger" onClick={() => onAction(item.organizer_id, 2)}>Reject Organizer</ActionButton>
       </div>
     </DetailShell>
   );

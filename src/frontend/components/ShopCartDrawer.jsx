@@ -22,8 +22,8 @@ export default function ShopCartDrawer({ cart, onClose, onUpdateQty, onCheckout 
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-[#8BA07A]">Cart drawer</p>
-              <h2 className="mt-1 text-[24px] font-semibold text-[#24321F]">ตะกร้าสินค้า</h2>
-              <p className="mt-1 text-sm text-[#6A785F]">{itemCount} รายการที่พร้อมไปต่อยังขั้นตอนชำระเงิน</p>
+              <h2 className="mt-1 text-[24px] font-semibold text-[#24321F]">Shopping cart</h2>
+              <p className="mt-1 text-sm text-[#6A785F]">{itemCount} items ready to proceed to checkout</p>
             </div>
             <button
               type="button"
@@ -43,9 +43,9 @@ export default function ShopCartDrawer({ cart, onClose, onUpdateQty, onCheckout 
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#E3ECD7] text-3xl text-[#516548]">
                 🛒
               </div>
-              <h3 className="mt-5 text-[22px] font-semibold text-[#2A3826]">ตะกร้ายังว่าง</h3>
+              <h3 className="mt-5 text-[22px] font-semibold text-[#2A3826]">Cart is empty</h3>
               <p className="mt-3 text-sm leading-7 text-[#6A785F]">
-                ลองเริ่มจากเมนูที่สะดุดตาหรือกดหมวดที่สนใจ แล้วระบบจะเก็บไว้ให้ตรงนี้ทันที
+                Try starting with an eye-catching menu or click on an interesting category, and the system will save it here immediately
               </p>
             </div>
           ) : (
@@ -103,12 +103,12 @@ export default function ShopCartDrawer({ cart, onClose, onUpdateQty, onCheckout 
                           onClick={() => onUpdateQty(item.id, 0)}
                           className="text-sm font-medium text-[#8A675A] transition-colors duration-300 hover:text-[#6A4A3C]"
                         >
-                          ลบออก
+                          Remove
                         </button>
                       </div>
 
                       {atLimit ? (
-                        <p className="mt-2 text-xs font-medium text-[#B26B44]">มีสินค้านี้ในตะกร้าครบจำนวนที่มีแล้ว</p>
+                        <p className="mt-2 text-xs font-medium text-[#B26B44]">You have reached the maximum quantity available for this item in your cart</p>
                       ) : null}
                     </div>
                   </div>
@@ -120,15 +120,15 @@ export default function ShopCartDrawer({ cart, onClose, onUpdateQty, onCheckout 
 
         <div className="border-t border-[#D9E2CF] bg-white/86 px-6 py-5">
           <div className="mb-4 flex items-center justify-between text-sm text-[#6C7B61]">
-            <span>รวมรายการ</span>
-            <span>{itemCount} ชิ้น</span>
+            <span>Total items</span>
+            <span>{itemCount} pieces</span>
           </div>
           <div className="mb-5 flex items-end justify-between">
             <div>
-              <p className="text-sm text-[#7A8A6F]">ยอดรวมโดยประมาณ</p>
+              <p className="text-sm text-[#7A8A6F]">Estimated total</p>
               <p className="text-[28px] font-semibold text-[#23311F]">{formatPrice(total)}</p>
             </div>
-            <p className="max-w-[10rem] text-right text-xs leading-5 text-[#7A8A6F]">ยังไม่รวมค่าจัดส่งหรือค่าธรรมเนียมที่อาจเกิดขึ้น</p>
+            <p className="max-w-[10rem] text-right text-xs leading-5 text-[#7A8A6F]">Does not include shipping costs or possible fees</p>
           </div>
 
           {onCheckout ? (
@@ -142,7 +142,7 @@ export default function ShopCartDrawer({ cart, onClose, onUpdateQty, onCheckout 
                   : "bg-[#485B3B] text-white shadow-[0_16px_36px_rgba(72,91,59,0.22)] hover:bg-[#394A31]"
               }`}
             >
-              ไปหน้าชำระเงิน
+              Go to checkout
             </button>
           ) : (
             <Link
@@ -154,7 +154,7 @@ export default function ShopCartDrawer({ cart, onClose, onUpdateQty, onCheckout 
                   : "bg-[#485B3B] text-white shadow-[0_16px_36px_rgba(72,91,59,0.22)] hover:bg-[#394A31]"
               }`}
             >
-              ไปหน้าชำระเงิน
+              Go to checkout
             </Link>
           )}
         </div>

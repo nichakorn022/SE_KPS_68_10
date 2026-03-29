@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import SiteNavbar from "../components/SiteNavbar";
 import { apiUrl } from "../../lib/api";
 import {
@@ -34,6 +35,8 @@ export default function UserProfile() {
   const [uploading, setUploading] = useState(false);
   const [purchaseFilter, setPurchaseFilter] = useState("all");
   const [purchaseSearch, setPurchaseSearch] = useState("");
+  const [orderPage, setOrderPage] = useState(1);
+  const ORDERS_PER_PAGE = 10;
 
   const tokenPayload = getTokenPayload();
   const userId = getUserIdFromToken();
@@ -188,6 +191,8 @@ export default function UserProfile() {
     );
   }
 
+  const navigate = useNavigate();
+
   function RegistrationRow({ registration }) {
     const registrationDate =
       registration.created_at ||
@@ -196,23 +201,29 @@ export default function UserProfile() {
       Date.now();
 
     return (
-      <div className="flex items-center justify-between gap-4 rounded-lg bg-white p-4 shadow-sm">
+      <div
+        onClick={() => registration.event_id && navigate(`/events/${registration.event_id}`)}
+        className="flex cursor-pointer items-center justify-between gap-4 rounded-lg bg-white p-4 shadow-sm transition-colors hover:bg-[#fafdf7]"
+      >
         <div>
           <div className="text-sm text-[#6f7b70]">
             Registration #{registration.registration_id} | {new Date(registrationDate).toLocaleDateString("th-TH")}
           </div>
-          <div className="mt-1 font-medium">
+          <div className="mt-1 font-medium text-[#24321F]">
             {registration.event_title || registration.title || `Event ${registration.event_id || ""}`}
           </div>
         </div>
-        <div
-          className="inline-block rounded-full px-3 py-1 text-sm font-semibold text-white"
-          style={{
-            background:
-              registration.registration_status === "registered" ? "#6B8A5B" : "#c0392b",
-          }}
-        >
-          {registration.registration_status || "registered"}
+        <div className="flex items-center gap-3">
+          <div
+            className="inline-block rounded-full px-3 py-1 text-sm font-semibold text-white"
+            style={{
+              background:
+                registration.registration_status === "registered" ? "#6B8A5B" : "#c0392b",
+            }}
+          >
+            {registration.registration_status || "registered"}
+          </div>
+          <svg className="h-4 w-4 text-[#b0a99a]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
         </div>
       </div>
     );
@@ -306,7 +317,7 @@ export default function UserProfile() {
               {orders.length === 0 ? (
                 <div className="rounded-lg bg-white p-6 text-[#6f7b70]">No orders yet.</div>
               ) : (
-                <div className="space-y-4">
+                <div className="max-h-[500px] space-y-4 overflow-y-auto rounded-xl border border-[#e6e3da] bg-[#faf8f2] p-4">
                   {orders
                     .slice()
                     .reverse()
@@ -347,20 +358,25 @@ export default function UserProfile() {
           ) : null}
 
           {activeTab === "events" ? (
-            <div className="space-y-4">
-              {registrations.length === 0 ? (
-                <div className="rounded-lg bg-white p-6 text-[#6f7b70]">No registrations yet.</div>
-              ) : (
-                registrations
-                  .slice()
-                  .reverse()
-                  .map((registration) => (
-                    <RegistrationRow
-                      key={registration.registration_id}
-                      registration={registration}
-                    />
-                  ))
-              )}
+            <div className="flex flex-col gap-6 lg:flex-row">
+              <div className="flex-1 space-y-4">
+                {registrations.length === 0 ? (
+                  <div className="rounded-lg bg-white p-6 text-[#6f7b70]">No registrations yet.</div>
+                ) : (
+                  registrations
+                    .slice()
+                    .reverse()
+                    .map((registration) => (
+                      <RegistrationRow
+                        key={registration.registration_id}
+                        registration={registration}
+                      />
+                    ))
+                )}
+              </div>
+              <div className="w-full lg:w-[370px]">
+                <EventCalendar registrations={registrations} />
+              </div>
             </div>
           ) : null}
 
@@ -504,15 +520,17 @@ function PurchasesTab({ orders, filter, onFilterChange, search, onSearchChange, 
         />
       </div>
 
-      <div className="mt-6 space-y-5">
+      <div className="mt-6 max-h-[520px] overflow-y-auto rounded-xl border border-[#e6e3da] bg-[#faf8f2] p-4">
         {filtered.length === 0 ? (
           <div className="rounded-xl bg-[#faf8f2] py-12 text-center text-[#6f7b70]">
             No orders found.
           </div>
         ) : (
-          filtered.map((order) => (
-            <OrderCard key={order.order_id} order={order} onViewOrder={onViewOrder} />
-          ))
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {filtered.map((order) => (
+              <OrderCard key={order.order_id} order={order} onViewOrder={onViewOrder} />
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -599,6 +617,166 @@ function OrderCard({ order, onViewOrder }) {
           View Details
         </button>
       </div>
+    </div>
+  );
+}
+
+function EventCalendar({ registrations }) {
+  const [viewDate, setViewDate] = useState(() => new Date());
+
+  const eventDates = useMemo(() => {
+    const map = {};
+    for (const r of registrations) {
+      const d = r.event_date;
+      if (!d) continue;
+      const key = new Date(d).toISOString().slice(0, 10);
+      if (!map[key]) map[key] = [];
+      map[key].push(r);
+    }
+    return map;
+  }, [registrations]);
+
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevMonthDays = new Date(year, month, 0).getDate();
+
+  const DAY_LABELS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+  const MONTH_NAMES = [
+    "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+    "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม",
+  ];
+
+  const todayKey = new Date().toISOString().slice(0, 10);
+
+  const cells = [];
+  for (let i = 0; i < firstDay; i++) {
+    cells.push({ day: prevMonthDays - firstDay + 1 + i, outside: true });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    cells.push({ day: d, outside: false, key, events: eventDates[key] || [] });
+  }
+  const remaining = 7 - (cells.length % 7);
+  if (remaining < 7) {
+    for (let i = 1; i <= remaining; i++) {
+      cells.push({ day: i, outside: true });
+    }
+  }
+
+  const prevMonth = () => setViewDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
+
+  const selectedEvents = selectedDate ? (eventDates[selectedDate] || []) : [];
+
+  return (
+    <div className="rounded-2xl bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between">
+        <button onClick={prevMonth} className="rounded-lg p-1.5 text-[#6f7b70] hover:bg-[#f5f3ed]">
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+        </button>
+        <span className="text-sm font-semibold text-[#24321F]">
+          {MONTH_NAMES[month]} {year + 543}
+        </span>
+        <button onClick={nextMonth} className="rounded-lg p-1.5 text-[#6f7b70] hover:bg-[#f5f3ed]">
+          <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+        </button>
+      </div>
+
+      <div className="mt-3 grid grid-cols-7 text-center text-xs font-medium text-[#6f7b70]">
+        {DAY_LABELS.map((label) => (
+          <div key={label} className="py-1">{label}</div>
+        ))}
+      </div>
+
+      <div className="mt-1 grid grid-cols-7 gap-[2px]">
+        {cells.map((cell, idx) => {
+          const isToday = !cell.outside && cell.key === todayKey;
+          const hasEvents = !cell.outside && cell.events && cell.events.length > 0;
+          const isSelected = !cell.outside && cell.key === selectedDate;
+
+          return (
+            <button
+              key={idx}
+              disabled={cell.outside}
+              onClick={() => {
+                if (!cell.outside) setSelectedDate(cell.key === selectedDate ? null : cell.key);
+              }}
+              className={`relative flex h-10 w-full items-center justify-center rounded-lg text-sm transition-colors
+                ${cell.outside ? "text-[#d1cdc4] cursor-default" : "hover:bg-[#f5f3ed] cursor-pointer"}
+                ${isToday ? "font-bold ring-1 ring-[#485B3B]" : ""}
+                ${isSelected ? "bg-[#485B3B] text-white hover:bg-[#3a4c2e]" : ""}
+                ${hasEvents && !isSelected ? "font-semibold text-[#485B3B]" : ""}
+              `}
+            >
+              {cell.day}
+              {hasEvents && (
+                <span className={`absolute bottom-1 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full ${isSelected ? "bg-white" : "bg-[#485B3B]"}`} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {selectedDate && (
+        <div className="mt-4 border-t border-[#f0ede6] pt-3">
+          <h4 className="text-xs font-semibold text-[#6f7b70]">
+            {new Date(selectedDate + "T00:00:00").toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}
+          </h4>
+          {selectedEvents.length === 0 ? (
+            <p className="mt-2 text-sm text-[#b0a99a]">ไม่มีกิจกรรมในวันนี้</p>
+          ) : (
+            <div className="mt-2 space-y-2">
+              {selectedEvents.map((ev) => (
+                <div key={ev.registration_id} className="flex items-center gap-2 rounded-lg bg-[#fafdf7] px-3 py-2">
+                  <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[#485B3B]" />
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-[#24321F]">
+                      {ev.event_title || ev.title || `Event #${ev.event_id}`}
+                    </div>
+                    {ev.location && (
+                      <div className="truncate text-xs text-[#6f7b70]">{ev.location}</div>
+                    )}
+                  </div>
+                  <span
+                    className="ml-auto flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold text-white"
+                    style={{ background: ev.registration_status === "REGISTERED" ? "#6B8A5B" : "#c0392b" }}
+                  >
+                    {ev.registration_status || "registered"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {registrations.length > 0 && (
+        <div className="mt-4 border-t border-[#f0ede6] pt-3">
+          <h4 className="text-xs font-semibold text-[#6f7b70]">กิจกรรมที่กำลังจะมาถึง</h4>
+          <div className="mt-2 space-y-1.5">
+            {registrations
+              .filter((r) => r.event_date && new Date(r.event_date) >= new Date(todayKey))
+              .sort((a, b) => new Date(a.event_date) - new Date(b.event_date))
+              .slice(0, 5)
+              .map((ev) => (
+                <div key={ev.registration_id} className="flex items-center justify-between text-sm">
+                  <span className="truncate text-[#24321F]">{ev.event_title || ev.title || `Event #${ev.event_id}`}</span>
+                  <span className="flex-shrink-0 text-xs text-[#6f7b70]">
+                    {new Date(ev.event_date).toLocaleDateString("th-TH", { day: "numeric", month: "short" })}
+                  </span>
+                </div>
+              ))}
+            {registrations.filter((r) => r.event_date && new Date(r.event_date) >= new Date(todayKey)).length === 0 && (
+              <p className="text-sm text-[#b0a99a]">ไม่มีกิจกรรมที่กำลังจะมาถึง</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

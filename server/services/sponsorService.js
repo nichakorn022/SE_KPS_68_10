@@ -12,6 +12,18 @@ async function requestSponsor(data) {
   const shopId = Number(data.shop_id);
   const productId = Number(data.product_id);
   const quantity = Number(data.quantity);
+
+    // 🔥 เช็คว่า product เป็นของ shop จริงไหม
+const product = await query(
+  `SELECT shop_id FROM tea_product WHERE product_id = ?`,
+  [productId]
+);
+
+if (product.length === 0 || Number(product[0].shop_id) !== shopId) {
+  const error = new Error("This product does not belong to your shop");
+  error.statusCode = 403;
+  throw error;
+}
   const requestBy = data.request_by ? String(data.request_by).trim().toLowerCase() : null;
   const status = normalizeStatus(data.status, "pending");
 
@@ -21,11 +33,25 @@ async function requestSponsor(data) {
     throw error;
   }
 
+  // 🔥 กันส่ง sponsor ซ้ำ
+const existing = await query(
+  `SELECT sponsor_id FROM sponsor WHERE event_id = ? AND shop_id = ? LIMIT 1`,
+  [eventId, shopId]
+);
+
+if (existing.length > 0) {
+  const error = new Error("You already sent sponsor request");
+  error.statusCode = 400;
+  throw error;
+}
+
   const result = await query(
     `INSERT INTO sponsor (event_id, shop_id, product_id, quantity, request_by, status)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [eventId, shopId, productId, quantity, requestBy, status]
   );
+
+
 
   return {
     message: "Sponsor request created",

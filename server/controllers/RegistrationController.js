@@ -1,4 +1,6 @@
 const registrationService = require("../services/registrationService");
+const { query } = require("../utils/dbHelpers");
+const { sendRegistrationConfirmation } = require("../utils/mailer");
 
 class RegistrationController {
 
@@ -23,6 +25,25 @@ class RegistrationController {
     try{
 
       const id = await registrationService.registerEvent(req.body);
+
+      // Send email notification
+      try {
+        const { event_id, user_id } = req.body;
+        const [[user], [event]] = await Promise.all([
+          query("SELECT username, email FROM users WHERE user_id = ? LIMIT 1", [user_id]),
+          query("SELECT title, event_date FROM event WHERE event_id = ? LIMIT 1", [event_id]),
+        ]);
+        if (user?.email && event?.title) {
+          sendRegistrationConfirmation({
+            to: user.email,
+            username: user.username,
+            eventTitle: event.title,
+            eventDate: event.event_date,
+          }).catch((err) => console.error("Registration email failed:", err.message));
+        }
+      } catch (mailErr) {
+        console.error("Registration email lookup failed:", mailErr.message);
+      }
 
       res.json({
         message:"Registered successfully",

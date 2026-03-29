@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import InboxPopup from "./InboxPopup";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthModal } from "../../App";
 import { apiUrl, assetUrl } from "../../lib/api";
@@ -57,9 +56,8 @@ function itemClass(isActive) {
   return "rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]";
 }
 
-function ProfileDropdown({ navbarAvatar, profileLink, messages, onLogout }) {
+function ProfileDropdown({ navbarAvatar, profileLink, onLogout }) {
   const [open, setOpen] = useState(false);
-  const [showInbox, setShowInbox] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
@@ -67,7 +65,6 @@ function ProfileDropdown({ navbarAvatar, profileLink, messages, onLogout }) {
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setOpen(false);
-        setShowInbox(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -77,7 +74,7 @@ function ProfileDropdown({ navbarAvatar, profileLink, messages, onLogout }) {
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => { setOpen((v) => !v); setShowInbox(false); }}
+        onClick={() => setOpen((v) => !v)}
         className="flex items-center rounded-full p-1 transition-all hover:ring-2 hover:ring-[#485B3B]/30 focus:outline-none"
       >
         <img
@@ -87,7 +84,7 @@ function ProfileDropdown({ navbarAvatar, profileLink, messages, onLogout }) {
         />
       </button>
 
-      {open && !showInbox && (
+      {open && (
         <div className="absolute right-0 z-50 mt-2 min-w-[200px] rounded-xl bg-white py-2 shadow-xl border border-[#e6e3da]">
           <button
             onClick={() => { setOpen(false); navigate(profileLink); }}
@@ -95,13 +92,6 @@ function ProfileDropdown({ navbarAvatar, profileLink, messages, onLogout }) {
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
             Profile
-          </button>
-          <button
-            onClick={() => setShowInbox(true)}
-            className="flex w-full items-center gap-3 px-5 py-3 text-left text-[#485B3B] hover:bg-[#485B3B]/10 transition-colors"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
-            กล่องข้อความ
           </button>
           <div className="my-1 border-t border-[#e6e3da]" />
           <button
@@ -112,10 +102,6 @@ function ProfileDropdown({ navbarAvatar, profileLink, messages, onLogout }) {
             Logout
           </button>
         </div>
-      )}
-
-      {open && showInbox && (
-        <InboxPopup messages={messages} onClose={() => { setShowInbox(false); setOpen(false); }} />
       )}
     </div>
   );
@@ -133,7 +119,7 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
     return window.localStorage.getItem(`ownedShopId:${userId}`) || null;
   });
   const [shopAvatar, setShopAvatar] = useState("");
-  const [messages, setMessages] = useState([]);
+
 
   useEffect(() => {
     let ignore = false;
@@ -246,7 +232,6 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
             <ProfileDropdown
               navbarAvatar={navbarAvatar}
               profileLink={profileLink}
-              messages={messages}
               onLogout={onLogout}
             />
           ) : (

@@ -29,20 +29,19 @@ async function sendRegistrationConfirmation({ to, username, eventTitle, eventDat
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ed;padding:32px 0">
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
-        <tr><td style="background:#485B3B;padding:28px 40px">
-          <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700">แจ้งเตือนการยืนยันเข้าร่วมกิจกรรม</h1>
-          <p style="margin:6px 0 0;color:#c8d6c0;font-size:14px">${eventTitle}</p>
+        <tr><td style="background:#485B3B;padding:28px 40px;text-align:center">
+          <h1 style="margin:0;color:#fff;font-size:24px;font-weight:700">สมัครกิจกรรมสำเร็จ 🎉</h1>
         </td></tr>
         <tr><td style="padding:36px 40px 20px">
           <p style="margin:0 0 20px;color:#24321F;font-size:16px"><strong>เรียน ${username || "ผู้ใช้งาน"}</strong></p>
-          <p style="margin:0 0 16px;color:#4a4a4a;font-size:15px;line-height:1.7">ขณะนี้กิจกรรม <strong>&ldquo;${eventTitle}&rdquo;</strong> ที่ท่านได้แสดงความสนใจไว้ กำลังจะถึงวันเริ่มกิจกรรมแล้ว</p>
+          <p style="margin:0 0 16px;color:#4a4a4a;font-size:15px;line-height:1.7">คุณได้สมัครเข้าร่วมกิจกรรม <strong>&ldquo;${eventTitle}&rdquo;</strong> เรียบร้อยแล้ว ขอขอบคุณที่สนใจในกิจกรรมของเรา!</p>
           <table width="100%" style="background:#faf8f2;border-radius:10px;margin:20px 0"><tr><td style="padding:20px 24px">
             <p style="margin:0 0 8px;color:#6f7b70;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:700">รายละเอียดกิจกรรม</p>
-            <p style="margin:0 0 6px;color:#24321F;font-size:16px;font-weight:600">${eventTitle}</p>
+            <p style="margin:0 0 6px;color:#24321F;font-size:16px;font-weight:600">🎋 ${eventTitle}</p>
             <p style="margin:0;color:#6f7b70;font-size:14px">📅 วันที่: ${formattedDate}</p>
           </td></tr></table>
-          <p style="margin:16px 0;color:#4a4a4a;font-size:15px;line-height:1.7">หากท่านประสงค์เข้าร่วมกิจกรรม กรุณาดำเนินการชำระเงินเพื่อยืนยันการเข้าร่วม ภายในระยะเวลาที่กำหนด</p>
-          <p style="margin:24px 0 0;color:#4a4a4a;font-size:15px">ขอขอบพระคุณที่ให้ความสนใจในกิจกรรมของเรา</p>
+          <p style="margin:16px 0;color:#4a4a4a;font-size:15px;line-height:1.7">ท่านสามารถตรวจสอบรายละเอียดกิจกรรมและสถานะการลงทะเบียนได้ที่หน้าโปรไฟล์ของท่าน หากมีข้อสงสัยประการใด สามารถติดต่อเราได้ตลอดเวลา</p>
+          <p style="margin:24px 0 0;color:#4a4a4a;font-size:15px">ขอขอบพระคุณที่เป็นส่วนหนึ่งของชุมชนเรา</p>
         </td></tr>
         <tr><td style="padding:20px 40px 32px;border-top:1px solid #f0ede6">
           <p style="margin:0;color:#b0a99a;font-size:12px;text-align:center">© ${new Date().getFullYear()} ATC Tea Community — อีเมลนี้ส่งโดยอัตโนมัติ กรุณาอย่าตอบกลับ</p>
@@ -55,7 +54,7 @@ async function sendRegistrationConfirmation({ to, username, eventTitle, eventDat
   await transporter.sendMail({
     from: `"ATC Tea Community" <${process.env.MAIL_USER}>`,
     to,
-    subject: `แจ้งเตือนการยืนยันเข้าร่วมกิจกรรม ${eventTitle}`,
+    subject: `สมัครกิจกรรมสำเร็จ — ${eventTitle}`,
     html,
   });
 }

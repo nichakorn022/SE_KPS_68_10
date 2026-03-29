@@ -127,7 +127,7 @@ function StarRating({ rating = 4.5, count = 0 }) {
       <span className="text-[13px] font-semibold text-amber-500">{rating.toFixed(1)}</span>
       {count > 0 && (
         <span className="text-[12px] text-gray-400 border-l border-gray-200 pl-1.5">
-          {count} รีวิว
+          {count} reviews
         </span>
       )}
     </div>
@@ -149,7 +149,7 @@ function ImageGallery({ images, productName }) {
       ) : (
         <div className="w-full h-full flex flex-col items-center justify-center text-[#AEBC9F]">
           <span className="text-7xl mb-2">🍵</span>
-          <span className="text-sm">ไม่มีรูปภาพ</span>
+          <span className="text-sm">No image</span>
         </div>
       )}
     </div>
@@ -190,7 +190,7 @@ function ShopPanel({ shop, shopImg }) {
         to={`/shop/${shop.shop_id}`}
         className="flex-shrink-0 border border-[#485B3B] text-[#485B3B] text-[12px] font-bold px-4 py-1.5 rounded-full hover:bg-[#485B3B] hover:text-white transition-all"
       >
-        ดูร้าน
+        View shop
       </Link>
     </div>
   );
@@ -205,14 +205,14 @@ function CartDrawer({ cart, onClose, onRemove, onUpdateQty }) {
       <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={onClose} />
       <div className="w-full max-w-sm bg-[#F5F3E9] h-full shadow-2xl flex flex-col">
         <div className="p-6 bg-[#AEBC9F] flex items-center justify-between">
-          <h2 className="text-[20px] font-bold text-white">ตะกร้าสินค้า 🛒</h2>
+          <h2 className="text-[20px] font-bold text-white">Shopping cart 🛒</h2>
           <button onClick={onClose} className="text-white text-2xl hover:opacity-70">×</button>
         </div>
         <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {cart.length === 0 ? (
             <div className="text-center text-gray-400 py-16">
               <p className="text-4xl mb-3">🍵</p>
-              <p>ยังไม่มีสินค้าในตะกร้า</p>
+              <p>No items in cart</p>
             </div>
           ) : (
             cart.map((item) => (
@@ -255,11 +255,11 @@ function CartDrawer({ cart, onClose, onRemove, onUpdateQty }) {
         {cart.length > 0 && (
           <div className="p-6 border-t border-[#AEBC9F]/30">
             <div className="flex justify-between mb-4">
-              <span className="font-medium text-gray-600">รวมทั้งหมด</span>
+              <span className="font-medium text-gray-600">Total</span>
               <span className="font-bold text-[20px] text-[#485B3B]">฿{total.toLocaleString()}</span>
             </div>
             <button className="w-full bg-[#485B3B] text-white py-3 rounded-full font-bold hover:bg-[#3a4a2f] transition-all shadow-lg active:scale-95">
-              ชำระเงิน
+              Checkout
             </button>
           </div>
         )}
@@ -498,13 +498,13 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
         <SiteNavbar active="shop" />
         <div className="flex flex-col items-center justify-center py-32 text-gray-400">
           <p className="text-5xl mb-4">🍵</p>
-          <p className="text-lg font-medium text-gray-500">ไม่พบสินค้า</p>
+          <p className="text-lg font-medium text-gray-500">Product not found</p>
           <p className="text-sm text-red-400 mt-1">{error}</p>
           <button
             onClick={() => navigate(-1)}
             className="mt-6 bg-[#485B3B] text-white px-8 py-2.5 rounded-full font-bold hover:bg-[#3a4a2f] transition-all"
           >
-            ← กลับ
+            ← Back
           </button>
         </div>
       </div>
@@ -569,7 +569,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
                 <StarRating rating={rating.avg} count={rating.count} />
                 <span className="text-[12px] text-gray-300">|</span>
                 <span className={`text-[12px] font-semibold ${inStock ? "text-green-600" : "text-red-400"}`}>
-                  {inStock ? `มีสินค้า (${stock})` : "สินค้าหมด"}
+                  {inStock ? `In stock (${stock})` : "Out of stock"}
                 </span>
               </div>
 
@@ -585,7 +585,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
               {/* Description */}
               {product.description && (
                 <div className="mb-5">
-                  <p className="text-[13px] font-semibold text-gray-500 mb-1.5">รายละเอียด</p>
+                  <p className="text-[13px] font-semibold text-gray-500 mb-1.5">Details</p>
                   <p className="text-[14px] text-gray-600 leading-relaxed">
                     {product.description}
                   </p>
@@ -597,7 +597,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
 
               {/* Quantity */}
               <div className="flex items-center gap-4 mb-5">
-                <span className="text-[14px] font-semibold text-gray-600 w-16">จำนวน</span>
+                <span className="text-[14px] font-semibold text-gray-600 w-16">Quantity</span>
                 <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
                   <button
                     onClick={() =>
@@ -648,7 +648,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
                   </button>
                 </div>
                 {stock > 0 && (
-                  <span className="text-[12px] text-gray-400">มีอยู่ {stock} ชิ้น</span>
+                  <span className="text-[12px] text-gray-400">Available: {stock} pieces</span>
                 )}
               </div>
 
@@ -664,20 +664,20 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
                   }`}
                 >
                   🛒
-                  {isOwnProduct ? "สินค้าร้านคุณ" : cartFull ? "ครบจำนวนแล้ว" : addedFeedback ? "เพิ่มแล้ว ✓" : "เพิ่มไปยังตะกร้า"}
+                  {isOwnProduct ? "Your shop's product" : cartFull ? "Full quantity" : addedFeedback ? "Added ✓" : "Add to cart"}
                 </button>
                 <button
                   onClick={handleBuyNow}
                   disabled={!inStock || isOwnProduct}
                   className="flex-1 bg-[#485B3B] text-white font-bold py-3 rounded-2xl hover:bg-[#3a4a2f] transition-all shadow-lg active:scale-95 disabled:opacity-40"
                 >
-                  {isOwnProduct ? "สินค้าร้านคุณ" : "ซื้อสินค้า"}
+                  {isOwnProduct ? "Your shop's product" : "Buy now"}
                 </button>
               </div>
 
               {cartFull ? (
                 <p className="mt-3 text-[13px] font-medium text-[#B26B44]">
-                  มีสินค้านี้ในตะกร้าครบจำนวนที่มีแล้ว
+                  You have reached the maximum quantity available for this item in your cart
                 </p>
               ) : null}
 
@@ -694,7 +694,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
         {related.length > 0 && (
           <div className="mt-8">
             <h2 className="text-[18px] font-bold text-[#485B3B] mb-4">
-              สินค้าอื่นจากร้านนี้
+              Other products from this shop
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {related.map((p) => (
@@ -714,18 +714,10 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
             onClick={() => navigate("/shop")}
             className="flex items-center gap-2 text-[#485B3B] font-semibold text-[14px] hover:underline underline-offset-2 transition-colors"
           >
-            ← กลับไปหน้า Shop
+            ← Back to Shop page
           </button>
         </div>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-[#AEBC9F] pt-10 pb-16 px-10">
-        <div className="max-w-[850px] mx-auto opacity-30 space-y-4">
-          <div className="h-4 bg-white w-48 rounded" />
-          <div className="h-4 bg-white w-32 rounded" />
-        </div>
-      </footer>
 
       {/* Cart Drawer */}
       {cartOpen && (

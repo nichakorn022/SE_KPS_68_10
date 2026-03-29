@@ -75,6 +75,24 @@ exports.getSellerRevenueTrend = async (req, res) => {
   }
 };
 
+exports.getSellerWorkspaceSummary = async (req, res) => {
+  try {
+    if (req.user?.role !== "shop") {
+      return res.status(403).json({
+        message: "This workspace is available only for shop accounts",
+      });
+    }
+
+    const result = await orderService.getSellerWorkspaceSummary(req.user.user_id);
+    return res.json(result);
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: "Failed to fetch seller workspace summary",
+      error: error.message,
+    });
+  }
+};
+
 exports.updateOrderStatus = async (req, res) => {
   const { id } = req.params;
 

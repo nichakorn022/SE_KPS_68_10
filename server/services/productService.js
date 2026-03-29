@@ -1,7 +1,8 @@
 ﻿const { query } = require("../utils/dbHelpers");
+const { repairProductTextFields } = require("../utils/textRepair");
 
 async function getProducts() {
-  return query(
+  const rows = await query(
     `SELECT
         tp.product_id,
         tp.shop_id,
@@ -43,6 +44,8 @@ async function getProducts() {
        review_stats.review_count
      ORDER BY tp.product_id DESC`
   );
+
+  return rows.map(repairProductTextFields);
 }
 
 async function getProductById(id) {
@@ -59,7 +62,7 @@ async function getProductById(id) {
     throw error;
   }
 
-  return rows[0];
+  return repairProductTextFields(rows[0]);
 }
 
 async function createProduct({ shop_id, tea_name, tea_type, description, price, stock }) {
@@ -134,13 +137,15 @@ async function getShopByOwnerId(userId) {
 async function getProductsByOwner(userId) {
   const shop = await getShopByOwnerId(userId);
 
-  return query(
+  const rows = await query(
     `SELECT product_id, shop_id, tea_name, tea_type, description, price, stock
      FROM tea_product
      WHERE shop_id = ?
      ORDER BY product_id DESC`,
     [shop.shop_id]
   );
+
+  return rows.map(repairProductTextFields);
 }
 
 async function createProductByOwner(userId, payload) {

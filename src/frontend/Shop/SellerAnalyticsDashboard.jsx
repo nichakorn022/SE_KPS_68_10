@@ -1028,7 +1028,11 @@ function BestSellerTable({ rows }) {
             <div className="min-w-0">
               <p className="truncate text-[1.12rem] font-medium text-[#2E3D2A]">{product.name}</p>
             </div>
-            <span className="w-fit rounded-full bg-[#F6F4ED] px-3 py-1 text-[13px] text-[#78856F]">{product.type || "Tea"}</span>
+            <div className="min-w-0">
+              <span className="inline-flex max-w-full items-center overflow-hidden text-ellipsis whitespace-nowrap rounded-full bg-[#F6F4ED] px-3 py-1 text-[13px] text-[#78856F]">
+                {product.type || "Tea"}
+              </span>
+            </div>
             <span className="text-[#41503D]">{product.sales7d.toLocaleString("th-TH")} units</span>
             <span className="font-medium text-[#2E3D2A]">{formatCurrency(product.price * product.sales7d)}</span>
             <span className="flex items-center gap-1 font-medium text-[#6D8F6B]">

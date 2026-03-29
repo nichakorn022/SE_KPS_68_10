@@ -181,6 +181,30 @@ const { query } = require("./utils/dbHelpers");
   }
 })();
 
+(async function ensureSponsorColumnsAllowOrganizerRequests() {
+  try {
+    const rows = await query(
+      `SELECT COLUMN_NAME, IS_NULLABLE
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'sponsor'
+         AND COLUMN_NAME IN ('product_id', 'quantity')`
+    );
+
+    const byName = Object.fromEntries(rows.map((row) => [row.COLUMN_NAME, row]));
+
+    if (byName.product_id && byName.product_id.IS_NULLABLE === "NO") {
+      await query("ALTER TABLE sponsor MODIFY product_id INT NULL");
+    }
+
+    if (byName.quantity && byName.quantity.IS_NULLABLE === "NO") {
+      await query("ALTER TABLE sponsor MODIFY quantity INT NULL");
+    }
+  } catch (err) {
+    console.warn("Could not relax sponsor product/quantity columns:", err.message);
+  }
+})();
+
 (async function normalizeVerificationStatuses() {
   const targets = [
     { table: "tea_shop" },

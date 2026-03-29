@@ -3,7 +3,7 @@ const sponsorService = require("../services/sponsorService");
 class SponsorController {
   static async requestSponsor(req, res) {
     try {
-      const result = await sponsorService.requestSponsor(req.body);
+      const result = await sponsorService.requestSponsor(req.body, req.user?.user_id);
       res.status(201).json(result);
     } catch (error) {
       res
@@ -42,6 +42,43 @@ class SponsorController {
       res
         .status(error.statusCode || 500)
         .json({ message: error.message || "Failed to delete sponsor request" });
+    }
+  }
+
+  static async getMySponsorRequests(req, res) {
+    try {
+      const data = await sponsorService.getShopSponsorRequests(req.user.user_id);
+      res.json(data);
+    } catch (error) {
+      res
+        .status(error.statusCode || 500)
+        .json({ message: error.message || "Failed to fetch sponsor requests" });
+    }
+  }
+
+  static async getIncomingSponsorRequestsForShop(req, res) {
+    try {
+      const data = await sponsorService.getIncomingSponsorRequestsForShop(req.user.user_id);
+      res.json(data);
+    } catch (error) {
+      res
+        .status(error.statusCode || 500)
+        .json({ message: error.message || "Failed to fetch incoming sponsor requests" });
+    }
+  }
+
+  static async updateSponsorStatusByShop(req, res) {
+    try {
+      const result = await sponsorService.updateSponsorStatusByShop(
+        req.params.id,
+        req.body.status,
+        req.user.user_id
+      );
+      res.json(result);
+    } catch (error) {
+      res
+        .status(error.statusCode || 500)
+        .json({ message: error.message || "Failed to update sponsor request" });
     }
   }
 }

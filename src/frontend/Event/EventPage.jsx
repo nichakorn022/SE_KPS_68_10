@@ -165,49 +165,85 @@ useEffect(() => {
             Logged in as: {role}
           </p>
         )}
+        {/* 🔥 SHOP BUTTON */}
+{role === "shop" && (
+  <div className="flex justify-center mb-6 gap-4">
+
+    {/* 🟢 My Sponsor */}
+    <Link to="/my-sponsor">
+      <button className="
+        bg-[#6f8b5d] 
+        text-white 
+        px-5 py-2 
+        rounded-full 
+        shadow-md 
+        hover:bg-[#5f7a4e]
+      ">
+        My Sponsor
+      </button>
+    </Link>
+
+    {/* 🔥 Requests */}
+    <Link to="/sponsor-requests">
+      <button className="
+        border border-[#6f8b5d] 
+        text-[#6f8b5d] 
+        px-5 py-2 
+        rounded-full 
+        hover:bg-[#6f8b5d] 
+        hover:text-white
+      ">
+        Requests
+      </button>
+    </Link>
+
+  </div>
+)}
 
 
 
-              {role === "user" && (
-                <div className="flex justify-center mb-6">
+              {(role === "user" || role === "organizer") && (
+  <div className="flex justify-center mb-6">
 
-                  {/* ยังไม่สมัคร */}
-                  {organizerStatus === null && (
-                    <Link to="/become-organizer">
-                      <button className="bg-[#6f8b5d] text-white px-5 py-2 rounded-full">
-                        Become Organizer
-                      </button>
-                    </Link>
-                  )}
+    {/* ยังไม่สมัคร */}
+    {organizerStatus === null && role === "user" && (
+      <Link to="/become-organizer">
+        <button className="bg-[#6f8b5d] text-white px-5 py-2 rounded-full">
+          Become Organizer
+        </button>
+      </Link>
+    )}
 
-                  {/* รอ approve */}
-                  {organizerStatus === 0 && (
-                    <span className="text-yellow-600">
-                      Waiting for admin approval...
-                    </span>
-                  )}
+    {/* รอ approve */}
+    {organizerStatus === 0 && (
+      <span className="text-yellow-600">
+        Waiting for admin approval...
+      </span>
+    )}
 
-                  {/* ผ่านแล้ว */}
-                  {organizerStatus === 1 && (
-                    <Link to="/my-events">
-                      <button className="bg-[#6f8b5d] text-white px-5 py-2 rounded-full">
-                        Manage My Events
-                      </button>
-                    </Link>
-                  )}
+    {/* ผ่านแล้ว */}
+{organizerStatus === 1 && (
+  <div className="flex gap-4 justify-center">
 
-                </div>
-              )}
+    {/* 🎯 Manage Event */}
+    <Link to="/my-events">
+      <button className="bg-[#6f8b5d] text-white px-5 py-2 rounded-full">
+        Manage My Events
+      </button>
+    </Link>
 
-              {role === "shop" && (
-                <div className="flex justify-center mb-6">
-                  <Link to="/my-sponsor">
-                    <button className="bg-[#6f8b5d] text-white px-5 py-2 rounded-full">
-                      My Sponsor Events
-                    </button>
-                  </Link>
-                </div>
-              )}
+    {/* 🔥 Browse Shops */}
+    <Link to="/shops">
+      <button className="border border-[#6f8b5d] text-[#6f8b5d] px-5 py-2 rounded-full hover:bg-[#6f8b5d] hover:text-white">
+        Browse Shops
+      </button>
+    </Link>
+
+  </div>
+)}
+
+  </div>
+)}
 
         <h2 className="text-center text-2xl mb-8">
           Events

@@ -64,6 +64,8 @@ export default function UserProfile() {
   const [uploading, setUploading] = useState(false);
   const [purchaseFilter, setPurchaseFilter] = useState("all");
   const [purchaseSearch, setPurchaseSearch] = useState("");
+  const [eventFilter, setEventFilter] = useState("all");
+  const [eventSearch, setEventSearch] = useState("");
   const [orderPage, setOrderPage] = useState(1);
   const [coverColor, setCoverColor] = useState(null);
   const ORDERS_PER_PAGE = 10;
@@ -406,20 +408,14 @@ export default function UserProfile() {
 
           {activeTab === "events" ? (
             <div className="flex flex-col gap-6 lg:flex-row">
-              <div className="flex-1 space-y-4">
-                {registrations.length === 0 ? (
-                  <div className="rounded-lg bg-white p-6 text-[#6f7b70]">No registrations yet.</div>
-                ) : (
-                  registrations
-                    .slice()
-                    .reverse()
-                    .map((registration) => (
-                      <RegistrationRow
-                        key={registration.registration_id}
-                        registration={registration}
-                      />
-                    ))
-                )}
+              <div className="flex-1">
+                <EventsTab
+                  registrations={registrations}
+                  filter={eventFilter}
+                  onFilterChange={setEventFilter}
+                  search={eventSearch}
+                  onSearchChange={setEventSearch}
+                />
               </div>
               <div className="w-full lg:w-[370px]">
                 <EventCalendar registrations={registrations} />
@@ -644,6 +640,177 @@ function OrderCard({ order, onViewOrder }) {
           className="rounded-lg border border-[#e6e3da] px-5 py-2 text-sm font-medium text-[#485B3B] transition-colors hover:bg-[#f5f3ed]"
         >
           View Details
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const EVENT_STATUS_CONFIG = {
+  confirmed: { label: "Confirmed", color: "#6B8A5B", bg: "#6B8A5B18" },
+  registered: { label: "Registered", color: "#6B8A5B", bg: "#6B8A5B18" },
+  pending: { label: "Pending", color: "#D4A017", bg: "#D4A01718" },
+  cancelled: { label: "Cancelled", color: "#c0392b", bg: "#c0392b18" },
+};
+
+function getEventStatusConfig(status) {
+  return EVENT_STATUS_CONFIG[status?.toLowerCase()] || EVENT_STATUS_CONFIG.pending;
+}
+
+function EventsTab({ registrations, filter, onFilterChange, search, onSearchChange }) {
+  const navigate = useNavigate();
+
+  const filtered = useMemo(() => {
+    let list = registrations.slice().reverse();
+    if (filter !== "all") {
+      list = list.filter((r) => {
+        const s = (r.registration_status || "pending").toLowerCase();
+        if (filter === "confirmed") return s === "confirmed" || s === "registered";
+        if (filter === "pending") return s === "pending";
+        if (filter === "cancelled") return s === "cancelled";
+        return true;
+      });
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (r) =>
+          String(r.registration_id).includes(q) ||
+          (r.event_title || r.title || "").toLowerCase().includes(q) ||
+          (r.location || "").toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [registrations, filter, search]);
+
+  const tabs = [
+    { id: "all", label: "All" },
+    { id: "confirmed", label: "Confirmed" },
+    { id: "pending", label: "Pending" },
+    { id: "cancelled", label: "Cancelled" },
+  ];
+
+  return (
+    <div className="rounded-2xl bg-white p-6 shadow-sm">
+      <h2 className="text-2xl font-bold text-[#24321F]">My Events</h2>
+      <p className="mt-1 text-[#6f7b70]">Track your event registrations</p>
+
+      <div className="mt-5 flex gap-2">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => onFilterChange(t.id)}
+            className={`rounded-full px-5 py-2 text-sm font-medium transition-colors ${
+              filter === t.id
+                ? "bg-[#485B3B] text-white shadow"
+                : "bg-[#f5f3ed] text-[#6f7b70] hover:bg-[#ebe8e0]"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="relative mt-4">
+        <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#b0a99a]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
+        <input
+          type="text"
+          placeholder="Search by event name or location..."
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full rounded-xl border border-[#e6e3da] bg-[#faf8f2] py-2.5 pl-10 pr-4 text-sm text-[#24321F] placeholder:text-[#b0a99a] focus:border-[#485B3B] focus:outline-none"
+        />
+      </div>
+
+      <div className="mt-6 max-h-[520px] overflow-y-auto rounded-xl border border-[#e6e3da] bg-[#faf8f2] p-4">
+        {filtered.length === 0 ? (
+          <div className="rounded-xl bg-[#faf8f2] py-12 text-center text-[#6f7b70]">
+            No events found.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4">
+            {filtered.map((reg) => (
+              <EventCard key={reg.registration_id} registration={reg} navigate={navigate} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EventCard({ registration, navigate }) {
+  const status = getEventStatusConfig(registration.registration_status);
+  const eventTitle = registration.event_title || registration.title || `Event ${registration.event_id || ""}`;
+  const eventDate = registration.event_date;
+  const location = registration.location;
+
+  const registrationDate =
+    registration.created_at ||
+    registration.registered_at ||
+    registration.registration_date ||
+    Date.now();
+
+  return (
+    <div
+      onClick={() => registration.event_id && navigate(`/events/${registration.event_id}`)}
+      className="cursor-pointer rounded-xl border border-[#f0ede6] bg-white p-5 shadow-sm transition-colors hover:bg-[#fafdf7]"
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#f5f3ed] text-[#485B3B]">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
+          </div>
+          <div>
+            <div className="text-xs text-[#6f7b70]">Registration</div>
+            <div className="text-lg font-bold text-[#24321F]">#{registration.registration_id}</div>
+          </div>
+        </div>
+        <span
+          className="flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
+          style={{ background: status.bg, color: status.color }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: status.color }} />
+          {status.label}
+        </span>
+      </div>
+
+      <div className="mt-3 flex items-center gap-3 text-sm text-[#6f7b70]">
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
+        <span>
+          {new Date(registrationDate).toLocaleDateString("en-US", {
+            month: "short", day: "numeric", year: "numeric",
+          })}
+        </span>
+      </div>
+
+      <div className="mt-4">
+        <div className="text-[10px] font-bold uppercase tracking-wider text-[#b0a99a]">Event</div>
+        <div className="mt-2 text-sm font-semibold text-[#24321F]">{eventTitle}</div>
+      </div>
+
+      {(eventDate || location) && (
+        <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-[#6f7b70]">
+          {eventDate && (
+            <div className="flex items-center gap-1.5">
+              <span>📅</span>
+              <span>{new Date(eventDate).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" })}</span>
+            </div>
+          )}
+          {location && (
+            <div className="flex items-center gap-1.5">
+              <span>📍</span>
+              <span>{location}</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="mt-4 flex items-end justify-end border-t border-[#f0ede6] pt-4">
+        <button
+          className="rounded-lg border border-[#e6e3da] px-5 py-2 text-sm font-medium text-[#485B3B] transition-colors hover:bg-[#f5f3ed]"
+        >
+          View Event
         </button>
       </div>
     </div>

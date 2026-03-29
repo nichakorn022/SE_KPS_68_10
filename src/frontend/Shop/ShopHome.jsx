@@ -1022,35 +1022,6 @@ export default function ShopHome() {
               </>
             )}
           </section>
-
-          <section className="overflow-hidden rounded-[2.25rem] border border-[#DCE4D3] bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(240,244,233,0.86))] px-6 py-8 shadow-[0_24px_70px_rgba(72,91,59,0.1)] sm:px-8">
-            <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
-              <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-[#829473]">Open your own shop</p>
-                <h2 className="mt-3 text-[2rem] font-semibold leading-tight text-[#253621]">
-                  If you already have a tea shop, this section should invite you to join the system confidently
-                </h2>
-                <p className="mt-3 max-w-2xl text-[15px] leading-7 text-[#66755D]">
-                  We keep this section, but arrange it to have less weight than before, so as not to distract attention from the products and shops the user is viewing
-                </p>
-              </div>
-
-              <div className="flex flex-wrap gap-3 lg:justify-end">
-                <button
-                  type="button"
-                  className="rounded-full bg-[#485B3B] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(72,91,59,0.2)] transition-all duration-300 hover:bg-[#394A31]"
-                >
-                  Open shop now
-                </button>
-                <button
-                  type="button"
-                  className="rounded-full border border-[#485B3B] px-6 py-3 text-sm font-semibold text-[#485B3B] transition-all duration-300 hover:bg-[#485B3B] hover:text-white"
-                >
-                  Learn more
-                </button>
-              </div>
-            </div>
-          </section>
         </div>
       </main>
 

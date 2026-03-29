@@ -127,7 +127,11 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
   const userRole = token ? getUserRoleFromToken() : null;
   const userId = token ? getUserIdFromToken() : null;
   const [toast, setToast] = useState(null);
-  const [ownedShopId, setOwnedShopId] = useState(null);
+  const [ownedShopId, setOwnedShopId] = useState(() => {
+    if (typeof window === "undefined") return null;
+    if (userRole !== "shop" || !userId) return null;
+    return window.localStorage.getItem(`ownedShopId:${userId}`) || null;
+  });
   const [shopAvatar, setShopAvatar] = useState("");
   const [messages, setMessages] = useState([]);
 
@@ -137,6 +141,9 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
     if (userRole !== "shop" || !userId) {
       setOwnedShopId(null);
       setShopAvatar("");
+      if (typeof window !== "undefined" && userId) {
+        window.localStorage.removeItem(`ownedShopId:${userId}`);
+      }
       return () => {
         ignore = true;
       };
@@ -147,7 +154,13 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
       .then((rows) => {
         if (ignore) return;
         const ownedShop = (Array.isArray(rows) ? rows : []).find((item) => Number(item.user_id) === Number(userId));
-        setOwnedShopId(ownedShop?.shop_id || null);
+        const shopId = ownedShop?.shop_id ? String(ownedShop.shop_id) : null;
+        setOwnedShopId(shopId);
+        if (typeof window !== "undefined") {
+          const storageKey = `ownedShopId:${userId}`;
+          if (shopId) window.localStorage.setItem(storageKey, shopId);
+          else window.localStorage.removeItem(storageKey);
+        }
       })
       .catch(() => {
         if (!ignore) setOwnedShopId(null);

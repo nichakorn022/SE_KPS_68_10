@@ -237,8 +237,13 @@ app.use("/api/reviews", reviewRoutes);
 const distPath = path.join(__dirname, "..", "dist");
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
-  app.get("*", (req, res, next) => {
+  app.use((req, res, next) => {
     if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) return next();
+    if (req.method !== "GET" && req.method !== "HEAD") return next();
+
+    const accept = String(req.headers.accept || "");
+    if (accept && !accept.includes("text/html")) return next();
+
     return res.sendFile(path.join(distPath, "index.html"));
   });
 }

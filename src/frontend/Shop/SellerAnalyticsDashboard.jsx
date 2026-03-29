@@ -128,26 +128,56 @@ function buildInventoryAlerts(products) {
   return products
     .flatMap((product) => {
       const alerts = [];
-      const lowStockThreshold = Math.max(5, Math.ceil(product.sales7d / 2));
-      const overstockThreshold = Math.max(60, product.sales7d * 10);
+      const windowDays = 7;
+      const avgDailySales = Number(product.sales7d || 0) / windowDays;
+      const daysCover = avgDailySales > 0 ? Number(product.stock || 0) / avgDailySales : Number.POSITIVE_INFINITY;
 
-      if (product.stock > 0 && product.stock <= lowStockThreshold) {
+      const reorderTargetDays = 21; // lead time + safety + buffer
+      const suggestedReorderQty =
+        avgDailySales > 0 ? Math.max(0, Math.ceil(reorderTargetDays * avgDailySales - Number(product.stock || 0))) : null;
+
+      const overstockThreshold = avgDailySales > 0 ? Math.ceil(60 * avgDailySales) : 60;
+
+      if (product.stock === 0) {
+        alerts.push({
+          ...product,
+          kind: "oos",
+          title: "Out of stock",
+          note: product.sales7d > 0
+            ? `Stock hit zero while ${product.sales7d.toLocaleString("th-TH")} units moved in the last 7 days.`
+            : "Stock hit zero. Restock to make the product visible again.",
+          severity: product.sales7d >= 5 ? 4 : 3,
+          windowDays,
+          avgDailySales,
+          daysCover: 0,
+          reorderQty: suggestedReorderQty,
+        });
+      }
+
+      if (product.stock > 0 && avgDailySales > 0 && daysCover < 7) {
         alerts.push({
           ...product,
           kind: "low",
           title: "Low stock",
-          note: `Reorder soon to protect ${product.sales7d.toLocaleString("th-TH")} unit demand from the last 7 days.`,
-          severity: product.sales7d >= 8 ? 3 : 2,
+          note: `Only ~${daysCover.toFixed(daysCover < 10 ? 1 : 0)} day(s) of stock left based on the last 7 days.`,
+          severity: daysCover < 3 ? 3 : 2,
+          windowDays,
+          avgDailySales,
+          daysCover,
+          reorderQty: suggestedReorderQty,
         });
       }
 
-      if (product.stock >= overstockThreshold) {
+      if (product.stock >= overstockThreshold && (avgDailySales === 0 ? product.stock >= 60 : daysCover > 60)) {
         alerts.push({
           ...product,
           kind: "over",
           title: "Overstock",
           note: "Consider bundles, placement changes, or promotion before more capital gets stuck.",
           severity: product.sales7d <= 3 ? 3 : 2,
+          windowDays,
+          avgDailySales,
+          daysCover,
         });
       }
 
@@ -161,14 +191,26 @@ function buildRecommendations({ products, bestSellers, categoryPerformance, atte
   const recommendations = [];
   const strongestCategory = categoryPerformance[0];
   const topProduct = bestSellers[0];
+  const topOutOfStock = inventoryAlerts.find((item) => item.kind === "oos");
   const topLowStock = inventoryAlerts.find((item) => item.kind === "low");
   const topOverstock = inventoryAlerts.find((item) => item.kind === "over");
   const weakestProduct = attentionProducts[0];
 
+  if (topOutOfStock) {
+    recommendations.push({
+      title: `Restock ${topOutOfStock.name}`,
+      text: topOutOfStock.sales7d > 0
+        ? `${topOutOfStock.sales7d.toLocaleString("th-TH")} units moved in 7 days and stock is now 0.`
+        : "Stock is 0. Restock to make the product available again.",
+      impact: "High impact",
+      tone: "olive",
+    });
+  }
+
   if (topLowStock) {
     recommendations.push({
       title: `Restock ${topLowStock.name}`,
-      text: `${topLowStock.sales7d.toLocaleString("th-TH")} units moved in 7 days and stock is now down to ${topLowStock.stock.toLocaleString("th-TH")}.`,
+      text: `${topLowStock.sales7d.toLocaleString("th-TH")} units moved in 7 days and stock is down to ${topLowStock.stock.toLocaleString("th-TH")} (~${Number(topLowStock.daysCover || 0).toFixed(1)} day(s) cover).`,
       impact: "High impact",
       tone: "olive",
     });
@@ -1105,13 +1147,27 @@ function AttentionCard({ product, delay = 0 }) {
 }
 
 function InventoryAlertCard({ alert, delay = 0 }) {
+  const restockAction = () => {
+    const qty = alert.reorderQty;
+    if (qty === null || qty === undefined) return "Restock to make it available again";
+    if (qty <= 0) return "Restock to reopen availability";
+    return `Reorder ${Number(qty).toLocaleString("th-TH")} units (target ~3 weeks cover)`;
+  };
+
   const styles = {
+    oos: {
+      card: "border-[#F2BDB5] bg-[#FFF0EE]",
+      icon: "#CF4F41",
+      pill: "bg-[#CF4F41] text-white",
+      stock: "text-[#8A7268]",
+      action: restockAction(),
+    },
     low: {
       card: "border-[#F2C9C2] bg-[#FFF5F3]",
       icon: "#DE6A5D",
       pill: "bg-[#D96D61] text-white",
       stock: "text-[#8A7268]",
-      action: `Reorder ${Math.max(24, alert.sales7d * 3).toLocaleString("th-TH")} units immediately`,
+      action: restockAction(),
     },
     over: {
       card: "border-[#EEDDBA] bg-[#FFFAEF]",
@@ -1325,7 +1381,7 @@ export default function SellerAnalyticsDashboard() {
 
   const strongestCategory = categoryPerformance[0];
   const topSellerShare = totalUnitsSold > 0 && bestSellers[0] ? (bestSellers[0].sales7d / totalUnitsSold) * 100 : 0;
-  const lowStockCount = inventoryAlerts.filter((item) => item.kind === "low").length;
+  const lowStockCount = inventoryAlerts.filter((item) => item.kind === "low" || item.kind === "oos").length;
   const recommendations = useMemo(
     () => buildRecommendations({
       products,

@@ -19,7 +19,7 @@ const CheckoutPage = lazy(() => import("./frontend/Shop/CheckoutPage.jsx"));
 const CheckoutAddressPage = lazy(() => import("./frontend/Shop/CheckoutAddressPage.jsx"));
 const CheckoutAddressFormPage = lazy(() => import("./frontend/Shop/CheckoutAddressFormPage.jsx"));
 const OrderSuccessPage = lazy(() => import("./frontend/Shop/OrderSuccessPage.jsx"));
-const UserProfile = lazy(() => import("./frontend/Profile/userProfile.jsx"));
+const ProfileEntry = lazy(() => import("./frontend/Profile/ProfileEntry.jsx"));
 const AdminRoute = lazy(() => import("./frontend/admin/AdminRoute.jsx"));
 const AdminDashboard = lazy(() => import("./frontend/admin/AdminDashboard.jsx"));
 const AdminInboxPage = lazy(() => import("./frontend/admin/AdminInboxPage.jsx"));
@@ -116,7 +116,7 @@ function App() {
               <Route path="/checkout/address" element={<CheckoutAddressPage />} />
               <Route path="/checkout/address/new" element={<CheckoutAddressFormPage />} />
               <Route path="/checkout/success/:orderId" element={<OrderSuccessPage />} />
-              <Route path="/profile" element={<UserProfile />} />
+              <Route path="/profile" element={<ProfileEntry />} />
             </Route>
 
             <Route

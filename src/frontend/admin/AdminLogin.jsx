@@ -52,6 +52,7 @@ export default function AdminLogin({ onLoginSuccess }) {
           <div className="space-y-4 text-sm leading-7 text-white/78">
             <p>Use an account marked as admin in the database or listed in the server ADMIN_EMAILS env.</p>
             <p>This login is separated from the user modal and stores its own token.</p>
+            <p>Default admin email: `admin@tea.ac`</p>
           </div>
         </section>
 
@@ -69,7 +70,7 @@ export default function AdminLogin({ onLoginSuccess }) {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 className="w-full rounded-2xl border border-[#d7ceb8] bg-[#faf8f2] px-4 py-3 outline-none transition focus:border-[#485b3b] focus:bg-white"
-                placeholder="admin@example.com"
+                placeholder="admin@tea.ac"
                 required
               />
             </label>

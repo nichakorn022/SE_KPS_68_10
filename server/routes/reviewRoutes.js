@@ -1,11 +1,18 @@
 const express = require("express");
 const router = express.Router();
 const reviewController = require("../controllers/reviewController");
+const authMiddleware = require("../middleware/authMiddleware");
 
 // GET /api/reviews/:product_id - Get reviews for a product
 router.get("/:product_id", reviewController.getReviews);
 
 // POST /api/reviews/:product_id - Create a review for a product
-router.post("/:product_id", reviewController.createReview);
+router.post("/:product_id", authMiddleware, reviewController.createReview);
+
+// PATCH /api/reviews/:product_id/:review_id - Update your review
+router.patch("/:product_id/:review_id", authMiddleware, reviewController.updateReview);
+
+// DELETE /api/reviews/:product_id/:review_id - Delete your review
+router.delete("/:product_id/:review_id", authMiddleware, reviewController.deleteReview);
 
 module.exports = router;

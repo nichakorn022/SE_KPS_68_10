@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { apiUrl } from "../../lib/api";
 
-const FILTERS = ["All Reviews", "5 Stars", "4 Stars", "With Photos"];
+const FILTERS = ["All Reviews", "5 Stars", "4 Stars"];
 const SORTS = ["Latest", "Most Helpful", "Highest Rated", "Lowest Rated"];
 
 // ── Icons ──────────────────────────────────────────
@@ -88,7 +88,19 @@ export default function ProductReview({ productId }) {
   const [sort, setSort] = useState("Latest");
   const [showWriteModal, setShowWriteModal] = useState(false);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "" });
+  const [editingReview, setEditingReview] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const currentToken = localStorage.getItem("token");
+  const currentUser = currentToken ? (() => {
+    try {
+      const payload = JSON.parse(atob(currentToken.split(".")[1]));
+      return payload;
+    } catch {
+      return null;
+    }
+  })() : null;
+  const currentUserId = currentUser?.user_id;
 
   // Check if user is logged in
   const isLoggedIn = !!localStorage.getItem("token");
@@ -123,7 +135,7 @@ export default function ProductReview({ productId }) {
     fetchReviews();
   }, [productId]);
 
-  // Handle write review
+  // Handle create or update review
   const handleWriteReview = async () => {
     if (!isLoggedIn) {
       alert("Please login to write a review");
@@ -133,8 +145,14 @@ export default function ProductReview({ productId }) {
     try {
       setSubmitting(true);
       const token = localStorage.getItem("token");
-      const response = await fetch(apiUrl(`/reviews/${productId}`), {
-        method: "POST",
+      const isEditing = Boolean(editingReview);
+      const url = isEditing
+        ? apiUrl(`/reviews/${productId}/${editingReview.id}`)
+        : apiUrl(`/reviews/${productId}`);
+      const method = isEditing ? "PATCH" : "POST";
+
+      const response = await fetch(url, {
+        method,
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
@@ -143,7 +161,7 @@ export default function ProductReview({ productId }) {
       });
 
       if (!response.ok) {
-        let errorMessage = "Failed to submit review";
+        let errorMessage = isEditing ? "Failed to update review" : "Failed to submit review";
         try {
           const errorData = await response.json();
           errorMessage = errorData.message || errorMessage;
@@ -154,8 +172,9 @@ export default function ProductReview({ productId }) {
         throw new Error(errorMessage);
       }
 
-      alert("Review submitted successfully!");
+      alert(isEditing ? "Review updated successfully!" : "Review submitted successfully!");
       setShowWriteModal(false);
+      setEditingReview(null);
       setReviewForm({ rating: 5, comment: "" });
 
       // Refresh reviews
@@ -171,10 +190,36 @@ export default function ProductReview({ productId }) {
     }
   };
 
+  const handleEditReview = (review) => {
+    setEditingReview(review);
+    setReviewForm({ rating: review.rating, comment: review.text });
+    setShowWriteModal(true);
+  };
+
+  const handleDeleteReview = async (review) => {
+    if (!window.confirm("Are you sure you want to delete your review?")) return;
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(apiUrl(`/reviews/${productId}/${review.id}`), {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete review");
+      }
+      setReviews((prev) => prev.filter((r) => r.id !== review.id));
+      alert("Review deleted successfully");
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const filtered = reviews.filter((r) => {
     if (activeFilter === "5 Stars") return r.rating === 5;
     if (activeFilter === "4 Stars") return r.rating === 4;
-    if (activeFilter === "With Photos") return !!r.photo;
     return true;
   });
 
@@ -262,19 +307,17 @@ export default function ProductReview({ productId }) {
                       <p style={s.reviewDate}>{review.date}</p>
                     </div>
                   </div>
-                  <StarRow rating={review.rating} size={16} />
+                  <div style={s.reviewActionButtons}>
+                    {review.userId === currentUserId && (
+                      <>
+                        <button style={s.actionBtn} onClick={() => handleEditReview(review)}>Edit</button>
+                        <button style={s.actionBtnDanger} onClick={() => handleDeleteReview(review)}>Delete</button>
+                      </>
+                    )}
+                    <StarRow rating={review.rating} size={16} />
+                  </div>
                 </div>
                 <p style={s.reviewText}>{review.text}</p>
-                {review.photo && (
-                  <div style={s.photoThumb}>
-                    <img
-                      src={review.photo}
-                      alt="Review"
-                      style={s.reviewPhoto}
-                      onError={(e) => { e.target.style.display = "none"; }}
-                    />
-                  </div>
-                )}
                 <p style={s.helpfulText}>{review.helpful || 0} people found this helpful</p>
               </div>
             ))}
@@ -367,19 +410,17 @@ export default function ProductReview({ productId }) {
                       <p style={s.reviewDate}>{review.date}</p>
                     </div>
                   </div>
-                  <StarRow rating={review.rating} size={16} />
+                  <div style={s.reviewActionButtons}>
+                    {review.userId === currentUserId && (
+                      <>
+                        <button style={s.actionBtn} onClick={() => handleEditReview(review)}>Edit</button>
+                        <button style={s.actionBtnDanger} onClick={() => handleDeleteReview(review)}>Delete</button>
+                      </>
+                    )}
+                    <StarRow rating={review.rating} size={16} />
+                  </div>
                 </div>
                 <p style={{ ...s.reviewText, color: "#374151", marginTop: 12 }}>{review.text}</p>
-                {review.photo && (
-                  <div style={{ ...s.photoThumb, marginTop: 14, marginBottom: 0 }}>
-                    <img
-                      src={review.photo}
-                      alt="Review"
-                      style={{ ...s.reviewPhoto, width: 120, height: 120 }}
-                      onError={(e) => { e.target.style.display = "none"; }}
-                    />
-                  </div>
-                )}
                 <p style={{ ...s.helpfulText, color: "#78716c", marginTop: 16 }}>
                   {review.helpful || 0} people found this helpful
                 </p>
@@ -395,9 +436,13 @@ export default function ProductReview({ productId }) {
 
         {/* ── Write Review Modal ── */}
         {showWriteModal && (
-          <div style={s.modalOverlay} onClick={() => setShowWriteModal(false)}>
+          <div style={s.modalOverlay} onClick={() => {
+            setShowWriteModal(false);
+            setEditingReview(null);
+            setReviewForm({ rating: 5, comment: "" });
+          }}>
             <div style={s.modalContent} onClick={(e) => e.stopPropagation()}>
-              <h3 style={s.modalTitle}>Write a Review</h3>
+              <h3 style={s.modalTitle}>{editingReview ? "Edit Review" : "Write a Review"}</h3>
               <div style={s.modalBody}>
                 <div style={s.ratingInput}>
                   <label style={s.ratingLabel}>Rating:</label>
@@ -430,7 +475,11 @@ export default function ProductReview({ productId }) {
               </div>
               <div style={s.modalActions}>
                 <button
-                  onClick={() => setShowWriteModal(false)}
+                  onClick={() => {
+                    setShowWriteModal(false);
+                    setEditingReview(null);
+                    setReviewForm({ rating: 5, comment: "" });
+                  }}
                   style={s.cancelBtn}
                   disabled={submitting}
                 >
@@ -441,7 +490,7 @@ export default function ProductReview({ productId }) {
                   style={s.submitBtn}
                   disabled={submitting || !reviewForm.comment.trim()}
                 >
-                  {submitting ? "Submitting..." : "Submit Review"}
+                  {submitting ? "Submitting..." : editingReview ? "Update Review" : "Submit Review"}
                 </button>
               </div>
             </div>
@@ -662,6 +711,29 @@ const s = {
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: 10,
+  },
+  reviewActionButtons: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  },
+  actionBtn: {
+    padding: "4px 8px",
+    border: "1px solid #9ca3af",
+    background: "#f9fafb",
+    color: "#374151",
+    borderRadius: 6,
+    cursor: "pointer",
+    fontSize: 12,
+  },
+  actionBtnDanger: {
+    padding: "4px 8px",
+    border: "1px solid #ef4444",
+    background: "#fef2f2",
+    color: "#b91c1c",
+    borderRadius: 6,
+    cursor: "pointer",
+    fontSize: 12,
   },
   reviewerInfo: {
     display: "flex",

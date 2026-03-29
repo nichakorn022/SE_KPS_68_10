@@ -58,6 +58,9 @@ class RegistrationController {
   static async getUserRegistrations(req,res){
 
     try{
+      if (!req.user || (String(req.user.user_id) !== String(req.params.userId) && req.user.role !== "admin")) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
 
       const data = await registrationService.getUserRegistrations(req.params.userId);
 

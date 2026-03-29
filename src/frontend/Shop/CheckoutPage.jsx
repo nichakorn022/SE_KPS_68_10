@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import QRCode from "qrcode";
+import generatePromptPayPayload from "promptpay-qr";
 import { apiUrl } from "../../lib/api";
 import { getAuthHeaders, getStoredToken, getUserIdFromToken } from "./authClient";
 import usePersistentCart from "../hooks/usePersistentCart";
@@ -109,6 +111,127 @@ function PaymentOption({ selected, title, description, badge, onClick }) {
   );
 }
 
+function MockQrImage({ payload, amount }) {
+  const [qrDataUrl, setQrDataUrl] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    QRCode.toDataURL(payload, {
+      errorCorrectionLevel: "M",
+      margin: 2,
+      width: 280,
+      color: {
+        dark: "#24321F",
+        light: "#FFFFFF",
+      },
+    })
+      .then((dataUrl) => {
+        if (active) setQrDataUrl(dataUrl);
+      })
+      .catch(() => {
+        if (active) setQrDataUrl("");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [payload]);
+
+  if (!qrDataUrl) {
+    return <div className="h-48 w-48 animate-pulse rounded-[16px] bg-[#eef2e8]" />;
+  }
+
+  return (
+    <div className="relative">
+      <img src={qrDataUrl} alt={`PromptPay QR ${amount}`} className="h-48 w-48 rounded-[16px] bg-white object-contain" />
+      <div className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-4 border-white bg-[#0d5bd1] text-[9px] font-bold tracking-[0.12em] text-white shadow-[0_8px_20px_rgba(13,91,209,0.28)]">
+        PP
+      </div>
+    </div>
+  );
+}
+
+function PromptPayMockModal({ open, orderId, total, processing, onClose, onConfirm }) {
+  if (!open) return null;
+
+  const promptPayNumber = "0812345678";
+  const amount = Number(total ?? 0);
+  const qrPayload = generatePromptPayPayload(promptPayNumber, { amount });
+  const reference = `PP-${String(orderId).padStart(6, "0")}`;
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-[rgba(28,24,19,0.46)] px-4 backdrop-blur-sm">
+      <div className="w-full max-w-[30rem] rounded-[28px] border border-[#e7dfd2] bg-white p-5 shadow-[0_30px_80px_rgba(37,31,24,0.28)]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#8b9a79]">Mock QR Payment</p>
+            <h3 className="mt-2 text-[1.65rem] font-semibold text-[#22321f]">พร้อมเพย์จำลอง</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f6f2ea] text-lg text-[#6f665b]"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="mt-4 rounded-[22px] border border-[#dfe8d5] bg-[linear-gradient(180deg,#fbfdf7_0%,#f5f8ef_100%)] p-4">
+          <div className="rounded-[22px] bg-white p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+            <div className="rounded-[20px] border border-[#ece5d8] bg-[linear-gradient(180deg,#ffffff_0%,#fbf8f1_100%)] px-4 py-4">
+              <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8b9a79]">
+                <span>PromptPay QR</span>
+                <span>Mock</span>
+              </div>
+              <div className="mt-3 flex justify-center">
+                <MockQrImage payload={qrPayload} amount={amount} />
+              </div>
+              <div className="mt-4 rounded-[18px] bg-[#f7f3eb] px-4 py-3 text-left">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8b9a79]">Merchant</p>
+                    <p className="mt-1 text-sm font-semibold text-[#22321f]">ATC Tea Mock Store</p>
+                    <p className="mt-1 text-xs text-[#8a8072]">PromptPay {promptPayNumber}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8b9a79]">Amount</p>
+                    <p className="mt-1 text-lg font-semibold text-[#5D7A4B]">{formatPrice(amount)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 text-center">
+              <p className="text-sm text-[#8b8176]">Order #{orderId}</p>
+              <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[#9b927f]">Ref {reference}</p>
+              <p className="mt-2 text-[13px] leading-6 text-[#6f665b]">QR นี้สร้างจาก payload พร้อมเพย์ mock จริงของ order นี้ เพื่อให้หน้าตาและประสบการณ์ใกล้เคียงของจริงมากขึ้น</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={processing}
+            className="flex-1 rounded-[18px] bg-[#7B9A67] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {processing ? "กำลังยืนยัน..." : "จำลองสแกนสำเร็จ"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={processing}
+            className="rounded-[18px] border border-[#e2d9cb] bg-[#fffdf9] px-5 py-3 text-sm font-semibold text-[#6f665b] disabled:opacity-60"
+          >
+            ไว้ก่อน
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function OrderItem({ item, onUpdateQty }) {
   const subtotal = Number(item.price ?? 0) * item.qty;
 
@@ -202,6 +325,8 @@ export default function CheckoutPage() {
   const [addressLoading, setAddressLoading] = useState(true);
   const [submitError, setSubmitError] = useState("");
   const [submittingOrder, setSubmittingOrder] = useState(false);
+  const [promptPayOrder, setPromptPayOrder] = useState(null);
+  const [confirmingPromptPay, setConfirmingPromptPay] = useState(false);
 
   useEffect(() => {
     const token = getStoredToken();
@@ -287,6 +412,15 @@ export default function CheckoutPage() {
       }
 
       const result = await response.json();
+
+      if (paymentMethod === "promptpay") {
+        setPromptPayOrder({
+          orderId: result.order_id,
+          total: result.total_amount ?? total,
+        });
+        return;
+      }
+
       setCart([]);
       navigate(`/checkout/success/${result.order_id}`);
     } catch (error) {
@@ -318,6 +452,44 @@ export default function CheckoutPage() {
       </div>
     );
   }
+
+  const handleConfirmPromptPay = async () => {
+    if (!promptPayOrder?.orderId) return;
+
+    try {
+      setConfirmingPromptPay(true);
+      setSubmitError("");
+
+      const response = await fetch(apiUrl(`/orders/${promptPayOrder.orderId}/mock-pay`), {
+        method: "PATCH",
+        headers: {
+          ...getAuthHeaders(),
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(await getErrorMessage(response, "ยืนยันการชำระเงินไม่สำเร็จ"));
+      }
+
+      setCart([]);
+      navigate(`/checkout/success/${promptPayOrder.orderId}`);
+    } catch (error) {
+      setSubmitError(error.message || "ยืนยันการชำระเงินไม่สำเร็จ");
+    } finally {
+      setConfirmingPromptPay(false);
+    }
+  };
+
+  const handleClosePromptPay = () => {
+    if (!promptPayOrder?.orderId) {
+      setPromptPayOrder(null);
+      return;
+    }
+
+    setCart([]);
+    navigate(`/checkout/success/${promptPayOrder.orderId}`);
+  };
 
   return (
     <div className="min-h-screen bg-[linear-gradient(180deg,#F8F6EF_0%,#F4F7F0_35%,#F7F3E9_100%)] pb-36 text-[#24321F]">
@@ -552,6 +724,15 @@ export default function CheckoutPage() {
           </button>
         </div>
       </div>
+
+      <PromptPayMockModal
+        open={Boolean(promptPayOrder)}
+        orderId={promptPayOrder?.orderId}
+        total={promptPayOrder?.total}
+        processing={confirmingPromptPay}
+        onConfirm={handleConfirmPromptPay}
+        onClose={handleClosePromptPay}
+      />
     </div>
   );
 }

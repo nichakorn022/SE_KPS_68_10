@@ -4,6 +4,7 @@ import { apiUrl, assetUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
 import FloatingCartButton from "../components/FloatingCartButton";
 import usePersistentCart from "../hooks/usePersistentCart";
+import { getAuthHeaders, getUserIdFromToken, getUserRoleFromToken } from "./authClient";
 
 const api = {
   getShop: (id) =>
@@ -61,14 +62,71 @@ function createImageMap(rows) {
   return map;
 }
 
+function getDefaultOpeningHours() {
+  return {
+    weekdays: "9:00 AM - 7:00 PM",
+    saturday: "10:00 AM - 8:00 PM",
+    sunday: "10:00 AM - 6:00 PM",
+  };
+}
+
+function parseOpeningHours(value) {
+  const defaults = getDefaultOpeningHours();
+
+  if (!value) return defaults;
+
+  try {
+    const parsed = typeof value === "string" ? JSON.parse(value) : value;
+    return {
+      weekdays: String(parsed?.weekdays || defaults.weekdays),
+      saturday: String(parsed?.saturday || defaults.saturday),
+      sunday: String(parsed?.sunday || defaults.sunday),
+    };
+  } catch {
+    return defaults;
+  }
+}
+
+function createShopForm(shop) {
+  const openingHours = parseOpeningHours(shop?.opening_hours);
+
+  return {
+    shop_name: shop?.shop_name || "",
+    description: shop?.description || "",
+    contact_info: shop?.contact_info || "",
+    phone: shop?.phone || "",
+    address: shop?.address || "",
+    province: shop?.province || "",
+    district: shop?.district || "",
+    subdistrict: shop?.subdistrict || "",
+    opening_hours: openingHours,
+  };
+}
+
 function createShopProfile(shop, shopImages, products) {
   const cover = shopImages[0] || null;
   const avatar = shopImages[1] || shopImages[0] || null;
-  const gallery = [...shopImages, ...products.map((product) => product.img).filter(Boolean)].filter(Boolean);
-  const uniqueGallery = [...new Set(gallery)].slice(0, 4);
+  const gallery = [
+    ...shopImages.map((image, index) => ({
+      id: `shop-${index}`,
+      src: image,
+      kind: "shop",
+    })),
+    ...products
+      .filter((product) => product.img)
+      .map((product) => ({
+        id: `product-${product.product_id}`,
+        src: product.img,
+        kind: "product",
+        productId: product.product_id,
+        name: product.name,
+      })),
+  ];
+  const uniqueGallery = Array.from(new Map(gallery.map((item) => [item.src, item])).values()).slice(0, 4);
 
   return {
     id: shop.shop_id,
+    ownerUserId: Number(shop.user_id),
     name: shop.shop_name,
     description: shop.description?.trim() || "ร้านนี้ยังไม่มีคำอธิบายเพิ่มเติม",
     shortTag:
@@ -79,6 +137,7 @@ function createShopProfile(shop, shopImages, products) {
     phone: shop.phone?.trim() || "-",
     email: shop.email?.trim() || "-",
     contactInfo: shop.contact_info?.trim() || "",
+    openingHours: parseOpeningHours(shop.opening_hours),
     verified: Number(shop.verified_status) === 1,
     cover,
     avatar,
@@ -164,11 +223,6 @@ function createSpecialItems(profile, products) {
   ];
 }
 
-function createMapEmbed(address) {
-  if (!address || address === "-") return null;
-  return `https://www.google.com/maps?q=${encodeURIComponent(address)}&output=embed`;
-}
-
 function formatEventDate(dateString) {
   if (!dateString) return "-";
   const parsed = new Date(dateString);
@@ -204,7 +258,7 @@ function SectionTitle({ children, centered = false }) {
   );
 }
 
-function ProductCard({ product, onAddToCart }) {
+function ProductCard({ product, onAddToCart, canEdit = false }) {
   return (
     <article className="group overflow-hidden rounded-[28px] border border-[#e7e0d5] bg-white shadow-[0_18px_45px_rgba(195,170,128,0.10)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_30px_60px_rgba(123,154,103,0.16)]">
       <div className="aspect-[1/1] overflow-hidden bg-[#f4f1ea]">
@@ -232,13 +286,22 @@ function ProductCard({ product, onAddToCart }) {
             <p className="text-lg font-semibold text-[#6B8A5B]">{formatPrice(product.price)}</p>
             {product.tag ? <p className="text-sm text-[#8a857a]">{product.tag}</p> : null}
           </div>
-          <button
-            type="button"
-            onClick={() => onAddToCart(product)}
-            className="rounded-full border border-[#d8e1ce] bg-[#fbfdf7] px-4 py-2 text-sm font-semibold text-[#4e6841] transition-all hover:border-[#7B9A67] hover:bg-white"
-          >
-            เพิ่มลงตะกร้า
-          </button>
+          {canEdit ? (
+            <Link
+              to={`/seller/products?edit=${product.product_id}`}
+              className="rounded-full border border-[#d8e1ce] bg-[#fbfdf7] px-4 py-2 text-sm font-semibold text-[#4e6841] transition-all hover:border-[#7B9A67] hover:bg-white"
+            >
+              Edit product
+            </Link>
+          ) : (
+            <button
+              type="button"
+              onClick={() => onAddToCart(product)}
+              className="rounded-full border border-[#d8e1ce] bg-[#fbfdf7] px-4 py-2 text-sm font-semibold text-[#4e6841] transition-all hover:border-[#7B9A67] hover:bg-white"
+            >
+              เพิ่มลงตะกร้า
+            </button>
+          )}
         </div>
       </div>
     </article>
@@ -352,8 +415,17 @@ export default function ShopProfile() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [profile, setProfile] = useState(null);
+  const [shopForm, setShopForm] = useState(createShopForm());
+  const [savingShop, setSavingShop] = useState(false);
+  const [shopNotice, setShopNotice] = useState({ type: "", message: "" });
+  const [shopImages, setShopImages] = useState([]);
+  const [selectedShopImage, setSelectedShopImage] = useState(null);
+  const [uploadingShopImage, setUploadingShopImage] = useState(false);
+  const [ownerPreviewMode, setOwnerPreviewMode] = useState(false);
   const [products, setProducts] = useState([]);
   const [events, setEvents] = useState([]);
+  const currentUserId = getUserIdFromToken();
+  const currentUserRole = getUserRoleFromToken();
 
   useEffect(() => {
     let ignore = false;
@@ -393,7 +465,10 @@ export default function ShopProfile() {
 
         setProducts(storeProducts);
         setEvents(storeEvents);
+        setShopImages(Array.isArray(shopImageRows) ? shopImageRows : []);
         setProfile(createShopProfile(shopRow, storeImages, storeProducts));
+        setShopForm(createShopForm(shopRow));
+        setShopNotice({ type: "", message: "" });
         setError("");
       })
       .catch((fetchError) => {
@@ -414,8 +489,8 @@ export default function ShopProfile() {
   const storyText = profile ? createStory(profile) : "";
   const aboutItems = profile ? createAbout(profile) : [];
   const specialItems = profile ? createSpecialItems(profile, products) : [];
-  const mapEmbed = profile ? createMapEmbed(profile.address) : null;
-
+  const canManageShop = currentUserRole === "shop" && profile && Number(profile.ownerUserId) === Number(currentUserId);
+  const isOwner = canManageShop && !ownerPreviewMode;
   const addToCart = (product) => {
     setCart((previous) => {
       const existing = previous.find((item) => item.id === product.id);
@@ -434,6 +509,106 @@ export default function ShopProfile() {
     }
 
     setCart((previous) => previous.map((item) => (item.id === productId ? { ...item, qty } : item)));
+  };
+
+  const saveShopProfile = async ({ submitForVerification = false } = {}) => {
+    if (!profile?.id) return;
+
+    try {
+      setSavingShop(true);
+      setShopNotice({ type: "", message: "" });
+
+      const response = await fetch(apiUrl(`/shops/${profile.id}`), {
+        method: "PATCH",
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify(shopForm),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to update shop");
+      }
+
+      setProfile((current) => ({
+        ...current,
+        name: data.shop_name,
+        description: data.description?.trim() || current.description,
+        shortTag:
+          data.contact_info?.trim() ||
+          (Number(data.verified_status) === 1 ? "Verified tea shop on ATC marketplace" : "Independent tea shop"),
+        location: getLocation(data),
+        address: data.address?.trim() || "-",
+        phone: data.phone?.trim() || "-",
+        email: data.email?.trim() || "-",
+        contactInfo: data.contact_info?.trim() || "",
+        openingHours: parseOpeningHours(data.opening_hours),
+        verified: Number(data.verified_status) === 1,
+      }));
+      setShopForm(createShopForm(data));
+      setShopNotice({
+        type: "success",
+        message: submitForVerification
+          ? "Saved. Your shop is ready for admin review in the approvals inbox."
+          : "Shop details updated.",
+      });
+    } catch (saveError) {
+      setShopNotice({ type: "error", message: saveError.message || "Failed to update shop" });
+    } finally {
+      setSavingShop(false);
+    }
+  };
+
+  const uploadShopImage = async (file = selectedShopImage) => {
+    if (!profile?.id || !file) return;
+
+    try {
+      setUploadingShopImage(true);
+      setShopNotice({ type: "", message: "" });
+
+      const formData = new FormData();
+      formData.append("shop_id", String(profile.id));
+      formData.append("image", file);
+
+      const response = await fetch(apiUrl("/shop-images"), {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: formData,
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to upload shop image");
+      }
+
+      setSelectedShopImage(null);
+      window.location.reload();
+    } catch (uploadError) {
+      setShopNotice({ type: "error", message: uploadError.message || "Failed to upload shop image" });
+    } finally {
+      setUploadingShopImage(false);
+    }
+  };
+
+  const deleteShopImage = async (imageId) => {
+    if (!imageId) return;
+
+    try {
+      setShopNotice({ type: "", message: "" });
+
+      const response = await fetch(apiUrl(`/shop-images/${imageId}`), {
+        method: "DELETE",
+        headers: getAuthHeaders({ "Content-Type": "application/json" }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to delete shop image");
+      }
+
+      window.location.reload();
+    } catch (deleteError) {
+      setShopNotice({ type: "error", message: deleteError.message || "Failed to delete shop image" });
+    }
   };
 
   if (loading) {
@@ -476,45 +651,180 @@ export default function ShopProfile() {
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(28,23,17,0.08)_0%,rgba(250,248,242,0.12)_58%,#FAF8F2_92%)]" />
 
         <div className="absolute inset-x-0 bottom-0">
-          <div className="mx-auto flex max-w-[1280px] flex-col gap-6 px-6 pb-10 sm:flex-row sm:items-end">
-            <div className="h-36 w-36 overflow-hidden rounded-full border-[6px] border-white bg-white shadow-[0_20px_50px_rgba(61,47,31,0.20)] sm:h-44 sm:w-44">
-              {profile.avatar ? (
-                <img src={profile.avatar} alt={`${profile.name} avatar`} className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-[#bba88f]">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-16 w-16">
-                    <circle cx="12" cy="8" r="3.5" />
-                    <path d="M5 20c1.5-4 4.5-6 7-6s5.5 2 7 6" />
-                  </svg>
-                </div>
-              )}
-            </div>
-
-            <div className="pb-2">
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="font-serif text-[clamp(2.1rem,4vw,4.2rem)] tracking-[-0.04em] text-[#24321F]">
-                  {profile.name}
-                </h1>
-                {profile.verified ? (
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#79A86F] text-white">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-                      <path d="m7 12 3 3 7-7" />
+          <div className="mx-auto flex max-w-[1280px] px-6 pb-10">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:gap-8">
+              <div className="h-36 w-36 overflow-hidden rounded-full border-[6px] border-white bg-white shadow-[0_20px_50px_rgba(61,47,31,0.20)] sm:h-44 sm:w-44">
+                {profile.avatar ? (
+                  <img src={profile.avatar} alt={`${profile.name} avatar`} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-[#bba88f]">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-16 w-16">
+                      <circle cx="12" cy="8" r="3.5" />
+                      <path d="M5 20c1.5-4 4.5-6 7-6s5.5 2 7 6" />
                     </svg>
-                  </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="pb-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="font-serif text-[clamp(2.1rem,4vw,4.2rem)] tracking-[-0.04em] text-[#24321F]">
+                    {profile.name}
+                  </h1>
+                  {profile.verified ? (
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#79A86F] text-white">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+                        <path d="m7 12 3 3 7-7" />
+                      </svg>
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-3 text-[1.1rem] text-[#68786a] sm:text-[1.35rem]">{profile.shortTag}</p>
+
+                {canManageShop ? (
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setOwnerPreviewMode((current) => !current)}
+                      className="rounded-full border border-[#D4DDC9] bg-white/90 px-5 py-2 text-sm font-semibold text-[#51684A] shadow-[0_10px_24px_rgba(195,170,128,0.12)]"
+                    >
+                      {ownerPreviewMode ? "Back to edit mode" : "View public profile"}
+                    </button>
+                    {isOwner ? (
+                      <label className="cursor-pointer rounded-full bg-[#485B3B] px-5 py-2 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(195,170,128,0.12)]">
+                        {uploadingShopImage ? "Uploading..." : "Upload image"}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={(event) => {
+                            const file = event.target.files?.[0] || null;
+                            setSelectedShopImage(file);
+                            if (file) uploadShopImage(file);
+                          }}
+                        />
+                      </label>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {isOwner && selectedShopImage ? (
+                  <p className="mt-3 text-sm text-[#5f6d5c]">{selectedShopImage.name}</p>
                 ) : null}
               </div>
-              <p className="mt-3 text-[1.1rem] text-[#68786a] sm:text-[1.35rem]">{profile.shortTag}</p>
             </div>
           </div>
         </div>
       </section>
 
       <main className="mx-auto max-w-[1280px] px-6 pb-20">
+        {isOwner ? (
+          <section className="mb-10 rounded-[34px] border border-[#DFE5D6] bg-white/92 px-8 py-8 shadow-[0_18px_50px_rgba(195,170,128,0.10)]">
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-[#829473]">Shop Owner</p>
+                <h2 className="mt-3 font-serif text-[2rem] tracking-[-0.03em] text-[#24321F]">Edit Shop Profile</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-[#61705C]">
+                  Update the storefront your customers see here. Unverified shops already appear in the admin approval inbox.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setOwnerPreviewMode(true)}
+                  className="rounded-full border border-[#D4DDC9] bg-white px-4 py-2 text-sm font-semibold text-[#51684A]"
+                >
+                  View public profile
+                </button>
+                <span className={`rounded-full px-4 py-2 text-sm font-semibold ${profile.verified ? "bg-[#E6F1DA] text-[#4A6B34]" : "bg-[#F6E7D9] text-[#A15E3C]"}`}>
+                  {profile.verified ? "Verified by admin" : "Pending admin verification"}
+                </span>
+              </div>
+            </div>
+
+            {shopNotice.message ? (
+              <div className={`mt-6 rounded-2xl px-4 py-3 text-sm ${shopNotice.type === "error" ? "bg-[#fff0ed] text-[#b33a24]" : "bg-[#eef6ea] text-[#386132]"}`}>
+                {shopNotice.message}
+              </div>
+            ) : null}
+
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              <label className="text-sm text-[#55604f]">
+                <span className="mb-1 block font-medium">Shop Name</span>
+                <input value={shopForm.shop_name} onChange={(event) => setShopForm((current) => ({ ...current, shop_name: event.target.value }))} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f]">
+                <span className="mb-1 block font-medium">Phone</span>
+                <input value={shopForm.phone} onChange={(event) => setShopForm((current) => ({ ...current, phone: event.target.value }))} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f] md:col-span-2">
+                <span className="mb-1 block font-medium">Description</span>
+                <textarea value={shopForm.description} onChange={(event) => setShopForm((current) => ({ ...current, description: event.target.value }))} rows={4} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f] md:col-span-2">
+                <span className="mb-1 block font-medium">Contact Info</span>
+                <input value={shopForm.contact_info} onChange={(event) => setShopForm((current) => ({ ...current, contact_info: event.target.value }))} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f] md:col-span-2">
+                <span className="mb-1 block font-medium">Address</span>
+                <textarea value={shopForm.address} onChange={(event) => setShopForm((current) => ({ ...current, address: event.target.value }))} rows={3} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f]">
+                <span className="mb-1 block font-medium">Province</span>
+                <input value={shopForm.province} onChange={(event) => setShopForm((current) => ({ ...current, province: event.target.value }))} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f]">
+                <span className="mb-1 block font-medium">District</span>
+                <input value={shopForm.district} onChange={(event) => setShopForm((current) => ({ ...current, district: event.target.value }))} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+              <label className="text-sm text-[#55604f] md:col-span-2">
+                <span className="mb-1 block font-medium">Subdistrict</span>
+                <input value={shopForm.subdistrict} onChange={(event) => setShopForm((current) => ({ ...current, subdistrict: event.target.value }))} className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]" />
+              </label>
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button type="button" onClick={() => saveShopProfile()} disabled={savingShop || !shopForm.shop_name.trim()} className="rounded-full bg-[#485B3B] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60">
+                {savingShop ? "Saving..." : "Save changes"}
+              </button>
+              {!profile.verified ? (
+                <button type="button" onClick={() => saveShopProfile({ submitForVerification: true })} disabled={savingShop || !shopForm.shop_name.trim()} className="rounded-full border border-[#D4DDC9] bg-white px-5 py-3 text-sm font-semibold text-[#51684A] disabled:opacity-60">
+                  {savingShop ? "Saving..." : "Save and send to admin"}
+                </button>
+              ) : null}
+            </div>
+          </section>
+        ) : null}
+
         <section className="rounded-[34px] bg-[#EEF4EC] px-8 py-10 shadow-[0_18px_50px_rgba(195,170,128,0.10)] sm:px-14 sm:py-14">
           <SectionTitle centered>Our Story</SectionTitle>
-          <p className="mx-auto mt-8 max-w-4xl text-center text-[1.2rem] leading-[2.15] text-[#516356]">
-            {storyText}
-          </p>
+          {isOwner ? (
+            <div className="mx-auto mt-8 max-w-4xl">
+              <textarea
+                value={shopForm.description}
+                onChange={(event) =>
+                  setShopForm((current) => ({ ...current, description: event.target.value }))
+                }
+                rows={5}
+                placeholder="Tell customers about your shop story..."
+                className="w-full rounded-[24px] border border-[#D5DDCB] bg-white/88 px-6 py-5 text-center text-[1.08rem] leading-[2] text-[#516356] outline-none focus:border-[#748b61]"
+              />
+              <div className="mt-4 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => saveShopProfile()}
+                  disabled={savingShop || !shopForm.shop_name.trim()}
+                  className="rounded-full bg-[#485B3B] px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                >
+                  {savingShop ? "Saving..." : "Save story"}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="mx-auto mt-8 max-w-4xl text-center text-[1.2rem] leading-[2.15] text-[#516356]">
+              {storyText}
+            </p>
+          )}
         </section>
 
         <section className="py-16">
@@ -549,10 +859,20 @@ export default function ShopProfile() {
         </section>
 
         <section className="py-16">
-          <SectionTitle centered>Featured Products</SectionTitle>
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+            <SectionTitle centered>Featured Products</SectionTitle>
+            {isOwner ? (
+              <Link
+                to="/seller/products"
+                className="inline-flex items-center rounded-full border border-[#D7E1CC] bg-white px-5 py-2 text-sm font-semibold text-[#4E6841] transition hover:border-[#7B9A67] hover:bg-[#fbfdf7]"
+              >
+                Add product
+              </Link>
+            ) : null}
+          </div>
           <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             {featuredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
+              <ProductCard key={product.id} product={product} onAddToCart={addToCart} canEdit={isOwner} />
             ))}
           </div>
         </section>
@@ -572,47 +892,29 @@ export default function ShopProfile() {
           <section className="py-6">
             <SectionTitle centered>Gallery</SectionTitle>
             <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {profile.gallery.map((image, index) => (
-                <div key={`${image}-${index}`} className="aspect-[1/1] overflow-hidden rounded-[28px] bg-[#f1ece3]">
-                  <img src={image} alt={`${profile.name} gallery ${index + 1}`} className="h-full w-full object-cover" />
+              {profile.gallery.map((item, index) => (
+                <div key={item.id} className="group relative aspect-[1/1] overflow-hidden rounded-[28px] bg-[#f1ece3]">
+                  <img src={item.src} alt={item.name || `${profile.name} gallery ${index + 1}`} className="h-full w-full object-cover" />
+                  {isOwner && item.kind === "product" ? (
+                    <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 bg-gradient-to-t from-[rgba(20,18,15,0.78)] via-[rgba(20,18,15,0.38)] to-transparent px-4 py-4 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                      <span className="text-sm font-medium text-white/90">Product image</span>
+                      <Link
+                        to={`/seller/products?edit=${item.productId}`}
+                        className="rounded-full bg-white/92 px-4 py-2 text-sm font-semibold text-[#33422D] transition hover:bg-white"
+                      >
+                        Edit product
+                      </Link>
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>
           </section>
         ) : null}
 
-        <section className="grid gap-10 py-16 lg:grid-cols-[1.1fr_1fr]">
-          <div>
-            <div className="flex items-center gap-3">
-              <span className="text-[#7B9A67]">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-7 w-7">
-                  <path d="M12 21s6-4.35 6-10a6 6 0 1 0-12 0c0 5.65 6 10 6 10Z" />
-                  <circle cx="12" cy="11" r="2.4" />
-                </svg>
-              </span>
-              <h3 className="font-serif text-[2rem] tracking-[-0.03em] text-[#24321F]">Location</h3>
-            </div>
-            <p className="mt-6 text-[1.2rem] leading-9 text-[#516356]">{profile.address}</p>
-
-            <div className="mt-6 overflow-hidden rounded-[26px] border border-[#e3dccf] bg-white shadow-[0_18px_45px_rgba(195,170,128,0.10)]">
-              {mapEmbed ? (
-                <iframe
-                  title={`${profile.name} location`}
-                  src={mapEmbed}
-                  className="h-[22rem] w-full border-0"
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                />
-              ) : (
-                <div className="flex h-[22rem] items-center justify-center bg-[#f5f1e9] text-[#8f8778]">
-                  ยังไม่มีข้อมูลตำแหน่งแผนที่
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-10">
-            <div>
+        <section className="py-16">
+          <div className="grid items-start gap-8 lg:grid-cols-2">
+            <div className="rounded-[30px] border border-[#e9e2d7] bg-[#fdfbf6] px-8 py-8 shadow-[0_18px_45px_rgba(195,170,128,0.08)] sm:px-10">
               <div className="flex items-center gap-3">
                 <span className="text-[#7B9A67]">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-7 w-7">
@@ -624,89 +926,149 @@ export default function ShopProfile() {
               </div>
 
               <div className="mt-6 space-y-4 text-[1.18rem] text-[#516356]">
-                <div className="flex items-center justify-between gap-4">
-                  <span>Monday - Friday</span>
-                  <span>9:00 AM - 7:00 PM</span>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span>Saturday</span>
-                  <span>10:00 AM - 8:00 PM</span>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span>Sunday</span>
-                  <span>10:00 AM - 6:00 PM</span>
-                </div>
+                {isOwner ? (
+                  <div className="space-y-4 rounded-[26px] border border-[#e3dccf] bg-white px-5 py-5 shadow-[0_18px_45px_rgba(195,170,128,0.10)]">
+                    <label className="block text-sm font-medium text-[#485847]">
+                      <span className="mb-2 block">Monday - Friday</span>
+                      <input
+                        value={shopForm.opening_hours.weekdays}
+                        onChange={(event) =>
+                          setShopForm((current) => ({
+                            ...current,
+                            opening_hours: { ...current.opening_hours, weekdays: event.target.value },
+                          }))
+                        }
+                        className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]"
+                      />
+                    </label>
+                    <label className="block text-sm font-medium text-[#485847]">
+                      <span className="mb-2 block">Saturday</span>
+                      <input
+                        value={shopForm.opening_hours.saturday}
+                        onChange={(event) =>
+                          setShopForm((current) => ({
+                            ...current,
+                            opening_hours: { ...current.opening_hours, saturday: event.target.value },
+                          }))
+                        }
+                        className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]"
+                      />
+                    </label>
+                    <label className="block text-sm font-medium text-[#485847]">
+                      <span className="mb-2 block">Sunday</span>
+                      <input
+                        value={shopForm.opening_hours.sunday}
+                        onChange={(event) =>
+                          setShopForm((current) => ({
+                            ...current,
+                            opening_hours: { ...current.opening_hours, sunday: event.target.value },
+                          }))
+                        }
+                        className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => saveShopProfile()}
+                      disabled={savingShop || !shopForm.shop_name.trim()}
+                      className="rounded-full bg-[#485B3B] px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                    >
+                      {savingShop ? "Saving..." : "Save hours"}
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>Monday - Friday</span>
+                      <span>{profile.openingHours.weekdays}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>Saturday</span>
+                      <span>{profile.openingHours.saturday}</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>Sunday</span>
+                      <span>{profile.openingHours.sunday}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
-            <div>
+            <div className="rounded-[30px] border border-[#e9e2d7] bg-[#fdfbf6] px-8 py-8 shadow-[0_18px_45px_rgba(195,170,128,0.08)] sm:px-10">
               <h3 className="font-serif text-[2rem] tracking-[-0.03em] text-[#24321F]">Contact</h3>
               <div className="mt-6 space-y-5">
-                <ContactLine
-                  icon={
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6">
-                      <path d="M5.5 4.75h3l1.5 4-2 1.75a14 14 0 0 0 5 5l1.75-2 4 1.5v3a1 1 0 0 1-1.1 1A15.75 15.75 0 0 1 4.5 5.85a1 1 0 0 1 1-1.1Z" />
-                    </svg>
-                  }
-                >
-                  {profile.phone}
-                </ContactLine>
-                <ContactLine
-                  icon={
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6">
-                      <rect x="3" y="5.25" width="18" height="13.5" rx="2" />
-                      <path d="M4 6.75 12 13l8-6.25" />
-                    </svg>
-                  }
-                >
-                  {profile.email}
-                </ContactLine>
-                {profile.contactInfo ? (
-                  <ContactLine
-                    icon={
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6">
-                        <circle cx="12" cy="12" r="9" />
-                        <path d="M3 12h18M12 3c2.5 2.7 4 5.9 4 9s-1.5 6.3-4 9c-2.5-2.7-4-5.9-4-9s1.5-6.3 4-9Z" />
-                      </svg>
-                    }
-                  >
-                    {profile.contactInfo}
-                  </ContactLine>
-                ) : null}
+                {isOwner ? (
+                  <div className="space-y-4 rounded-[26px] border border-[#e3dccf] bg-white px-5 py-5 shadow-[0_18px_45px_rgba(195,170,128,0.10)]">
+                    <label className="block text-sm font-medium text-[#485847]">
+                      <span className="mb-2 block">Phone</span>
+                      <input
+                        value={shopForm.phone}
+                        onChange={(event) => setShopForm((current) => ({ ...current, phone: event.target.value }))}
+                        className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]"
+                      />
+                    </label>
+                    <label className="block text-sm font-medium text-[#485847]">
+                      <span className="mb-2 block">Contact info</span>
+                      <input
+                        value={shopForm.contact_info}
+                        onChange={(event) => setShopForm((current) => ({ ...current, contact_info: event.target.value }))}
+                        className="w-full rounded-lg border border-[#d9ddcf] px-4 py-3 outline-none focus:border-[#748b61]"
+                      />
+                    </label>
+                    <label className="block text-sm font-medium text-[#485847]">
+                      <span className="mb-2 block">Account email</span>
+                      <input value={profile.email} disabled className="w-full rounded-lg border border-[#d9ddcf] bg-[#f6f3ec] px-4 py-3 text-[#7d8777]" />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => saveShopProfile()}
+                      disabled={savingShop || !shopForm.shop_name.trim()}
+                      className="rounded-full bg-[#485B3B] px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                    >
+                      {savingShop ? "Saving..." : "Save contact"}
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <ContactLine
+                      icon={
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6">
+                          <path d="M5.5 4.75h3l1.5 4-2 1.75a14 14 0 0 0 5 5l1.75-2 4 1.5v3a1 1.1 0 0 1-1.1 1A15.75 15.75 0 0 1 4.5 5.85a1 1 0 0 1 1-1.1Z" />
+                        </svg>
+                      }
+                    >
+                      {profile.phone}
+                    </ContactLine>
+                    <ContactLine
+                      icon={
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6">
+                          <rect x="3" y="5.25" width="18" height="13.5" rx="2" />
+                          <path d="M4 6.75 12 13l8-6.25" />
+                        </svg>
+                      }
+                    >
+                      {profile.email}
+                    </ContactLine>
+                    {profile.contactInfo ? (
+                      <ContactLine
+                        icon={
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6">
+                            <circle cx="12" cy="12" r="9" />
+                            <path d="M3 12h18M12 3c2.5 2.7 4 5.9 4 9s-1.5 6.3-4 9c-2.5-2.7-4-5.9-4-9s1.5-6.3 4-9Z" />
+                          </svg>
+                        }
+                      >
+                        {profile.contactInfo}
+                      </ContactLine>
+                    ) : null}
+                  </>
+                )}
               </div>
             </div>
           </div>
         </section>
 
-        <section className="mt-16 rounded-[34px] bg-[#6A9A63] px-8 py-14 text-center text-white shadow-[0_24px_55px_rgba(106,154,99,0.24)] sm:px-12">
-          <h2 className="font-serif text-[clamp(2rem,3.2vw,3.2rem)] tracking-[-0.04em]">
-            Ready to Experience Premium Tea?
-          </h2>
-          <p className="mx-auto mt-6 max-w-3xl text-[1.3rem] leading-9 text-white/90">
-            Discover our curated collection of tea powders and blends, with a store atmosphere designed to feel calm, refined, and trustworthy.
-          </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link
-              to="/shop"
-              className="inline-flex items-center gap-3 rounded-full bg-white px-8 py-4 text-lg font-semibold text-[#6A9A63]"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-                <rect x="5" y="6" width="14" height="14" rx="2" />
-                <path d="M9 6a3 3 0 0 1 6 0" />
-              </svg>
-              Browse Products
-            </Link>
-            <Link
-              to={`/shop/${id}/chat`}
-              className="inline-flex items-center gap-3 rounded-full border-2 border-white/90 px-8 py-4 text-lg font-semibold text-white"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.15" className="h-6 w-6">
-                <path d="M6.5 18.5 4 20l.85-3.3A8.5 8.5 0 1 1 20.5 12a8.5 8.5 0 0 1-8.5 8.5c-1.93 0-3.34-.43-5.5-2Z" />
-              </svg>
-              Contact Shop
-            </Link>
-          </div>
-        </section>
 
         <footer className="py-14 text-center text-[1.12rem] text-[#62705e]">
           © 2026 {profile.name}. All rights reserved.
@@ -775,3 +1137,4 @@ export default function ShopProfile() {
     </div>
   );
 }
+

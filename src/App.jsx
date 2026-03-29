@@ -60,12 +60,14 @@ function App() {
   }, [adminToken]);
 
   const handleLoginSuccess = (newToken) => {
+    localStorage.removeItem("avatar");
     localStorage.setItem("token", newToken);
     setToken(newToken);
     closeAll();
   };
 
   const handleLogout = () => {
+    localStorage.removeItem("avatar");
     localStorage.removeItem("token");
     setToken(null);
   };

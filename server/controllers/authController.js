@@ -33,12 +33,16 @@ function buildAuthPayload(user) {
       user_id: user.user_id,
       email: user.email,
       role,
+      username: user.username,
+      name: user.username,
+      avatar: user.avatar || null,
     },
     responseUser: {
       user_id: user.user_id,
       username: user.username,
       email: user.email,
       role,
+      avatar: user.avatar || null,
     },
     isAdmin: adminUser,
   };

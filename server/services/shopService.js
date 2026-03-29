@@ -3,6 +3,7 @@ const { query } = require("../utils/dbHelpers");
 async function getShops() {
   return query(
     `SELECT ts.shop_id, ts.user_id, u.email, ts.shop_name, ts.description, ts.contact_info, ts.phone, ts.address,
+            ts.opening_hours,
             ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status, ts.admin_note
      FROM tea_shop ts
      LEFT JOIN users u ON u.user_id = ts.user_id
@@ -13,6 +14,7 @@ async function getShops() {
 async function getShopById(id) {
   const rows = await query(
     `SELECT ts.shop_id, ts.user_id, u.email, ts.shop_name, ts.description, ts.contact_info, ts.phone, ts.address,
+            ts.opening_hours,
             ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status, ts.admin_note
      FROM tea_shop ts
      LEFT JOIN users u ON u.user_id = ts.user_id
@@ -72,6 +74,77 @@ async function createShop({
   };
 }
 
+async function updateShopByOwner(userId, shopId, payload) {
+  const rows = await query(
+    `SELECT shop_id, user_id
+     FROM tea_shop
+     WHERE shop_id = ?
+     LIMIT 1`,
+    [shopId]
+  );
+
+  if (rows.length === 0) {
+    const error = new Error("Shop not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (String(rows[0].user_id) !== String(userId)) {
+    const error = new Error("Forbidden");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const normalized = {
+    shop_name: String(payload.shop_name || "").trim(),
+    description: String(payload.description || "").trim(),
+    contact_info: String(payload.contact_info || "").trim(),
+    phone: String(payload.phone || "").trim(),
+    address: String(payload.address || "").trim(),
+    opening_hours:
+      payload.opening_hours && typeof payload.opening_hours === "object"
+        ? JSON.stringify(payload.opening_hours)
+        : String(payload.opening_hours || "").trim(),
+    province: String(payload.province || "").trim(),
+    district: String(payload.district || "").trim(),
+    subdistrict: String(payload.subdistrict || "").trim(),
+  };
+
+  if (!normalized.shop_name) {
+    const error = new Error("shop_name is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await query(
+    `UPDATE tea_shop
+     SET shop_name = ?,
+         description = ?,
+         contact_info = ?,
+         phone = ?,
+         address = ?,
+         opening_hours = ?,
+         province = ?,
+         district = ?,
+         subdistrict = ?
+     WHERE shop_id = ?`,
+    [
+      normalized.shop_name,
+      normalized.description || null,
+      normalized.contact_info || null,
+      normalized.phone || null,
+      normalized.address || null,
+      normalized.opening_hours || null,
+      normalized.province || null,
+      normalized.district || null,
+      normalized.subdistrict || null,
+      shopId,
+    ]
+  );
+
+  return getShopById(shopId);
+}
+
 async function updateShopVerification(shopId, verifiedStatus, adminNote) {
   const result = await query(
     `UPDATE tea_shop
@@ -95,5 +168,6 @@ module.exports = {
   getShops,
   getShopById,
   createShop,
+  updateShopByOwner,
   updateShopVerification
 };

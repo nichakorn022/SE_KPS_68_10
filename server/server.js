@@ -102,6 +102,55 @@ const { query } = require("./utils/dbHelpers");
   }
 })();
 
+(async function ensureTeaShopOpeningHoursColumn() {
+  try {
+    const rows = await query(
+      `SELECT COLUMN_NAME
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'tea_shop'
+         AND COLUMN_NAME = 'opening_hours'
+       LIMIT 1`
+    );
+
+    if (rows.length === 0) {
+      await query("ALTER TABLE tea_shop ADD COLUMN opening_hours TEXT NULL");
+    }
+  } catch (err) {
+    console.warn("Could not ensure tea_shop.opening_hours column:", err.message);
+  }
+})();
+
+(async function ensureShopImagesIdentity() {
+  try {
+    const imageIdRows = await query(
+      `SELECT COLUMN_KEY, EXTRA
+       FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'shop_images'
+         AND COLUMN_NAME = 'image_id'
+       LIMIT 1`
+    );
+
+    if (imageIdRows.length === 0) return;
+
+    const imageIdMeta = imageIdRows[0];
+    if (imageIdMeta.COLUMN_KEY !== "PRI") {
+      try {
+        await query("ALTER TABLE shop_images ADD PRIMARY KEY (image_id)");
+      } catch (err) {
+        console.warn("Could not add shop_images primary key:", err.message);
+      }
+    }
+
+    if (!String(imageIdMeta.EXTRA || "").toLowerCase().includes("auto_increment")) {
+      await query("ALTER TABLE shop_images MODIFY image_id INT(10) NOT NULL AUTO_INCREMENT");
+    }
+  } catch (err) {
+    console.warn("Could not ensure shop_images.image_id identity:", err.message);
+  }
+})();
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

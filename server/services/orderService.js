@@ -2,7 +2,7 @@ const { beginTransaction, commit, rollback, query } = require("../utils/dbHelper
 
 const allowedStatuses = new Set(["pending", "paid", "cancelled"]);
 const orderSelectFields = `
-  SELECT order_id, user_id, order_date, status, total_amount,
+  SELECT order_id, user_id, order_date, status, payment_status, fulfillment_status, total_amount,
          NULL AS address_id, NULL AS recipient_name, NULL AS phone,
          NULL AS shipping_address, NULL AS subdistrict, NULL AS district,
          NULL AS province, NULL AS postal_code, NULL AS address_note
@@ -237,10 +237,51 @@ async function updateOrderStatus(id, status) {
   }
 }
 
+async function markOrderPaid(id) {
+  try {
+    await beginTransaction();
+
+    const orderRows = await query(
+      "SELECT order_id, status, payment_status FROM orders WHERE order_id = ? FOR UPDATE",
+      [id]
+    );
+
+    if (orderRows.length === 0) {
+      const error = new Error("Order not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const current = orderRows[0];
+
+    if (current.status === "cancelled") {
+      const error = new Error("Cancelled order cannot be marked as paid");
+      error.statusCode = 400;
+      throw error;
+    }
+
+    if (current.status === "paid" && current.payment_status === "paid") {
+      await rollback();
+      return { message: "Order already paid" };
+    }
+
+    await query(
+      "UPDATE orders SET status = 'paid', payment_status = 'paid' WHERE order_id = ?",
+      [id]
+    );
+
+    await commit();
+    return { message: "Order marked as paid" };
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
+}
 module.exports = {
   createOrder,
   getOrderById,
   getOrders,
   getOrdersByUser,
-  updateOrderStatus
+  updateOrderStatus,
+  markOrderPaid
 };

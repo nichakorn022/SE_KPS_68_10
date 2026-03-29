@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import SiteNavbar from "../components/SiteNavbar";
 import { apiUrl, assetUrl } from "../../lib/api";
 import { getAuthHeaders, getStoredToken, getUserRoleFromToken } from "./authClient";
@@ -103,7 +103,13 @@ function ProductCard({ product, onEdit, onDelete }) {
             {product.image_path ? (
               <img src={assetUrl(product.image_path)} alt={product.tea_name} className="h-full w-full object-cover" />
             ) : (
-              <div className="grid h-full w-full place-items-center text-2xl text-[#8A9A7F]">ªÒ</div>
+              <div className="grid h-full w-full place-items-center text-[#8A9A7F]">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-8 w-8">
+                  <rect x="4" y="5" width="16" height="14" rx="3" />
+                  <circle cx="9" cy="10" r="1.4" />
+                  <path d="m7 16 3.2-3.2a1.4 1.4 0 0 1 2 0L17 17" />
+                </svg>
+              </div>
             )}
           </div>
           <div className="min-w-0">
@@ -122,7 +128,7 @@ function ProductCard({ product, onEdit, onDelete }) {
 
       <div className="mt-5 flex items-end justify-between gap-4">
         <div>
-          <p className="text-[1.2rem] font-semibold text-[#506B3F]">à¸¿{Number(product.price || 0).toLocaleString("th-TH")}</p>
+          <p className="text-[1.2rem] font-semibold text-[#506B3F]">ß{Number(product.price || 0).toLocaleString("th-TH")}</p>
           <p className={`mt-1 text-sm ${lowStock ? "text-[#A7573B]" : "text-[#6D7868]"}`}>Stock {Number(product.stock || 0).toLocaleString("th-TH")}</p>
         </div>
         <div className="flex gap-2">
@@ -150,6 +156,7 @@ export default function SellerProductsPage() {
 
   const role = getUserRoleFromToken();
   const fileInputRef = useRef(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const lowStockCount = useMemo(() => products.filter((item) => Number(item.stock || 0) <= 5).length, [products]);
 
@@ -251,6 +258,21 @@ export default function SellerProductsPage() {
     setStatus({ type: "", message: "" });
     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
   };
+
+  useEffect(() => {
+    const editId = searchParams.get("edit");
+    if (!editId || products.length === 0) return;
+
+    const targetProduct = products.find((item) => Number(item.product_id) === Number(editId));
+    if (!targetProduct) return;
+
+    handleEdit(targetProduct);
+    setSearchParams((currentParams) => {
+      const nextParams = new URLSearchParams(currentParams);
+      nextParams.delete("edit");
+      return nextParams;
+    }, { replace: true });
+  }, [products, searchParams, setSearchParams]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();

@@ -10,6 +10,12 @@ class UserController {
   static async getUserById(req, res) {
     try {
       const id = req.params.id;
+      const requester = req.user;
+
+      if (!requester || (String(requester.user_id) !== String(id) && requester.role !== "admin")) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+
       const user = await userService.getUserById(id);
 
       if (!user) return res.status(404).json({ message: "User not found" });

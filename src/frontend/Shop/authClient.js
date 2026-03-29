@@ -28,3 +28,19 @@ export function getUserIdFromToken() {
 export function getUserRoleFromToken() {
   return getTokenPayload()?.role ?? null;
 }
+
+export function getAvatarStorageKey(userId = getUserIdFromToken()) {
+  return userId ? `avatar:${userId}` : "";
+}
+
+export function getStoredAvatar() {
+  if (typeof window === "undefined") return "";
+
+  const avatarKey = getAvatarStorageKey();
+  if (avatarKey) {
+    const scopedAvatar = window.localStorage.getItem(avatarKey);
+    if (scopedAvatar) return scopedAvatar;
+  }
+
+  return window.localStorage.getItem("avatar") || "";
+}

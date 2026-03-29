@@ -61,6 +61,131 @@ exports.getReviews = async (req, res) => {
   }
 };
 
+exports.getSellerReviews = async (req, res) => {
+  try {
+    const userId = req.user?.user_id;
+    const role = req.user?.role;
+
+    if (!userId) return res.status(401).json({ message: "Authentication required" });
+    if (role !== "shop") {
+      return res.status(403).json({ message: "This endpoint is available only for shop accounts" });
+    }
+
+    const rows = await query(
+      `SELECT
+          pr.review_id,
+          pr.rating,
+          pr.comment,
+          pr.created_at,
+          u.user_id AS reviewer_user_id,
+          u.username AS reviewer_name,
+          u.imageprofile AS reviewer_avatar,
+          od.product_id,
+          tp.tea_name,
+          tp.tea_type,
+          o.order_id,
+          rr.reply_text,
+          rr.created_at AS reply_created_at,
+          rr.updated_at AS reply_updated_at
+       FROM tea_shop ts
+       JOIN tea_product tp ON tp.shop_id = ts.shop_id
+       JOIN order_details od ON od.product_id = tp.product_id
+       JOIN orders o ON o.order_id = od.order_id
+       JOIN users u ON u.user_id = o.user_id
+       JOIN product_review pr ON pr.order_detail_id = od.order_detail_id
+       LEFT JOIN product_review_reply rr ON rr.review_id = pr.review_id
+       WHERE ts.user_id = ?
+       ORDER BY pr.created_at DESC`,
+      [userId]
+    );
+
+    const formatted = (Array.isArray(rows) ? rows : []).map((row) => ({
+      id: row.review_id,
+      rating: row.rating,
+      text: repairLikelyMojibake(row.comment),
+      createdAt: row.created_at,
+      date: new Date(row.created_at).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      }),
+      productId: row.product_id,
+      productName: repairLikelyMojibake(row.tea_name),
+      productType: repairLikelyMojibake(row.tea_type),
+      orderId: row.order_id,
+      reviewer: {
+        userId: row.reviewer_user_id,
+        name: row.reviewer_name,
+        avatar: row.reviewer_avatar || null,
+      },
+      reply: row.reply_text
+        ? {
+            text: repairLikelyMojibake(row.reply_text),
+            createdAt: row.reply_created_at,
+            updatedAt: row.reply_updated_at,
+          }
+        : null,
+    }));
+
+    return res.json(formatted);
+  } catch (error) {
+    console.error("Error fetching seller reviews:", error);
+    return res.status(500).json({ message: "Failed to fetch seller reviews" });
+  }
+};
+
+exports.replyToReview = async (req, res) => {
+  try {
+    const userId = req.user?.user_id;
+    const role = req.user?.role;
+    const reviewId = Number(req.params.review_id);
+    const replyText = String(req.body?.reply_text || "").trim();
+
+    if (!userId) return res.status(401).json({ message: "Authentication required" });
+    if (role !== "shop") {
+      return res.status(403).json({ message: "This endpoint is available only for shop accounts" });
+    }
+
+    if (!Number.isInteger(reviewId) || reviewId <= 0) {
+      return res.status(400).json({ message: "review_id must be a positive integer" });
+    }
+
+    if (!replyText) {
+      return res.status(400).json({ message: "reply_text is required" });
+    }
+
+    const ownership = await query(
+      `SELECT pr.review_id
+       FROM tea_shop ts
+       JOIN tea_product tp ON tp.shop_id = ts.shop_id
+       JOIN order_details od ON od.product_id = tp.product_id
+       JOIN product_review pr ON pr.order_detail_id = od.order_detail_id
+       WHERE ts.user_id = ?
+         AND pr.review_id = ?
+       LIMIT 1`,
+      [userId, reviewId]
+    );
+
+    if (!ownership.length) {
+      return res.status(404).json({ message: "Review not found for this shop" });
+    }
+
+    await query(
+      `INSERT INTO product_review_reply (review_id, shop_user_id, reply_text)
+       VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         reply_text = VALUES(reply_text),
+         updated_at = CURRENT_TIMESTAMP`,
+      [reviewId, userId, replyText]
+    );
+
+    return res.json({ message: "Reply saved" });
+  } catch (error) {
+    console.error("Error replying to review:", error);
+    return res.status(500).json({ message: "Failed to save reply" });
+  }
+};
+
 exports.createReview = async (req, res) => {
   try {
     const { product_id } = req.params;

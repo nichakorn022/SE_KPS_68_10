@@ -368,7 +368,7 @@ export default function SellerDashboard() {
               <ActionCard icon={<ClockIcon />} title="Pending Orders" text="Process new orders and prepare shipments" to="/seller/dashboard" badge={summary.pendingOrders > 0 ? formatCount(summary.pendingOrders) : null} tone={summary.pendingOrders > 0 ? "red" : "olive"} />
               <ActionCard icon={<TrendIcon />} title="Analytics Dashboard" text="Open seller analytics and review revenue, category, and product movement" to="/seller/dashboard" badge={summary.revenue30d > 0 ? formatCurrency(summary.revenue30d) : null} />
               <ActionCard icon={<StorefrontIcon />} title="Storefront Settings" text="Review public-facing details, location, contact channels, and trust signals" to={`/shop/${shop.id}`} />
-              <ActionCard icon={<StarIcon />} title="Customer Feedback" text="View rating momentum and review proof from your sold products" to="/seller/dashboard" badge={totalReviews > 0 ? formatCount(totalReviews) : null} />
+              <ActionCard icon={<StarIcon />} title="Customer Feedback" text="View and reply to product reviews from your customers" to="/seller/feedback" badge={totalReviews > 0 ? formatCount(totalReviews) : null} />
             </div>
           </section>
 

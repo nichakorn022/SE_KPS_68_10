@@ -12,6 +12,12 @@ router.post("/events/:event_id", authMiddleware, reviewController.createEventRev
 router.patch("/events/:event_id/:review_id", authMiddleware, reviewController.updateEventReview);
 router.delete("/events/:event_id/:review_id", authMiddleware, reviewController.deleteEventReview);
 
+// GET /api/reviews/seller - Get reviews for products sold by the current shop account
+router.get("/seller", authMiddleware, reviewController.getSellerReviews);
+
+// POST /api/reviews/:review_id/reply - Create/update a seller reply for a review
+router.post("/:review_id/reply", authMiddleware, reviewController.replyToReview);
+
 // GET /api/reviews/:product_id - Get reviews for a product
 router.get("/:product_id", reviewController.getReviews);
 

@@ -17,6 +17,7 @@ const ShopChatPage = lazy(() => import("./frontend/Shop/ShopChatPage.jsx"));
 const SellerDashboard = lazy(() => import("./frontend/Shop/SellerDashboard.jsx"));
 const SellerAnalyticsDashboard = lazy(() => import("./frontend/Shop/SellerAnalyticsDashboard.jsx"));
 const SellerProductsPage = lazy(() => import("./frontend/Shop/SellerProductsPage.jsx"));
+const SellerFeedbackPage = lazy(() => import("./frontend/Shop/SellerFeedbackPage.jsx"));
 const ProductDetail = lazy(() => import("./frontend/Shop/ProductDetail.jsx"));
 const CheckoutPage = lazy(() => import("./frontend/Shop/CheckoutPage.jsx"));
 const CheckoutAddressPage = lazy(() => import("./frontend/Shop/CheckoutAddressPage.jsx"));
@@ -111,6 +112,7 @@ function App() {
               <Route path="/seller" element={<SellerDashboard />} />
               <Route path="/seller/dashboard" element={<SellerAnalyticsDashboard />} />
               <Route path="/seller/products" element={<SellerProductsPage />} />
+              <Route path="/seller/feedback" element={<SellerFeedbackPage />} />
               <Route path="/events" element={<Events />} />
               <Route path="/events/:id" element={<EventDetails />} />
               <Route path="/review/:id" element={<EventReview />} />

@@ -5,7 +5,7 @@ import { apiUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
 
 function EventPage() {
-
+  
   // ----------------------------
   // 🔹 STATE
   // ----------------------------

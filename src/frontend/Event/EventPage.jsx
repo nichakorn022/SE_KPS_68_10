@@ -5,7 +5,7 @@ import { apiUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
 
 function EventPage() {
-  //
+  
   // ----------------------------
   // 🔹 STATE
   // ----------------------------
@@ -175,7 +175,7 @@ useEffect(() => {
                   {organizerStatus === null && (
                     <Link to="/become-organizer">
                       <button className="bg-[#6f8b5d] text-white px-5 py-2 rounded-full">
-                        Become Organizer
+                        Become Organizers
                       </button>
                     </Link>
                   )}

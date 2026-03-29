@@ -4,51 +4,144 @@ import { Link, useParams } from 'react-router-dom';
 import { apiUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
 
+import { useAuthModal } from "../../App";
+
 export default function Eventdetails() {
 
   const { id } = useParams();
 
   const [event, setEvent] = useState(null);
-  const [interested, setInterested] = useState([]);
+  const [isInterested, setIsInterested] = useState(false);
+  const { token } = useAuthModal();
   const [error, setError] = useState(null);
+  const [registrationStatus, setRegistrationStatus] = useState(null);
 
-  useEffect(() => {
-    fetch(apiUrl(`/events/${id}`))
+useEffect(() => {
+  fetch(apiUrl(`/events/${id}`))
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(`Event ${id} ${res.status}`);
+      }
+      return res.json();
+    })
+    .then((data) => {
+      setEvent(data);
+      setError(null);
+    })
+    .catch((err) => {
+      console.error(err);
+      setEvent(null);
+      setError(err.message);
+    });
+
+  if (token) {
+    fetch(apiUrl(`/events/${id}/interested/check`), {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
       .then((res) => {
         if (!res.ok) {
-          throw new Error(`Event ${id} ${res.status}`);
+          throw new Error("Failed to check interested");
         }
         return res.json();
       })
       .then((data) => {
-        setEvent(data);
-        setError(null);
+        setIsInterested(data.isInterested);
       })
       .catch((err) => {
         console.error(err);
-        setEvent(null);
-        setError(err.message);
       });
 
-    const saved = JSON.parse(localStorage.getItem("interestedEvents")) || [];
-    setInterested(saved);
+          fetch(apiUrl(`/events/${id}/register/check`), {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Failed to check registration");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        setRegistrationStatus(data.registration_status);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  }
 
-  }, [id]);
+}, [id, token]);
 
 
-  const toggleInterested = () => {
+const toggleInterested = async () => {
+  if (!token) {
+    alert("Please login first");
+    return;
+  }
 
-    let updated;
+  try {
+    const method = isInterested ? "DELETE" : "POST";
 
-    if (interested.includes(event.event_id)) {
-      updated = interested.filter(e => e !== event.event_id);
-    } else {
-      updated = [...interested, event.event_id];
+    const res = await fetch(apiUrl(`/events/${id}/interested`), {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const text = await res.text(); // 🔥 เพิ่ม
+    console.log("STATUS:", res.status);
+    console.log("RESPONSE:", text);
+
+    if (!res.ok) {
+      throw new Error(text);
     }
 
-    setInterested(updated);
-    localStorage.setItem("interestedEvents", JSON.stringify(updated));
-  };
+    setIsInterested(!isInterested);
+
+  } catch (err) {
+    console.error(err);
+    alert("ERROR: " + err.message); // 🔥 จะเห็น error จริง
+  }
+};
+
+const toggleRegister = async () => {
+  if (!token) {
+    alert("Please login first");
+    return;
+  }
+
+  try {
+    const method = registrationStatus === "pending" || registrationStatus === "confirmed"
+      ? "DELETE"
+      : "POST";
+
+    const res = await fetch(apiUrl(`/events/${id}/register`), {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || "Register failed");
+    }
+
+    if (method === "POST") {
+      setRegistrationStatus("pending");
+    } else {
+      setRegistrationStatus("cancelled");
+    }
+
+  } catch (err) {
+    console.error(err);
+    alert(err.message);
+  }
+};
 
 
   if (error) return <div className="p-10 text-red-600">ไม่สามารถโหลดข้อมูลกิจกรรมได้: {error}</div>;
@@ -95,15 +188,15 @@ export default function Eventdetails() {
               {/* ⭐ ปุ่ม Interested */}
               <button
                 onClick={toggleInterested}
-                className={`px-3 py-1 rounded-full text-sm
-                ${interested.includes(event.event_id)
-                  ? "bg-red-200 text-red-800"
-                  : "bg-gray-200"}
-                `}
+                  className={`px-3 py-1 rounded-full text-sm
+                  ${isInterested
+                    ? "bg-red-200 text-red-800"
+                    : "bg-gray-200"}
+                  `}
               >
-                {interested.includes(event.event_id)
-                  ? "❤️ Interested"
-                  : "🤍 Interested"}
+                        {isInterested
+                          ? "❤️ Interested"
+                          : "🤍 Interested"}
               </button>
 
             </div>
@@ -119,17 +212,35 @@ export default function Eventdetails() {
             {/* BUTTONS */}
             <div className="mt-6 flex gap-4">
 
-              <button
-                className="bg-[#9fb08f] px-6 py-3 rounded-full text-white font-medium hover:opacity-90"
-              >
-                Chat
-              </button>
 
-              <button
-                className="px-4 py-2 rounded-full border hover:bg-gray-100"
-              >
-                Register
-              </button>
+            <button
+              onClick={toggleRegister}
+              className="px-4 py-2 rounded-full border hover:bg-gray-100"
+            >
+              {registrationStatus === "pending"
+                ? "Waiting for payment"
+                : registrationStatus === "confirmed"
+                ? "Registered"
+                : "Register"}
+            </button>
+
+              {registrationStatus === "pending" && (
+                <p className="text-sm text-yellow-600 mt-2">
+                  ⏳ Waiting for payment
+                </p>
+              )}
+
+              {registrationStatus === "confirmed" && (
+                <p className="text-sm text-green-600 mt-2">
+                  ✅ Payment completed
+                </p>
+              )}
+
+              {registrationStatus === "cancelled" && (
+                <p className="text-sm text-gray-500 mt-2">
+                  Registration cancelled
+                </p>
+              )}
 
               <Link
                 to={`/review/${event.event_id}`}

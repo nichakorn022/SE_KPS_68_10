@@ -1,4 +1,3 @@
-
 import { useAuthModal } from "../../App";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
@@ -6,14 +5,33 @@ import { apiUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
 
 function EventPage() {
+
+  // ----------------------------
+  // 🔹 STATE
+  // ----------------------------
   const [events, setEvents] = useState([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const [interested, setInterested] = useState([]);
+ const [interestedIds, setInterestedIds] = useState([]);
   const [error, setError] = useState(null);
 
+  const { token } = useAuthModal();
+  const [user, setUser] = useState(null);
+  const role = user?.role;
+
+
+
+  // ----------------------------
+  // 🔥 โหลด events + search จาก DB
+  // ----------------------------
   useEffect(() => {
-    fetch(apiUrl("/events"))
+    let url = "/events";
+
+    if (search) {
+      url = `/events/search?q=${search}`;
+    }
+
+    fetch(apiUrl(url))
       .then((res) => {
         if (!res.ok) {
           throw new Error(`Events ${res.status}`);
@@ -30,20 +48,57 @@ function EventPage() {
         setError(err.message);
       });
 
-    const saved = JSON.parse(localStorage.getItem("interestedEvents")) || [];
-    setInterested(saved);
+  }, [search]);
 
-  }, []);
+  // ----------------------------
+  // 🔥 โหลด user (เช็ค role)
+  // ----------------------------
+  useEffect(() => {
+    if (!token) return;
 
+    fetch(apiUrl("/auth/profile"), {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        setUser(data.user);
+      })
+      .catch(err => {
+        console.error("Profile error:", err);
+      });
+
+  }, [token]);
+
+
+  useEffect(() => {
+  if (!token) return;
+
+  fetch(apiUrl("/events/interested/me"), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+    .then(res => res.json())
+    .then(data => {
+      const ids = data.map(item => item.event_id);
+      setInterestedIds(ids);
+    })
+    .catch(err => {
+      console.error("Interested error:", err);
+    });
+
+}, [token]);
+
+  // ----------------------------
+  // 🔥 FILTER
+  // ----------------------------
   const filteredEvents = events
     .filter((event) => {
 
       if (filter === "interested") {
-        return interested.includes(event.event_id);
-      }
-
-      if (search) {
-        return event.title.toLowerCase().includes(search.toLowerCase());
+        return interestedIds.includes(event.event_id);
       }
 
       return true;
@@ -59,36 +114,44 @@ function EventPage() {
 
     });
 
+  // ----------------------------
+  // 🔥 UI
+  // ----------------------------
   return (
     <div className="bg-[#e7e3d8] min-h-screen">
 
-      {/* NAVBAR */}
       <SiteNavbar active="events" />
 
       {/* HERO */}
       <div
         className="relative py-24 text-center bg-cover bg-center"
-        style={{
-          backgroundImage: "url('/Pictrue/Activity.png')"
-        }}
+        style={{ backgroundImage: "url('/Pictrue/Activity.png')" }}
       >
         <div className="absolute inset-0 bg-black/40"></div>
 
         <div className="relative text-white">
-          <h1 className="text-3xl md:text-4xl font-serif font-bold drop-shadow-lg mb-2">
+          <h1 className="text-3xl md:text-4xl font-serif font-bold">
             ATC Tea Event
           </h1>
-          <p className="text-lg">
-            กิจกรรมชา และเวิร์คช็อปสำหรับคนรักชา
-          </p>
+          <p>กิจกรรมชา และเวิร์คช็อปสำหรับคนรักชา</p>
         </div>
       </div>
 
-      {/* EVENTS */}
       <div className="max-w-[1100px] mx-auto mt-10 px-5">
-        {error && (
-          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-600">
-            ไม่สามารถโหลดข้อมูลกิจกรรมได้: {error}
+
+        {/* 🔥 ROLE DISPLAY */}
+        {role && (
+          <p className="text-center text-sm text-gray-500 mb-3">
+            Logged in as: {role}
+          </p>
+        )}
+
+        {/* 🔥 SHOP BUTTON */}
+        {role === "shop" && (
+          <div className="text-center mb-4">
+            <button className="bg-green-600 text-white px-4 py-2 rounded">
+              Become Sponsor
+            </button>
           </div>
         )}
 
@@ -97,129 +160,81 @@ function EventPage() {
         </h2>
 
         {/* SEARCH */}
-        <div className="flex flex-col items-center gap-5 mb-8">
+        <div className="flex justify-center mb-6">
+          <input
+            type="text"
+            placeholder="Search events..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full max-w-[500px] px-4 py-2 rounded-full border"
+          />
+        </div>
 
-          <div className="relative w-full max-w-[500px]">
+        {/* FILTER */}
+        <div className="flex justify-center gap-4 mb-8">
 
-            <span className="absolute left-4 top-2.5 text-gray-400">
-              🔍
-            </span>
+          <button onClick={() => setFilter("popular")}
+            className="bg-[#AEBC9F] px-4 py-2 rounded-full">
+            Popular
+          </button>
 
-            <input
-              type="text"
-              placeholder="Search events..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#6f8b5d]"
-            />
+          <button onClick={() => setFilter("interested")}
+            className="bg-[#AEBC9F] px-4 py-2 rounded-full">
+            Interested
+          </button>
 
-          </div>
-
-          {/* FILTER BUTTONS */}
-          <div className="flex gap-4 justify-center">
-
-            <button
-              onClick={() => setFilter("popular")}
-              className={`px-6 py-2 rounded-full font-medium shadow-sm transition hover:scale-105
-              ${filter === "popular"
-                ? "bg-[#6f8b5d] text-white"
-                : "bg-[#AEBC9F] text-black"}
-              `}
-            >
-              Popular
-            </button>
-
-            <button
-              onClick={() => setFilter("interested")}
-              className={`px-6 py-2 rounded-full font-medium shadow-sm transition hover:scale-105
-              ${filter === "interested"
-                ? "bg-[#6f8b5d] text-white"
-                : "bg-[#AEBC9F] text-black"}
-              `}
-            >
-              Interested
-            </button>
-
-            <button
-              onClick={() => setFilter("all")}
-              className={`px-6 py-2 rounded-full font-medium shadow-sm transition hover:scale-105
-              ${filter === "all"
-                ? "bg-[#6f8b5d] text-white"
-                : "border border-black/40 bg-white"}
-              `}
-            >
-              All
-            </button>
-
-          </div>
+          <button onClick={() => setFilter("all")}
+            className="border px-4 py-2 rounded-full">
+            All
+          </button>
 
         </div>
 
-        {/* EVENT GRID */}
+        {/* GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
-          {filteredEvents.map((event) => {
+          {filteredEvents.map((event) => (
 
-            const interestedCount = interested.filter(
-              (id) => id === event.event_id
-            ).length;
+            <Link
+              key={event.event_id}
+              to={`/events/${event.event_id}`}
+              className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition"
+            >
 
-            return (
+              <img
+                src="/Pictrue/Activity.png"
+                alt="event"
+                className="w-full h-[170px] object-cover"
+              />
 
-              <Link
-                key={event.event_id}
-                to={`/events/${event.event_id}`}
-                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition"
-              >
+              <div className="p-4">
 
-                <img
-                  src="/Pictrue/Activity.png"
-                  alt="event"
-                  className="w-full h-[170px] object-cover"
-                />
+                <h3 className="font-semibold text-lg">
+                  {event.title}
+                </h3>
 
-                <div className="p-4">
+                <p className="text-sm text-gray-600 line-clamp-2">
+                  {event.description}
+                </p>
 
-                  <h3 className="font-semibold text-lg mb-1">
-                    {event.title}
-                  </h3>
+                <p className="text-sm text-gray-500">
+                  📅 {new Date(event.event_date).toLocaleDateString()}
+                </p>
 
-                  <p className="text-sm text-gray-600 mb-2 line-clamp-2">
-                    {event.description}
-                  </p>
+                <p className="text-sm text-gray-500">
+                  📍 {event.location}
+                </p>
 
-                  <p className="text-sm text-gray-500">
-                    📅 {new Date(event.event_date).toLocaleDateString()}
-                  </p>
+                {/* ❤️ HEART */}
+                <p className="text-red-500">
+                  {interestedIds.includes(event.event_id) ? "❤️" : "🤍"}
+                </p>
 
-                  <p className="text-sm text-gray-500">
-                    📍 {event.location}
-                  </p>
+              </div>
 
-                  <p className="text-xs text-gray-400 mt-2">
-                    0/{event.max_participant} Joined
-                  </p>
+            </Link>
 
-                  {/* ⭐ จำนวนคนสนใจ */}
-                  <p className="text-xs text-red-500">
-                    ❤️ {interestedCount} Interested
-                  </p>
-
-                  <div className="mt-3">
-
-                    <span className="bg-[#6f8b5d] text-white px-3 py-1 rounded-lg text-sm">
-                      View Event
-                    </span>
-
-                  </div>
-
-                </div>
-
-              </Link>
-
-            );
-
-          })}
+          ))}
 
         </div>
 
@@ -230,4 +245,3 @@ function EventPage() {
 }
 
 export default EventPage;
-

@@ -106,6 +106,19 @@ async function updateEvent(id,data){
 // ---------------- DELETE EVENT ----------------
 async function deleteEvent(id){
 
+  // ตรวจสอบว่ามีคนสมัครกี่คน (ไม่รวม cancelled)
+  const registrations = await query(
+    `SELECT COUNT(*) as count FROM event_registration 
+     WHERE event_id = ? AND registration_status != 'cancelled'`,
+    [id]
+  );
+
+  if (registrations[0].count > 0) {
+    const error = new Error(`Cannot delete event with ${registrations[0].count} active registrations`);
+    error.statusCode = 409;
+    throw error;
+  }
+
   await query(`
     DELETE FROM event
     WHERE event_id=?
@@ -274,6 +287,16 @@ async function checkRegistration(userId, eventId) {
   };
 }
 
+// =========== CHECK VERIFIED ORGANIZER ===========
+async function getVerifiedOrganizer(userId) {
+  const rows = await query(
+    `SELECT organizer_id FROM organizer 
+     WHERE user_id = ? AND verified_status = 1 
+     LIMIT 1`,
+    [userId]
+  );
+  return rows.length > 0 ? rows[0] : null;
+}
 
 module.exports = {
   getEvents,
@@ -288,5 +311,6 @@ module.exports = {
   getUserInterested,
   registerEvent,
   cancelRegistration,
-  checkRegistration
+  checkRegistration,
+  getVerifiedOrganizer
 };

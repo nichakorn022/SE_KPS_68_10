@@ -29,9 +29,9 @@ router.get("/interested/me", authMiddleware, getUserInterested);
 
 router.get("/:id", getEventById);
 
-router.post("/", adminMiddleware, createEvent);
-router.put("/:id", adminMiddleware, updateEvent);
-router.delete("/:id", adminMiddleware, deleteEvent);
+router.post("/", authMiddleware, createEvent);
+router.put("/:id", authMiddleware, updateEvent);
+router.delete("/:id", authMiddleware, deleteEvent);
 
 // ---------------- INTEREST ----------------
 router.get("/:id/interested/check", authMiddleware, checkInterested);
@@ -147,7 +147,13 @@ router.get("/my-events", authMiddleware, async (req, res) => {
     }
 
     const events = await query(
-      "SELECT * FROM event WHERE organizer_id = ? ORDER BY event_id DESC",
+      `SELECT e.*, 
+              COALESCE(COUNT(er.registration_id), 0) as registration_count
+       FROM event e
+       LEFT JOIN event_registration er ON e.event_id = er.event_id AND er.registration_status != 'cancelled'
+       WHERE e.organizer_id = ? 
+       GROUP BY e.event_id
+       ORDER BY e.event_id DESC`,
       [org[0].organizer_id]
     );
 

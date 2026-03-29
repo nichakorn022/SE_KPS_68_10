@@ -12,6 +12,8 @@ const EventReview = lazy(() => import("./frontend/Event/EventReview.jsx"));
 const MySponsorPage = lazy(() => import("./frontend/Event/MySponsorPage.jsx"));
 const BecomeOrganizer = lazy(() => import("./frontend/Event/BecomeOrganizer.jsx"));
 const MyEventsPage = lazy(() => import("./frontend/Event/MyEventsPage.jsx"));
+const CreateEventPage = lazy(() => import("./frontend/Event/CreateEventPage.jsx"));
+const EditEventPage = lazy(() => import("./frontend/Event/EditEventPage.jsx"));
 const ShopProfile = lazy(() => import("./frontend/Shop/ShopProfile.jsx"));
 const ShopChatPage = lazy(() => import("./frontend/Shop/ShopChatPage.jsx"));
 const SellerDashboard = lazy(() => import("./frontend/Shop/SellerDashboard.jsx"));
@@ -120,6 +122,8 @@ function App() {
               <Route path="/my-sponsor" element={<MySponsorPage />} />
               <Route path="/become-organizer" element={<BecomeOrganizer />} />
               <Route path="/my-events" element={<MyEventsPage />} />
+              <Route path="/create-event" element={<CreateEventPage />} />
+              <Route path="/edit-event/:id" element={<EditEventPage />} />
               <Route path="/product/:id" element={<ProductDetail />} />
               <Route path="/checkout" element={<CheckoutPage />} />
               <Route path="/checkout/address" element={<CheckoutAddressPage />} />

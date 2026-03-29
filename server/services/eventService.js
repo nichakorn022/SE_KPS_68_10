@@ -1,15 +1,63 @@
 const { query } = require("../utils/dbHelpers");
 
-const baseSelect = `
-  SELECT event_id, title, description, event_date, location, max_participant, price, status, organizer_id
+const eventListSelect = `
+  SELECT
+    e.event_id,
+    e.title,
+    e.description,
+    e.event_date,
+    e.location,
+    e.max_participant,
+    e.price,
+    e.status,
+    e.organizer_id,
+    COUNT(er.registration_id) AS registration_count
+`;
+
+const eventListFrom = `
+  FROM event e
+  LEFT JOIN event_registration er
+    ON e.event_id = er.event_id
+   AND LOWER(COALESCE(er.registration_status, '')) = 'confirmed'
+`;
+
+const eventDetailSelect = `
+  SELECT
+    e.event_id,
+    e.title,
+    e.description,
+    e.event_date,
+    e.location,
+    e.max_participant,
+    e.price,
+    e.status,
+    e.organizer_id,
+    o.first_name AS organizer_first_name,
+    (
+      SELECT GROUP_CONCAT(DISTINCT ts.shop_name ORDER BY ts.shop_name SEPARATOR ', ')
+      FROM sponsor s
+      JOIN tea_shop ts ON ts.shop_id = s.shop_id
+      WHERE s.event_id = e.event_id
+        AND LOWER(COALESCE(s.status, '')) = 'approved'
+    ) AS sponsor_shop_names
 `;
 
 // ---------------- GET ALL EVENTS ----------------
 async function getEvents() {
   return query(`
-    ${baseSelect}
-    FROM event
-    ORDER BY event_id DESC
+    ${eventListSelect}
+    ${eventListFrom}
+    GROUP BY
+      e.event_id,
+      e.title,
+      e.description,
+      e.event_date,
+      e.location,
+      e.max_participant,
+      e.price,
+      e.status,
+      e.organizer_id
+    ORDER BY e.event_id DESC
   `);
 }
 
@@ -17,9 +65,10 @@ async function getEvents() {
 async function getEventById(id) {
 
   const rows = await query(`
-    ${baseSelect}
-    FROM event
-    WHERE event_id = ?
+    ${eventDetailSelect}
+    FROM event e
+    LEFT JOIN organizer o ON o.organizer_id = e.organizer_id
+    WHERE e.event_id = ?
     LIMIT 1
   `,[id]);
 
@@ -131,10 +180,20 @@ async function deleteEvent(id){
 async function searchEvents(keyword){
 
   return query(`
-    SELECT *
-    FROM event
-    WHERE title LIKE ?
-    OR description LIKE ?
+    ${eventListSelect}
+    ${eventListFrom}
+    WHERE e.title LIKE ?
+       OR e.description LIKE ?
+    GROUP BY
+      e.event_id,
+      e.title,
+      e.description,
+      e.event_date,
+      e.location,
+      e.max_participant,
+      e.price,
+      e.status,
+      e.organizer_id
   `,[
     `%${keyword}%`,
     `%${keyword}%`

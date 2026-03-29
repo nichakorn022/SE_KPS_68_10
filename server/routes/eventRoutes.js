@@ -60,7 +60,7 @@ router.get("/my-events", authMiddleware, async (req, res) => {
 
 router.get("/:id", getEventById);
 
-router.get("/:id/registrations/count", authMiddleware, async (req, res) => {
+router.get("/:id/registrations/count", async (req, res) => {
   try {
     const { query } = require("../utils/dbHelpers");
     const rows = await query(
@@ -69,6 +69,22 @@ router.get("/:id/registrations/count", authMiddleware, async (req, res) => {
       [req.params.id]
     );
     res.json({ registration_count: rows[0].count });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/:id/attendees/count", async (req, res) => {
+  try {
+    const { query } = require("../utils/dbHelpers");
+    const rows = await query(
+      `SELECT COUNT(*) as count
+       FROM event_registration
+       WHERE event_id = ?
+         AND LOWER(COALESCE(registration_status, '')) = 'confirmed'`,
+      [req.params.id]
+    );
+    res.json({ attendee_count: rows[0].count });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -163,10 +179,34 @@ router.get("/shop/available", authMiddleware, async (req, res) => {
     const shopId = rows[0].shop_id;
 
     const events = await query(`
-      SELECT * FROM event
-      WHERE event_id NOT IN (
+      SELECT
+        e.event_id,
+        e.organizer_id,
+        e.title,
+        e.description,
+        e.event_date,
+        e.location,
+        e.price,
+        e.max_participant,
+        e.status,
+        COALESCE(COUNT(er.registration_id), 0) AS registration_count
+      FROM event e
+      LEFT JOIN event_registration er
+        ON e.event_id = er.event_id
+       AND LOWER(COALESCE(er.registration_status, '')) = 'confirmed'
+      WHERE e.event_id NOT IN (
         SELECT event_id FROM sponsor WHERE shop_id = ?
       )
+      GROUP BY
+        e.event_id,
+        e.organizer_id,
+        e.title,
+        e.description,
+        e.event_date,
+        e.location,
+        e.price,
+        e.max_participant,
+        e.status
     `, [shopId]);
 
     res.json(events);

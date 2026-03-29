@@ -67,6 +67,17 @@ class SponsorController {
     }
   }
 
+  static async getIncomingSponsorRequestsForOrganizer(req, res) {
+    try {
+      const data = await sponsorService.getIncomingSponsorRequestsForOrganizer(req.user.user_id);
+      res.json(data);
+    } catch (error) {
+      res
+        .status(error.statusCode || 500)
+        .json({ message: error.message || "Failed to fetch organizer sponsor requests" });
+    }
+  }
+
   static async updateSponsorStatusByShop(req, res) {
     try {
       const result = await sponsorService.updateSponsorStatusByShop(
@@ -79,6 +90,21 @@ class SponsorController {
       res
         .status(error.statusCode || 500)
         .json({ message: error.message || "Failed to update sponsor request" });
+    }
+  }
+
+  static async updateSponsorStatusByOrganizer(req, res) {
+    try {
+      const result = await sponsorService.updateSponsorStatusByOrganizer(
+        req.params.id,
+        req.body.status,
+        req.user.user_id
+      );
+      res.json(result);
+    } catch (error) {
+      res
+        .status(error.statusCode || 500)
+        .json({ message: error.message || "Failed to update organizer sponsor request" });
     }
   }
 

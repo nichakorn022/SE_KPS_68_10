@@ -8,6 +8,11 @@ const adminMiddleware = require("../middleware/adminMiddleware");
 router.post("/request", authMiddleware, SponsorController.requestSponsor);
 router.get("/my", authMiddleware, SponsorController.getMySponsorRequests);
 router.get("/my-requests", authMiddleware, SponsorController.getIncomingSponsorRequestsForShop);
+router.get(
+  "/organizer-requests",
+  authMiddleware,
+  SponsorController.getIncomingSponsorRequestsForOrganizer
+);
 router.get("/check", authMiddleware, async (req, res) => {
   const { shop_id, event_id } = req.query;
 
@@ -37,6 +42,16 @@ router.put("/:id/approve", authMiddleware, (req, res) => {
 router.put("/:id/reject", authMiddleware, (req, res) => {
   req.body = { ...(req.body || {}), status: "rejected" };
   return SponsorController.updateSponsorStatusByShop(req, res);
+});
+
+router.put("/:id/organizer-approve", authMiddleware, (req, res) => {
+  req.body = { ...(req.body || {}), status: "approved" };
+  return SponsorController.updateSponsorStatusByOrganizer(req, res);
+});
+
+router.put("/:id/organizer-reject", authMiddleware, (req, res) => {
+  req.body = { ...(req.body || {}), status: "rejected" };
+  return SponsorController.updateSponsorStatusByOrganizer(req, res);
 });
 
 router.get("/", adminMiddleware, SponsorController.getSponsorRequests);

@@ -249,6 +249,62 @@ async function getIncomingSponsorRequestsForShop(userId) {
   );
 }
 
+async function getIncomingSponsorRequestsForOrganizer(userId) {
+  return query(
+    `SELECT
+        s.sponsor_id,
+        s.event_id,
+        s.shop_id,
+        s.product_id,
+        s.quantity,
+        s.request_by,
+        s.status,
+        s.created_at,
+        s.updated_at,
+        e.title AS event_title,
+        e.description AS event_description,
+        e.event_date,
+        e.location AS event_location,
+        e.price AS event_price,
+        e.max_participant AS event_capacity,
+        ts.shop_name,
+        ts.description AS shop_description,
+        tp.tea_name AS product_name,
+        tp.description AS product_description,
+        tp.price AS product_price,
+        (
+          SELECT ei.image_path
+          FROM event_images ei
+          WHERE ei.event_id = e.event_id
+          ORDER BY ei.image_id DESC
+          LIMIT 1
+        ) AS event_image_path,
+        (
+          SELECT si.image_path
+          FROM shop_images si
+          WHERE si.shop_id = ts.shop_id
+          ORDER BY si.image_id DESC
+          LIMIT 1
+        ) AS shop_image_path,
+        (
+          SELECT pi.image_path
+          FROM product_images pi
+          WHERE pi.product_id = tp.product_id
+          ORDER BY pi.image_id DESC
+          LIMIT 1
+        ) AS product_image_path
+     FROM sponsor s
+     JOIN event e ON e.event_id = s.event_id
+     JOIN organizer o ON o.organizer_id = e.organizer_id
+     JOIN tea_shop ts ON ts.shop_id = s.shop_id
+     LEFT JOIN tea_product tp ON tp.product_id = s.product_id
+     WHERE o.user_id = ?
+       AND LOWER(COALESCE(s.request_by, '')) = 'shop'
+     ORDER BY s.created_at DESC, s.sponsor_id DESC`,
+    [userId]
+  );
+}
+
 async function updateSponsorStatus(id, status) {
   const nextStatus = normalizeStatus(status);
   const rows = await query(
@@ -338,6 +394,54 @@ async function updateSponsorStatusByShop(id, status, userId) {
   };
 }
 
+async function updateSponsorStatusByOrganizer(id, status, userId) {
+  const nextStatus = normalizeStatus(status);
+  const rows = await query(
+    `SELECT s.sponsor_id, s.request_by, e.title AS event_title, ts.shop_name, u.email, u.username
+     FROM sponsor s
+     JOIN event e ON e.event_id = s.event_id
+     JOIN organizer o ON o.organizer_id = e.organizer_id
+     JOIN tea_shop ts ON ts.shop_id = s.shop_id
+     LEFT JOIN users u ON u.user_id = ts.user_id
+     WHERE s.sponsor_id = ? AND o.user_id = ?
+     LIMIT 1`,
+    [id, userId]
+  );
+
+  if (rows.length === 0) {
+    const error = new Error("Sponsor request not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (String(rows[0].request_by || "").toLowerCase() !== "shop") {
+    const error = new Error("Only shop requests can be updated from this page");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await query(
+    `UPDATE sponsor
+     SET status = ?, updated_at = CURRENT_TIMESTAMP
+     WHERE sponsor_id = ?`,
+    [nextStatus, id]
+  );
+
+  if ((nextStatus === "approved" || nextStatus === "rejected") && rows[0].email) {
+    await sendApprovalDecisionEmail({
+      to: rows[0].email,
+      username: rows[0].username,
+      subjectType: "sponsor request",
+      subjectName: rows[0].event_title || rows[0].shop_name || `Sponsor ${id}`,
+      approved: nextStatus === "approved",
+    });
+  }
+
+  return {
+    message: "Sponsor request updated",
+  };
+}
+
 async function cancelSponsorRequestByOrganizer(id, userId) {
   const rows = await query(
     `SELECT s.sponsor_id, s.request_by, s.status
@@ -413,8 +517,10 @@ module.exports = {
   getSponsorRequests,
   getShopSponsorRequests,
   getIncomingSponsorRequestsForShop,
+  getIncomingSponsorRequestsForOrganizer,
   updateSponsorStatus,
   updateSponsorStatusByShop,
+  updateSponsorStatusByOrganizer,
   cancelSponsorRequestByOrganizer,
   deleteSponsorRequest,
 };

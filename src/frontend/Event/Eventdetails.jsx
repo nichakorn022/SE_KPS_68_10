@@ -201,6 +201,7 @@ export default function Eventdetails() {
   const [registrationId, setRegistrationId] = useState(null);
   const [showPromptPay, setShowPromptPay] = useState(false);
   const [confirmingPromptPay, setConfirmingPromptPay] = useState(false);
+  const [attendeeCount, setAttendeeCount] = useState(0);
 
   const [user, setUser] = useState(null);
   const role = user?.role;
@@ -210,7 +211,16 @@ export default function Eventdetails() {
   const [quantity, setQuantity] = useState(1);
 
   const [sponsorStatus, setSponsorStatus] = useState(null);
-  const attendeeCount = registrationStatus === "confirmed" ? 1 : 0;
+
+  const loadAttendeeCount = async () => {
+    try {
+      const res = await fetch(apiUrl(`/events/${id}/attendees/count`));
+      const data = await res.json();
+      setAttendeeCount(Number(data.attendee_count || 0));
+    } catch (err) {
+      console.error("Attendee count error:", err);
+    }
+  };
 
   // ---------------- PROFILE ----------------
   useEffect(() => {
@@ -248,6 +258,8 @@ export default function Eventdetails() {
       .then(res => res.json())
       .then(data => setEventImages(Array.isArray(data) ? data : []))
       .catch(console.error);
+
+    loadAttendeeCount();
 
     if (token) {
       fetch(apiUrl(`/events/${id}/interested/check`), {
@@ -306,6 +318,7 @@ export default function Eventdetails() {
         setRegistrationStatus("cancelled");
         setRegistrationId(null);
       }
+      await loadAttendeeCount();
       return true;
     } catch (err) {
       alert(err.message);
@@ -374,6 +387,7 @@ export default function Eventdetails() {
 
       // Update state after successful backend confirmation
       setRegistrationStatus("confirmed");
+      await loadAttendeeCount();
       setConfirmingPromptPay(false);
       setShowPromptPay(false);
       alert("Payment confirmed! You are now registered for this event.");
@@ -439,7 +453,10 @@ export default function Eventdetails() {
             {/* Title block */}
             <div>
               <p className="text-xs uppercase tracking-[0.22em] text-[#879A78] mb-2">
-                Organizer #{event.organizer_id}
+                ORGANIZER : {event.organizer_first_name || `#${event.organizer_id}`}
+              </p>
+              <p className="mb-2 text-xs text-[#879A78]">
+                Sponsor Shop : {event.sponsor_shop_names || "-"}
               </p>
               <h1 className="text-2xl lg:text-3xl font-semibold text-[#253621] leading-snug">
                 {event.title}
@@ -558,12 +575,12 @@ export default function Eventdetails() {
                 <>
                   <button
                     onClick={handleRegisterClick}
-                    disabled={registrationStatus === "pending" || registrationStatus === "confirmed"}
+                    disabled={registrationStatus === "confirmed"}
                     className={`rounded-full px-6 py-2.5 text-sm font-semibold shadow-[0_8px_20px_rgba(72,91,59,0.15)] transition-all duration-300 ${
                       registrationStatus === "confirmed"
                         ? "bg-green-500 text-white cursor-not-allowed"
                         : registrationStatus === "pending"
-                        ? "bg-amber-400 text-white cursor-not-allowed"
+                        ? "bg-amber-400 text-white hover:bg-amber-500"
                         : "bg-[#485B3B] text-white hover:bg-[#394A31]"
                     }`}
                   >

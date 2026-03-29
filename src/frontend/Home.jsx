@@ -4,6 +4,55 @@ import { useAuthModal } from '../App';
 import SiteNavbar from './components/SiteNavbar';
 import { apiUrl } from '../lib/api';
 
+const HOME_EVENT_FALLBACK_IMAGES = [
+  "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=900&q=80",
+];
+
+function formatHomeEventDateTime(value) {
+  if (!value) {
+    return { date: "Coming soon", time: "TBA" };
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return { date: String(value), time: "TBA" };
+  }
+
+  return {
+    date: parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+    time: parsed.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+  };
+}
+
+function mapHomeEvent(event, index) {
+  const title = String(event?.title || "Untitled event");
+  const tag = title.toLowerCase().includes('tea') ? 'Tea' :
+    title.toLowerCase().includes('yoga') || title.toLowerCase().includes('meditation') ? 'Health' :
+    'Activity';
+  const { date, time } = formatHomeEventDateTime(event?.event_date || event?.date);
+  const capacity = Number(event?.max_participant ?? event?.slots ?? 0);
+  const attendeeCount = Number(event?.joined_count ?? event?.members_count ?? event?.participant_count ?? 0);
+  const safeCapacity = Number.isFinite(capacity) && capacity > 0 ? capacity : 0;
+  const safeAttendees = Number.isFinite(attendeeCount) && attendeeCount > 0 ? attendeeCount : 0;
+  const spaces = safeCapacity > 0 ? Math.max(safeCapacity - safeAttendees, 0) : "Open";
+  const progress = safeCapacity > 0 ? Math.min((safeAttendees / safeCapacity) * 100, 100) : 0;
+
+  return {
+    ...event,
+    title,
+    tag,
+    date,
+    time,
+    img: event?.img || event?.image_url || HOME_EVENT_FALLBACK_IMAGES[index % HOME_EVENT_FALLBACK_IMAGES.length],
+    location: event?.location || "Location TBA",
+    members: safeCapacity > 0 ? `${safeAttendees}/${safeCapacity}` : `${safeAttendees}`,
+    spaces,
+    progress,
+  };
+}
+
 export default function Home() {
   const { openLogin, openRegister } = useAuthModal();
   const [activeTab, setActiveTab] = useState('all');
@@ -15,14 +64,8 @@ export default function Home() {
     fetch(apiUrl('/events'))
       .then(res => res.json())
       .then(data => {
-        if (data && data.length > 0) {
-          const mappedData = data.map(event => ({
-            ...event,
-            tag: event.title.toLowerCase().includes('tea') ? 'Tea' : 
-                 event.title.toLowerCase().includes('yoga') || event.title.toLowerCase().includes('meditation') ? 'Health' : 
-                 'Activity'
-          }));
-          setEvents(mappedData);
+        if (Array.isArray(data) && data.length > 0) {
+          setEvents(data.map((event, index) => mapHomeEvent(event, index)));
         }
       })
       .catch(err => console.error('Failed to fetch events:', err));
@@ -177,12 +220,12 @@ export default function Home() {
                   {/* Seats progress */}
                   <div className="flex items-center justify-between text-xs text-gray-400 mb-1.5">
                     <span>👥 {event.members}</span>
-                    <span>{event.spaces} seats left</span>
+                    <span>{typeof event.spaces === "number" ? `${event.spaces} seats left` : event.spaces}</span>
                   </div>
                   <div className="w-full h-1.5 bg-gray-100 rounded-full mb-4">
                     <div
                       className="h-1.5 bg-[#AEBC9F] rounded-full"
-                      style={{ width: `${(parseInt(event.members) / parseInt(event.members.split('/')[1])) * 100}%` }}
+                      style={{ width: `${event.progress || 0}%` }}
                     />
                   </div>
                   <button

@@ -1,9 +1,7 @@
-
 import { useEffect, useState } from "react";
 import { Link, useParams } from 'react-router-dom';
 import { apiUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
-
 import { useAuthModal } from "../../App";
 
 export default function Eventdetails() {
@@ -16,258 +14,322 @@ export default function Eventdetails() {
   const [error, setError] = useState(null);
   const [registrationStatus, setRegistrationStatus] = useState(null);
 
-useEffect(() => {
-  fetch(apiUrl(`/events/${id}`))
-    .then((res) => {
-      if (!res.ok) {
-        throw new Error(`Event ${id} ${res.status}`);
-      }
-      return res.json();
-    })
-    .then((data) => {
-      setEvent(data);
-      setError(null);
-    })
-    .catch((err) => {
-      console.error(err);
-      setEvent(null);
-      setError(err.message);
-    });
+  const [user, setUser] = useState(null);
+  const role = user?.role;
 
-  if (token) {
-    fetch(apiUrl(`/events/${id}/interested/check`), {
+  const [products, setProducts] = useState([]);
+  const [selectedProduct, setSelectedProduct] = useState("");
+  const [quantity, setQuantity] = useState(1);
+
+  const [sponsorStatus, setSponsorStatus] = useState(null);
+
+  // ---------------- PROFILE ----------------
+  useEffect(() => {
+    if (!token) return;
+
+    fetch(apiUrl("/auth/profile"), {
       headers: {
         Authorization: `Bearer ${token}`
       }
     })
+      .then(res => res.json())
+      .then(data => setUser(data.user))
+      .catch(console.error);
+
+  }, [token]);
+
+  // ---------------- LOAD PRODUCTS ----------------
+  useEffect(() => {
+    if (!token || role !== "shop") return;
+
+    fetch(apiUrl("/products/mine"), {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => setProducts(data))
+      .catch(console.error);
+
+  }, [token, role]);
+
+  // ---------------- LOAD EVENT ----------------
+  useEffect(() => {
+    fetch(apiUrl(`/events/${id}`))
       .then((res) => {
         if (!res.ok) {
-          throw new Error("Failed to check interested");
+          throw new Error(`Event ${id} ${res.status}`);
         }
         return res.json();
       })
       .then((data) => {
-        setIsInterested(data.isInterested);
+        setEvent(data);
+        setError(null);
       })
       .catch((err) => {
-        console.error(err);
+        setEvent(null);
+        setError(err.message);
       });
 
-          fetch(apiUrl(`/events/${id}/register/check`), {
+    if (token) {
+      fetch(apiUrl(`/events/${id}/interested/check`), {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+        .then(res => res.json())
+        .then(data => setIsInterested(data.isInterested));
+
+      fetch(apiUrl(`/events/${id}/register/check`), {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      })
+        .then(res => res.json())
+        .then(data => setRegistrationStatus(data.registration_status));
+
+    fetch(apiUrl(`/events/${id}/sponsor/check`), {
       headers: {
         Authorization: `Bearer ${token}`
       }
     })
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Failed to check registration");
+      .then(res => res.json())
+      .then(data => {
+        if (data.exists) {
+          setSponsorStatus(data.status);
         }
-        return res.json();
       })
-      .then((data) => {
-        setRegistrationStatus(data.registration_status);
-      })
-      .catch((err) => {
-        console.error(err);
+      .catch(console.error);
+        }
+
+  }, [id, token]);
+
+  // ---------------- INTEREST ----------------
+  const toggleInterested = async () => {
+    if (!token) {
+      alert("Please login first");
+      return;
+    }
+
+    try {
+      const method = isInterested ? "DELETE" : "POST";
+
+      const res = await fetch(apiUrl(`/events/${id}/interested`), {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
-  }
 
-}, [id, token]);
+      if (!res.ok) throw new Error(await res.text());
 
+      setIsInterested(!isInterested);
 
-const toggleInterested = async () => {
-  if (!token) {
-    alert("Please login first");
-    return;
-  }
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
-  try {
-    const method = isInterested ? "DELETE" : "POST";
+  // ---------------- REGISTER ----------------
+  const toggleRegister = async () => {
+    if (!token) {
+      alert("Please login first");
+      return;
+    }
 
-    const res = await fetch(apiUrl(`/events/${id}/interested`), {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`
+    try {
+      const method =
+        registrationStatus === "pending" ||
+        registrationStatus === "confirmed"
+          ? "DELETE"
+          : "POST";
+
+      const res = await fetch(apiUrl(`/events/${id}/register`), {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.message);
+
+      if (method === "POST") {
+        setRegistrationStatus("pending");
+      } else {
+        setRegistrationStatus("cancelled");
       }
-    });
 
-    const text = await res.text(); // 🔥 เพิ่ม
-    console.log("STATUS:", res.status);
-    console.log("RESPONSE:", text);
+    } catch (err) {
+      alert(err.message);
+    }
+  };
 
-    if (!res.ok) {
-      throw new Error(text);
+  // ---------------- SPONSOR ----------------
+  const sendSponsor = async () => {
+    if (!selectedProduct) {
+      alert("Please select product");
+      return;
     }
 
-    setIsInterested(!isInterested);
+    try {
+      const res = await fetch(apiUrl(`/events/${id}/sponsor`), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          product_id: selectedProduct,
+          quantity: quantity
+        })
+      });
 
-  } catch (err) {
-    console.error(err);
-    alert("ERROR: " + err.message); // 🔥 จะเห็น error จริง
-  }
-};
+      const data = await res.json();
 
-const toggleRegister = async () => {
-  if (!token) {
-    alert("Please login first");
-    return;
-  }
+      if (!res.ok) throw new Error(data.message);
 
-  try {
-    const method = registrationStatus === "pending" || registrationStatus === "confirmed"
-      ? "DELETE"
-      : "POST";
+      alert("Sponsor request sent!");
 
-    const res = await fetch(apiUrl(`/events/${id}/register`), {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(data.message || "Register failed");
+    } catch (err) {
+      alert(err.message);
     }
+  };
 
-    if (method === "POST") {
-      setRegistrationStatus("pending");
-    } else {
-      setRegistrationStatus("cancelled");
-    }
-
-  } catch (err) {
-    console.error(err);
-    alert(err.message);
-  }
-};
-
-
-  if (error) return <div className="p-10 text-red-600">ไม่สามารถโหลดข้อมูลกิจกรรมได้: {error}</div>;
+  if (error) return <div className="p-10 text-red-600">{error}</div>;
   if (!event) return <div className="p-10">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800 flex flex-col items-center">
       <div className="w-full max-w-auto bg-[#F5F3E9] shadow-sm overflow-hidden min-h-screen">
 
-      {/* HEADER */}
-      <SiteNavbar active="events" />
+        <SiteNavbar active="events" />
 
-      {/* PAGE CONTENT */}
-      <div className="p-8">
+        <div className="p-8">
 
-        {/* MAIN EVENT CARD */}
-        <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden grid grid-cols-2">
+          <div className="max-w-6xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden grid grid-cols-2">
 
-          {/* LEFT */}
-          <div className="p-8">
+            {/* LEFT */}
+            <div className="p-8">
 
-            <h1 className="text-2xl font-bold mb-3">
-              {event.title}
-            </h1>
+              <h1 className="text-2xl font-bold mb-3">{event.title}</h1>
 
-            <p className="text-gray-500 mb-4">
-              Organizer #{event.organizer_id}
-            </p>
-
-            <p className="flex items-center gap-2 text-gray-600">
-              🕒 {new Date(event.event_date).toLocaleDateString()}
-            </p>
-
-            <p className="flex items-center gap-2 text-gray-600 mt-2">
-              📍 {event.location}
-            </p>
-
-            <div className="mt-4 flex gap-3">
-
-              <span className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm">
-                0/{event.max_participant} Will go
-              </span>
-
-              {/* ⭐ ปุ่ม Interested */}
-              <button
-                onClick={toggleInterested}
-                  className={`px-3 py-1 rounded-full text-sm
-                  ${isInterested
-                    ? "bg-red-200 text-red-800"
-                    : "bg-gray-200"}
-                  `}
-              >
-                        {isInterested
-                          ? "❤️ Interested"
-                          : "🤍 Interested"}
-              </button>
-
-            </div>
-
-            {/* DESCRIPTION */}
-            <div className="mt-6">
-              <h2 className="font-semibold mb-2">Description</h2>
-              <p className="text-gray-600 text-sm leading-relaxed">
-                {event.description}
+              <p className="text-gray-500 mb-4">
+                Organizer #{event.organizer_id}
               </p>
-            </div>
 
-            {/* BUTTONS */}
-            <div className="mt-6 flex gap-4">
+              <p>🕒 {new Date(event.event_date).toLocaleDateString()}</p>
+              <p className="mt-2">📍 {event.location}</p>
 
+              <div className="mt-4 flex gap-3">
+                <span className="bg-green-200 px-3 py-1 rounded-full text-sm">
+                  0/{event.max_participant} Will go
+                </span>
 
-            <button
-              onClick={toggleRegister}
-              className="px-4 py-2 rounded-full border hover:bg-gray-100"
-            >
-              {registrationStatus === "pending"
-                ? "Waiting for payment"
-                : registrationStatus === "confirmed"
-                ? "Registered"
-                : "Register"}
-            </button>
+                <button onClick={toggleInterested}>
+                  {isInterested ? "❤️ Interested" : "🤍 Interested"}
+                </button>
+              </div>
 
+              {/* SELECT PRODUCT */}
+              {role === "shop" && (
+                <div className="mt-4 flex gap-2">
+                  <select
+                    value={selectedProduct}
+                    onChange={(e) => setSelectedProduct(e.target.value)}
+                    className="border px-3 py-2 rounded"
+                  >
+                    <option value="">Select product</option>
+                    {products.map(p => (
+                      <option key={p.product_id} value={p.product_id}>
+                        {p.tea_name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    type="number"
+                    value={quantity}
+                    onChange={(e) => setQuantity(e.target.value)}
+                    className="border px-3 py-2 w-20 rounded"
+                    min="1"
+                  />
+                </div>
+              )}
+
+              {/* BUTTON */}
+              <div className="mt-6 flex gap-4">
+
+              {role === "shop" ? (
+                <button
+                  onClick={sendSponsor}
+                  disabled={sponsorStatus === "pending" || sponsorStatus === "approved"}
+                  className={`px-4 py-2 rounded-full text-white
+                    ${sponsorStatus === "pending" && "bg-yellow-500"}
+                    ${sponsorStatus === "approved" && "bg-green-500"}
+                    ${sponsorStatus === "rejected" && "bg-red-500"}
+                    ${!sponsorStatus && "bg-blue-500"}
+                  `}
+                >
+                  {sponsorStatus === "pending"
+                    ? "Pending"
+                    : sponsorStatus === "approved"
+                    ? "Approved"
+                    : sponsorStatus === "rejected"
+                    ? "Rejected"
+                    : "Send Sponsor"}
+                </button>
+              ) : (
+                  <button
+                    onClick={toggleRegister}
+                    className="px-4 py-2 rounded-full border hover:bg-gray-100"
+                  >
+                    {registrationStatus === "pending"
+                      ? "Waiting for payment"
+                      : registrationStatus === "confirmed"
+                      ? "Registered"
+                      : "Register"}
+                  </button>
+                )}
+
+              </div>
+
+              {/* STATUS */}
               {registrationStatus === "pending" && (
-                <p className="text-sm text-yellow-600 mt-2">
-                  ⏳ Waiting for payment
-                </p>
+                <p className="text-yellow-600 mt-2">⏳ Waiting for payment</p>
               )}
 
               {registrationStatus === "confirmed" && (
-                <p className="text-sm text-green-600 mt-2">
-                  ✅ Payment completed
-                </p>
+                <p className="text-green-600 mt-2">✅ Payment completed</p>
               )}
 
               {registrationStatus === "cancelled" && (
-                <p className="text-sm text-gray-500 mt-2">
-                  Registration cancelled
-                </p>
+                <p className="text-gray-500 mt-2">Cancelled</p>
               )}
 
               <Link
                 to={`/review/${event.event_id}`}
-                className="px-4 py-2 rounded-full bg-[#6f8b5d] text-white hover:opacity-90"
+                className="mt-4 inline-block px-4 py-2 bg-[#6f8b5d] text-white rounded"
               >
                 Review
               </Link>
 
             </div>
 
-          </div>
+            {/* RIGHT */}
+            <div>
+              <img
+                src="/Pictrue/Activity.png"
+                alt="event"
+                className="w-full h-full object-cover"
+              />
+            </div>
 
-          {/* RIGHT IMAGE */}
-          <div className="h-full">
-            <img
-              src="/Pictrue/Activity.png"
-              alt="event"
-              className="w-full h-full object-cover"
-            />
           </div>
 
         </div>
-
       </div>
-
-    </div>
     </div>
   );
 }
-

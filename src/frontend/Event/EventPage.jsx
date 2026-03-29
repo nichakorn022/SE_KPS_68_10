@@ -24,31 +24,28 @@ function EventPage() {
   // ----------------------------
   // 🔥 โหลด events + search จาก DB
   // ----------------------------
-  useEffect(() => {
-    let url = "/events";
+useEffect(() => {
+  let url = "/events";
 
-    if (search) {
-      url = `/events/search?q=${search}`;
-    }
+  // 🔥 ถ้าเป็น shop → ใช้ API ใหม่
+  if (role === "shop") {
+    url = "/events/shop/available";
+  }
 
-    fetch(apiUrl(url))
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`Events ${res.status}`);
-        }
-        return res.json();
-      })
-      .then((data) => {
-        setEvents(Array.isArray(data) ? data : []);
-        setError(null);
-      })
-      .catch((err) => {
-        console.error(err);
-        setEvents([]);
-        setError(err.message);
-      });
+  if (search) {
+    url = `/events/search?q=${search}`;
+  }
 
-  }, [search]);
+  fetch(apiUrl(url), {
+  headers: token
+    ? { Authorization: `Bearer ${token}` }
+    : {}
+})
+    .then(res => res.json())
+    .then(data => setEvents(Array.isArray(data) ? data : []))
+    .catch(console.error);
+
+}, [search, role]);
 
   // ----------------------------
   // 🔥 โหลด user (เช็ค role)
@@ -146,14 +143,61 @@ function EventPage() {
           </p>
         )}
 
+        {/* 🔥 USER → BECOME ORGANIZER */}
+            {role === "user" && (
+              <div className="flex justify-center mb-6">
+
+                <Link to="/become-organizer">
+                  <button className="
+                    bg-[#6f8b5d] 
+                    text-white 
+                    px-6 py-2 
+                    rounded-full 
+                    shadow-md 
+                    hover:bg-[#5f7a4e] 
+                    transition
+                  ">
+                    Become Organizer
+                  </button>
+                </Link>
+
+              </div>
+            )}
+
         {/* 🔥 SHOP BUTTON */}
-        {role === "shop" && (
-          <div className="text-center mb-4">
-            <button className="bg-green-600 text-white px-4 py-2 rounded">
-              Become Sponsor
-            </button>
-          </div>
-        )}
+              {role === "shop" && (
+                <div className="flex justify-center gap-4 mb-6">
+
+                  {/* Become Sponsor */}
+                  <button className="
+                    bg-[#6f8b5d] 
+                    text-white 
+                    px-5 py-2 
+                    rounded-full 
+                    shadow-md 
+                    hover:bg-[#5f7a4e] 
+                    transition
+                  ">
+                    Sponsorship Requests
+                  </button>
+
+                  {/* My Sponsors */}
+                  <Link to="/my-sponsor">
+                    <button className="
+                      border border-[#6f8b5d] 
+                      text-[#6f8b5d] 
+                      px-5 py-2 
+                      rounded-full 
+                      hover:bg-[#6f8b5d] 
+                      hover:text-white 
+                      transition
+                    ">
+                      My Sponsors
+                    </button>
+                  </Link>
+
+                </div>
+              )}
 
         <h2 className="text-center text-2xl mb-8">
           Events
@@ -171,24 +215,48 @@ function EventPage() {
         </div>
 
         {/* FILTER */}
-        <div className="flex justify-center gap-4 mb-8">
+              <div className="flex justify-center gap-4 mb-8">
 
-          <button onClick={() => setFilter("popular")}
-            className="bg-[#AEBC9F] px-4 py-2 rounded-full">
-            Popular
-          </button>
+                {/* Popular */}
+                <button
+                  onClick={() => setFilter("popular")}
+                  className={`
+                    px-5 py-2 rounded-full transition shadow-sm
+                    ${filter === "popular"
+                      ? "bg-[#6f8b5d] text-white"
+                      : "border border-[#6f8b5d] text-[#6f8b5d] hover:bg-[#6f8b5d] hover:text-white"}
+                  `}
+                >
+                  Popular
+                </button>
 
-          <button onClick={() => setFilter("interested")}
-            className="bg-[#AEBC9F] px-4 py-2 rounded-full">
-            Interested
-          </button>
+                {/* Interested */}
+                <button
+                  onClick={() => setFilter("interested")}
+                  className={`
+                    px-5 py-2 rounded-full transition shadow-sm
+                    ${filter === "interested"
+                      ? "bg-[#6f8b5d] text-white"
+                      : "border border-[#6f8b5d] text-[#6f8b5d] hover:bg-[#6f8b5d] hover:text-white"}
+                  `}
+                >
+                  Interested
+                </button>
 
-          <button onClick={() => setFilter("all")}
-            className="border px-4 py-2 rounded-full">
-            All
-          </button>
+                {/* All */}
+                <button
+                  onClick={() => setFilter("all")}
+                  className={`
+                    px-5 py-2 rounded-full transition shadow-sm
+                    ${filter === "all"
+                      ? "bg-[#6f8b5d] text-white"
+                      : "border border-[#6f8b5d] text-[#6f8b5d] hover:bg-[#6f8b5d] hover:text-white"}
+                  `}
+                >
+                  All
+                </button>
 
-        </div>
+              </div>
 
         {/* GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

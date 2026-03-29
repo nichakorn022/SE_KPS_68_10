@@ -128,11 +128,165 @@ async function searchEvents(keyword){
 
 }
 
+// ---------------- INTEREST ----------------
+async function addInterested(userId, eventId) {
+  return query(
+    `INSERT INTO event_interested (user_id, event_id)
+     VALUES (?, ?)`,
+    [userId, eventId]
+  );
+}
+
+async function removeInterested(userId, eventId) {
+  return query(
+    `DELETE FROM event_interested
+     WHERE user_id = ? AND event_id = ?`,
+    [userId, eventId]
+  );
+}
+
+async function checkInterested(userId, eventId) {
+  const rows = await query(
+    `SELECT id FROM event_interested
+     WHERE user_id = ? AND event_id = ?
+     LIMIT 1`,
+    [userId, eventId]
+  );
+
+  return rows.length > 0;
+}
+
+async function getUserInterested(userId) {
+  return query(
+    `SELECT event_id
+     FROM event_interested
+     WHERE user_id = ?`,
+    [userId]
+  );
+}
+
+
+// ---------------- REGISTER / PAYMENT ----------------
+async function registerEvent(userId, eventId) {
+  // หา event เพื่อเอาราคา
+  const eventRows = await query(
+    `SELECT event_id, price
+     FROM event
+     WHERE event_id = ?
+     LIMIT 1`,
+    [eventId]
+  );
+
+  if (eventRows.length === 0) {
+    throw new Error("Event not found");
+  }
+
+  const event = eventRows[0];
+
+  // เช็คว่ามี registration เดิมไหม
+  const registrationRows = await query(
+    `SELECT registration_id, registration_status
+     FROM event_registration
+     WHERE user_id = ? AND event_id = ?
+     LIMIT 1`,
+    [userId, eventId]
+  );
+
+  let registrationId;
+
+  if (registrationRows.length > 0) {
+    registrationId = registrationRows[0].registration_id;
+
+    // ถ้ามีอยู่แล้ว ให้เปลี่ยนกลับเป็น pending
+    await query(
+      `UPDATE event_registration
+       SET registration_status = 'pending'
+       WHERE registration_id = ?`,
+      [registrationId]
+    );
+  } else {
+    // ยังไม่มี -> สร้างใหม่
+    const result = await query(
+      `INSERT INTO event_registration (event_id, user_id, registration_status)
+       VALUES (?, ?, 'pending')`,
+      [eventId, userId]
+    );
+
+    registrationId = result.insertId;
+  }
+
+  // เช็คว่ามี payment เดิมไหม
+  const paymentRows = await query(
+    `SELECT payment_id
+     FROM event_payment
+     WHERE registration_id = ?
+     LIMIT 1`,
+    [registrationId]
+  );
+
+  if (paymentRows.length > 0) {
+    await query(
+      `UPDATE event_payment
+       SET amount = ?, payment_status = 'pending', paid_at = NULL
+       WHERE registration_id = ?`,
+      [event.price, registrationId]
+    );
+  } else {
+    await query(
+      `INSERT INTO event_payment (registration_id, amount, payment_method, payment_status)
+       VALUES (?, ?, 'promptpay', 'pending')`,
+      [registrationId, event.price]
+    );
+  }
+
+  return registrationId;
+}
+
+async function cancelRegistration(userId, eventId) {
+  await query(
+    `UPDATE event_registration
+     SET registration_status = 'cancelled'
+     WHERE user_id = ? AND event_id = ?`,
+    [userId, eventId]
+  );
+}
+
+async function checkRegistration(userId, eventId) {
+  const rows = await query(
+    `SELECT registration_id, registration_status
+     FROM event_registration
+     WHERE user_id = ? AND event_id = ?
+     LIMIT 1`,
+    [userId, eventId]
+  );
+
+  if (rows.length === 0) {
+    return {
+      exists: false,
+      registration_status: null
+    };
+  }
+
+  return {
+    exists: true,
+    registration_id: rows[0].registration_id,
+    registration_status: rows[0].registration_status
+  };
+}
+
+
 module.exports = {
   getEvents,
   getEventById,
   createEvent,
   updateEvent,
   deleteEvent,
-  searchEvents
+  searchEvents,
+  addInterested,
+  removeInterested,
+  checkInterested,
+  getUserInterested,
+  registerEvent,
+  cancelRegistration,
+  checkRegistration
 };

@@ -1,5 +1,6 @@
 const eventService = require("../services/eventService");
 
+
 function toLegacyEventShape(event) {
   return {
     ...event,

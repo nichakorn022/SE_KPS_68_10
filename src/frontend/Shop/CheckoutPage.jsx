@@ -356,12 +356,15 @@ export default function CheckoutPage() {
   const itemCount = cart.reduce((sum, item) => sum + item.qty, 0);
 
   const updateQty = (id, qty) => {
-    if (qty <= 0) {
-      setCart((previous) => previous.filter((item) => item.id !== id));
-      return;
-    }
+    setCart((previous) =>
+      previous.flatMap((item) => {
+        if (item.id !== id) return [item];
 
-    setCart((previous) => previous.map((item) => (item.id === id ? { ...item, qty } : item)));
+        const stockLimit = Math.max(0, Number(item.stock ?? 0));
+        const nextQty = Math.max(0, Math.min(qty, stockLimit));
+        return nextQty > 0 ? [{ ...item, qty: nextQty }] : [];
+      })
+    );
   };
 
   const handlePlaceOrder = async () => {

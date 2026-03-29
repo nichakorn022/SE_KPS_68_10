@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { apiUrl, assetUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
 import FloatingCartButton from "../components/FloatingCartButton";
+import ShopCartDrawer from "../components/ShopCartDrawer";
 import usePersistentCart from "../hooks/usePersistentCart";
 import ShopHome from "./ShopHome";
 import ProductReview from "./ProductReview";
@@ -313,6 +314,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
   const [error, setError] = useState(null);
 
   const [qty, setQty] = useState(1);
+  const [qtyInput, setQtyInput] = useState("1");
   const [addedFeedback, setAddedFeedback] = useState(false);
 
   // Internal cart state (fallback if no prop)
@@ -320,31 +322,42 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
   const [cartOpen, setCartOpen] = useState(false);
 
   const cart = cartProp ?? internalCart;
+  const clampCartQty = useCallback((item, desiredQty) => {
+    const stockLimit = Math.max(0, Number(item?.stock ?? 0));
+    return Math.max(0, Math.min(desiredQty, stockLimit));
+  }, []);
 
   const addToCart = useCallback(
     (prod, quantity = 1) => {
       if (onAddToCart) {
-        onAddToCart(prod, quantity);
+        onAddToCart(prod, Math.max(1, clampCartQty(prod, quantity)));
       } else {
         setInternalCart((prev) => {
           const existing = prev.find((i) => i.id === prod.id);
+          const nextQty = clampCartQty(existing || prod, (existing?.qty || 0) + quantity);
+          if (nextQty <= 0) return prev;
           if (existing)
             return prev.map((i) =>
-              i.id === prod.id ? { ...i, qty: i.qty + quantity } : i
+              i.id === prod.id ? { ...i, qty: nextQty } : i
             );
-          return [...prev, { ...prod, qty: quantity }];
+          return [...prev, { ...prod, qty: nextQty }];
         });
       }
       setAddedFeedback(true);
       setTimeout(() => setAddedFeedback(false), 1500);
     },
-    [onAddToCart]
+    [clampCartQty, onAddToCart]
   );
 
   const updateQty = useCallback((itemId, q) => {
-    if (q <= 0) setInternalCart((prev) => prev.filter((i) => i.id !== itemId));
-    else setInternalCart((prev) => prev.map((i) => (i.id === itemId ? { ...i, qty: q } : i)));
-  }, []);
+    setInternalCart((prev) =>
+      prev.flatMap((i) => {
+        if (i.id !== itemId) return [i];
+        const nextQty = clampCartQty(i, q);
+        return nextQty > 0 ? [{ ...i, qty: nextQty }] : [];
+      })
+    );
+  }, [clampCartQty]);
 
   const cartCount = cart.reduce((s, i) => s + i.qty, 0);
 
@@ -428,6 +441,35 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
       });
   }, [id]);
 
+  const price = Number(product?.price ?? 0);
+  const stock = Number(product?.stock ?? 0);
+  const inStock = stock > 0;
+  const normalizeQtyInput = (rawValue) => {
+    const parsed = Number(rawValue);
+    if (Number.isNaN(parsed)) return 1;
+    return Math.max(1, Math.min(stock || 1, parsed));
+  };
+  const currentUserId = getUserIdFromToken();
+  const cartQty = cart.find((item) => item.id === product?.product_id)?.qty || 0;
+  const isOwnProduct =
+    currentUserId != null &&
+    shop?.user_id != null &&
+    Number(currentUserId) === Number(shop.user_id);
+  const cartFull = inStock && cartQty >= stock;
+
+  useEffect(() => {
+    if (!product) return;
+
+    const normalizedQty = Math.max(1, Math.min(stock || 1, qty));
+    if (normalizedQty !== qty) {
+      setQty(normalizedQty);
+      setQtyInput(String(normalizedQty));
+      return;
+    }
+
+    setQtyInput(String(normalizedQty));
+  }, [product, qty, stock]);
+
   // ── Loading skeleton ────────────────────────────────────────────────
   if (loading) {
     return (
@@ -469,19 +511,11 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
     );
   }
 
-  const price = Number(product.price ?? 0);
-  const stock = product.stock ?? 0;
-  const inStock = stock > 0;
-  const currentUserId = getUserIdFromToken();
-  const isOwnProduct =
-    currentUserId != null &&
-    shop?.user_id != null &&
-    Number(currentUserId) === Number(shop.user_id);
-
   const currentProduct = {
     id: product.product_id,
     name: product.tea_name,
     price,
+    stock,
     tag: product.tea_type,
     img: images[0] || null,
     shop: shop?.shop_name || `Shop #${product.shop_id}`,
@@ -496,13 +530,22 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
 
   return (
     <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800">
-      {console.log("ProductDetail rendering", { product, loading, error })}
       <SiteNavbar active="shop" />
 
 
       {/* Main Content */}
       <div className="max-w-5xl mx-auto px-6 pb-12 pt-8">
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 md:p-8">
+        <div className="relative rounded-3xl border border-gray-100 bg-white p-6 shadow-sm md:p-8">
+          <button
+            type="button"
+            onClick={() => navigate(-1)}
+            aria-label="Back to previous page"
+            className="absolute left-1.5 top-1.5 inline-flex h-7 w-7 items-center justify-center rounded-full border border-[#D7E1CC] bg-[#FBFDF8] text-[#668257] shadow-[0_6px_14px_rgba(72,91,59,0.08)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#F4F8EE] md:left-2 md:top-2"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 6 9 12l6 6" />
+            </svg>
+          </button>
           <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
             {/* ── Left: Image Gallery ── */}
             <ImageGallery images={images} productName={product.tea_name} />
@@ -557,17 +600,47 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
                 <span className="text-[14px] font-semibold text-gray-600 w-16">จำนวน</span>
                 <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
                   <button
-                    onClick={() => setQty((q) => Math.max(1, q - 1))}
+                    onClick={() =>
+                      setQty((q) => {
+                        const nextQty = Math.max(1, q - 1);
+                        setQtyInput(String(nextQty));
+                        return nextQty;
+                      })
+                    }
                     disabled={qty <= 1}
                     className="w-10 h-10 flex items-center justify-center text-[#485B3B] hover:bg-[#F5F3E9] disabled:opacity-30 transition-colors font-bold text-lg"
                   >
                     −
                   </button>
-                  <span className="w-12 h-10 flex items-center justify-center text-[15px] font-bold text-gray-800 border-x border-gray-200">
-                    {qty}
-                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={stock || 1}
+                    value={qtyInput}
+                    onChange={(event) => {
+                      const rawValue = event.target.value;
+                      if (rawValue === "") {
+                        setQtyInput("");
+                        return;
+                      }
+
+                      setQtyInput(rawValue);
+                    }}
+                    onBlur={() => {
+                      const nextQty = normalizeQtyInput(qtyInput);
+                      setQty(nextQty);
+                      setQtyInput(String(nextQty));
+                    }}
+                    className="w-12 h-10 border-x border-gray-200 bg-white text-center text-[15px] font-bold text-gray-800 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  />
                   <button
-                    onClick={() => setQty((q) => Math.min(stock || 99, q + 1))}
+                    onClick={() =>
+                      setQty((q) => {
+                        const nextQty = Math.min(stock || 99, q + 1);
+                        setQtyInput(String(nextQty));
+                        return nextQty;
+                      })
+                    }
                     disabled={!inStock || qty >= stock}
                     className="w-10 h-10 flex items-center justify-center text-[#485B3B] hover:bg-[#F5F3E9] disabled:opacity-30 transition-colors font-bold text-lg"
                   >
@@ -583,7 +656,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
               <div className="flex gap-3">
                 <button
                   onClick={() => addToCart(currentProduct, qty)}
-                  disabled={!inStock || isOwnProduct}
+                  disabled={!inStock || isOwnProduct || cartFull}
                   className={`flex-1 flex items-center justify-center gap-2 border-2 border-[#485B3B] text-[#485B3B] font-bold py-3 rounded-2xl transition-all active:scale-95 disabled:opacity-40 ${
                     addedFeedback
                       ? "bg-[#485B3B] text-white"
@@ -591,7 +664,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
                   }`}
                 >
                   🛒
-                  {isOwnProduct ? "สินค้าร้านคุณ" : addedFeedback ? "เพิ่มแล้ว ✓" : "เพิ่มไปยังตะกร้า"}
+                  {isOwnProduct ? "สินค้าร้านคุณ" : cartFull ? "ครบจำนวนแล้ว" : addedFeedback ? "เพิ่มแล้ว ✓" : "เพิ่มไปยังตะกร้า"}
                 </button>
                 <button
                   onClick={handleBuyNow}
@@ -601,6 +674,12 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
                   {isOwnProduct ? "สินค้าร้านคุณ" : "ซื้อสินค้า"}
                 </button>
               </div>
+
+              {cartFull ? (
+                <p className="mt-3 text-[13px] font-medium text-[#B26B44]">
+                  มีสินค้านี้ในตะกร้าครบจำนวนที่มีแล้ว
+                </p>
+              ) : null}
 
               {/* Shop info */}
               <ShopPanel shop={shop} shopImg={shopImg} />
@@ -650,11 +729,14 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
 
       {/* Cart Drawer */}
       {cartOpen && (
-        <CartDrawer
-          cart={internalCart}
+        <ShopCartDrawer
+          cart={cart}
           onClose={() => setCartOpen(false)}
-          onRemove={(itemId) => updateQty(itemId, 0)}
           onUpdateQty={updateQty}
+          onCheckout={() => {
+            setCartOpen(false);
+            navigate("/checkout");
+          }}
         />
       )}
       <FloatingCartButton cartCount={cartCount} onClick={() => setCartOpen(true)} />

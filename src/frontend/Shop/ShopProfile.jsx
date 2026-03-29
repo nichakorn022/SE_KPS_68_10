@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { apiUrl, assetUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
 import FloatingCartButton from "../components/FloatingCartButton";
+import ShopCartDrawer from "../components/ShopCartDrawer";
 import usePersistentCart from "../hooks/usePersistentCart";
 import { getAuthHeaders, getUserIdFromToken, getUserRoleFromToken } from "./authClient";
 
@@ -258,7 +259,9 @@ function SectionTitle({ children, centered = false }) {
   );
 }
 
-function ProductCard({ product, onAddToCart, canEdit = false }) {
+function ProductCard({ product, onAddToCart, canEdit = false, cartQty = 0 }) {
+  const cartFull = Number(product.stock ?? 0) > 0 && cartQty >= Number(product.stock ?? 0);
+
   return (
     <article className="group overflow-hidden rounded-[28px] border border-[#e7e0d5] bg-white shadow-[0_18px_45px_rgba(195,170,128,0.10)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_30px_60px_rgba(123,154,103,0.16)]">
       <div className="aspect-[1/1] overflow-hidden bg-[#f4f1ea]">
@@ -296,10 +299,15 @@ function ProductCard({ product, onAddToCart, canEdit = false }) {
           ) : (
             <button
               type="button"
+              disabled={cartFull}
               onClick={() => onAddToCart(product)}
-              className="rounded-full border border-[#d8e1ce] bg-[#fbfdf7] px-4 py-2 text-sm font-semibold text-[#4e6841] transition-all hover:border-[#7B9A67] hover:bg-white"
+              className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
+                cartFull
+                  ? "cursor-not-allowed border-[#E1E6DA] bg-[#EEF1EA] text-[#98A38F]"
+                  : "border-[#d8e1ce] bg-[#fbfdf7] text-[#4e6841] hover:border-[#7B9A67] hover:bg-white"
+              }`}
             >
-              เพิ่มลงตะกร้า
+              {cartFull ? "ครบจำนวนแล้ว" : "เพิ่มลงตะกร้า"}
             </button>
           )}
         </div>
@@ -408,6 +416,11 @@ function LoadingState() {
   );
 }
 
+function clampCartQty(item, desiredQty) {
+  const stockLimit = Math.max(0, Number(item?.stock ?? 0));
+  return Math.max(0, Math.min(desiredQty, stockLimit));
+}
+
 export default function ShopProfile() {
   const { id } = useParams();
   const [cart, setCart] = usePersistentCart();
@@ -494,21 +507,29 @@ export default function ShopProfile() {
   const addToCart = (product) => {
     setCart((previous) => {
       const existing = previous.find((item) => item.id === product.id);
-      if (existing) {
-        return previous.map((item) => (item.id === product.id ? { ...item, qty: item.qty + 1 } : item));
+      const nextQty = clampCartQty(existing || product, (existing?.qty || 0) + 1);
+
+      if (nextQty <= 0) {
+        return previous;
       }
 
-      return [...previous, { ...product, qty: 1 }];
+      if (existing) {
+        return previous.map((item) => (item.id === product.id ? { ...item, qty: nextQty } : item));
+      }
+
+      return [...previous, { ...product, qty: nextQty }];
     });
   };
 
   const updateQty = (productId, qty) => {
-    if (qty <= 0) {
-      setCart((previous) => previous.filter((item) => item.id !== productId));
-      return;
-    }
+    setCart((previous) =>
+      previous.flatMap((item) => {
+        if (item.id !== productId) return [item];
 
-    setCart((previous) => previous.map((item) => (item.id === productId ? { ...item, qty } : item)));
+        const nextQty = clampCartQty(item, qty);
+        return nextQty > 0 ? [{ ...item, qty: nextQty }] : [];
+      })
+    );
   };
 
   const saveShopProfile = async ({ submitForVerification = false } = {}) => {
@@ -872,7 +893,13 @@ export default function ShopProfile() {
           </div>
           <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
             {featuredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} onAddToCart={addToCart} canEdit={isOwner} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                onAddToCart={addToCart}
+                canEdit={isOwner}
+                cartQty={cart.find((item) => item.id === product.id)?.qty || 0}
+              />
             ))}
           </div>
         </section>
@@ -1076,61 +1103,11 @@ export default function ShopProfile() {
       </main>
 
       {cartOpen ? (
-        <div className="fixed inset-0 z-50 flex">
-          <div className="flex-1 bg-black/30 backdrop-blur-sm" onClick={() => setCartOpen(false)} />
-          <div className="flex h-full w-full max-w-sm flex-col bg-[#F8F5EE] shadow-2xl">
-            <div className="flex items-center justify-between bg-[#AEBC9F] p-6">
-              <h2 className="text-xl font-bold text-white">ตะกร้าสินค้า</h2>
-              <button type="button" onClick={() => setCartOpen(false)} className="text-2xl text-white">
-                ×
-              </button>
-            </div>
-            <div className="flex-1 space-y-3 overflow-y-auto p-4">
-              {cart.length === 0 ? (
-                <div className="py-16 text-center text-[#8f8778]">ยังไม่มีสินค้าในตะกร้า</div>
-              ) : (
-                cart.map((item) => (
-                  <div key={item.id} className="flex items-center gap-3 rounded-[20px] bg-white p-4 shadow-sm">
-                    {item.img ? (
-                      <img src={item.img} alt={item.name} className="h-14 w-14 rounded-2xl object-cover" />
-                    ) : (
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#F5F3E9] text-[#b9af9e]">□</div>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-[#24321F]">{item.name}</p>
-                      <p className="text-sm text-[#6b8a5b]">{formatPrice(item.price)}</p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button type="button" onClick={() => updateQty(item.id, item.qty - 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-[#f1ece3]">
-                        -
-                      </button>
-                      <span className="w-6 text-center font-semibold">{item.qty}</span>
-                      <button type="button" onClick={() => updateQty(item.id, item.qty + 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-[#AEBC9F] text-white">
-                        +
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-            {cart.length > 0 ? (
-              <div className="border-t border-[#e6dfd5] p-6">
-                <div className="mb-4 flex items-center justify-between">
-                  <span className="text-[#6f7b70]">รวมทั้งหมด</span>
-                  <span className="text-xl font-semibold text-[#485B3B]">
-                    {formatPrice(cart.reduce((sum, item) => sum + item.price * item.qty, 0))}
-                  </span>
-                </div>
-                <Link
-                  to="/checkout"
-                  className="block rounded-full bg-[#485B3B] py-3 text-center font-semibold text-white"
-                >
-                  ไปยังการชำระเงิน
-                </Link>
-              </div>
-            ) : null}
-          </div>
-        </div>
+        <ShopCartDrawer
+          cart={cart}
+          onClose={() => setCartOpen(false)}
+          onUpdateQty={updateQty}
+        />
       ) : null}
 
       <FloatingCartButton cartCount={cartCount} onClick={() => setCartOpen(true)} />

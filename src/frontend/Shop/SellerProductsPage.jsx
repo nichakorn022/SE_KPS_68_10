@@ -74,6 +74,10 @@ const TEA_TYPE_OPTIONS = [
   "Fruit Tea",
 ];
 
+function formatCurrency(value) {
+  return `\u0E3F${Number(value || 0).toLocaleString("th-TH")}`;
+}
+
 const initialForm = {
   tea_name: "",
   tea_type_choice: "",
@@ -128,7 +132,7 @@ function ProductCard({ product, onEdit, onDelete }) {
 
       <div className="mt-5 flex items-end justify-between gap-4">
         <div>
-          <p className="text-[1.2rem] font-semibold text-[#506B3F]">ß{Number(product.price || 0).toLocaleString("th-TH")}</p>
+          <p className="text-[1.2rem] font-semibold text-[#506B3F]">{formatCurrency(product.price)}</p>
           <p className={`mt-1 text-sm ${lowStock ? "text-[#A7573B]" : "text-[#6D7868]"}`}>Stock {Number(product.stock || 0).toLocaleString("th-TH")}</p>
         </div>
         <div className="flex gap-2">
@@ -347,6 +351,20 @@ export default function SellerProductsPage() {
 
       <main className="px-4 pb-16 pt-6 sm:px-6 xl:px-8 2xl:px-10">
         <div className="mx-auto flex max-w-[1540px] flex-col gap-8">
+          <div>
+            <Link
+              to="/seller"
+              className="inline-flex items-center gap-3 rounded-full border border-[#D4DDC9] bg-white/88 px-3 py-2.5 pr-5 text-sm font-semibold text-[#51684A] shadow-[0_10px_26px_rgba(72,91,59,0.06)] transition-colors hover:bg-[#F7FAF2]"
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-[18px] bg-[#EEF4E8] text-[#7C9A74]" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" className="h-5 w-5">
+                  <path d="M7 16.5 16.5 7" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M10.5 7H16.5V13" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+              <span>Back to Seller Hub</span>
+            </Link>
+          </div>
           <section className="rounded-[34px] border border-[#DFE5D6] bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(241,246,234,0.92))] p-7 shadow-[0_24px_70px_rgba(72,91,59,0.12)] sm:p-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>

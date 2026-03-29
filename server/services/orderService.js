@@ -271,6 +271,47 @@ async function getSellerRevenueTrend(userId, days = 7) {
   };
 }
 
+async function getSellerWorkspaceSummary(userId) {
+  const shop = await ensureShopByOwner(userId);
+
+  const [orderStats] = await query(
+    `SELECT
+        COUNT(DISTINCT CASE
+          WHEN o.status = 'paid'
+           AND DATE(o.order_date) BETWEEN DATE_SUB(CURDATE(), INTERVAL 29 DAY) AND CURDATE()
+          THEN o.order_id
+        END) AS paid_orders_30d,
+        COUNT(DISTINCT CASE
+          WHEN o.status = 'pending'
+          THEN o.order_id
+        END) AS pending_orders,
+        COALESCE(SUM(CASE
+          WHEN o.status = 'paid'
+           AND DATE(o.order_date) BETWEEN DATE_SUB(CURDATE(), INTERVAL 29 DAY) AND CURDATE()
+          THEN od.subtotal
+          ELSE 0
+        END), 0) AS revenue_30d,
+        COALESCE(SUM(CASE
+          WHEN o.status = 'paid'
+           AND DATE(o.order_date) BETWEEN DATE_SUB(CURDATE(), INTERVAL 29 DAY) AND CURDATE()
+          THEN od.quantity
+          ELSE 0
+        END), 0) AS units_30d
+     FROM tea_product tp
+     LEFT JOIN order_details od ON od.product_id = tp.product_id
+     LEFT JOIN orders o ON o.order_id = od.order_id
+     WHERE tp.shop_id = ?`,
+    [shop.shop_id]
+  );
+
+  return {
+    paid_orders_30d: Number(orderStats?.paid_orders_30d || 0),
+    pending_orders: Number(orderStats?.pending_orders || 0),
+    revenue_30d: Number(orderStats?.revenue_30d || 0),
+    units_30d: Number(orderStats?.units_30d || 0),
+  };
+}
+
 async function updateOrderStatus(id, status) {
   if (!allowedStatuses.has(status)) {
     const error = new Error("status must be pending, paid, or cancelled");
@@ -421,6 +462,7 @@ module.exports = {
   getOrders,
   getOrdersByUser,
   getSellerRevenueTrend,
+  getSellerWorkspaceSummary,
   updateOrderStatus,
   markOrderPaid,
   deleteOrder

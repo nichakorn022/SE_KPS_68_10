@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState } from "react";
 import { apiUrl, assetUrl } from "../../lib/api";
 import {
+  getAuthHeaders,
   getStoredToken,
   getUserIdFromToken,
   getUserRoleFromToken,
@@ -27,6 +28,13 @@ const api = {
       if (!response.ok) throw new Error(`Shop images ${response.status}`);
       return response.json();
     }),
+  getSellerSummary: () =>
+    fetch(apiUrl("/orders/seller/summary"), {
+      headers: getAuthHeaders(),
+    }).then((response) => {
+      if (!response.ok) throw new Error(`Seller summary ${response.status}`);
+      return response.json();
+    }),
 };
 
 function getLocation(shop) {
@@ -48,11 +56,19 @@ function createProductImageMap(rows) {
   return map;
 }
 
+const defaultSummary = {
+  paidOrders30d: 0,
+  pendingOrders: 0,
+  revenue30d: 0,
+  units30d: 0,
+};
+
 export default function useSellerWorkspace() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [shop, setShop] = useState(null);
   const [products, setProducts] = useState([]);
+  const [summary, setSummary] = useState(defaultSummary);
 
   const userId = getUserIdFromToken();
   const role = getUserRoleFromToken();
@@ -64,6 +80,7 @@ export default function useSellerWorkspace() {
       setError("Please log in before opening Seller Hub");
       setShop(null);
       setProducts([]);
+      setSummary(defaultSummary);
       setLoading(false);
       return () => {
         ignore = true;
@@ -74,6 +91,7 @@ export default function useSellerWorkspace() {
       setError("This workspace is available only for shop accounts");
       setShop(null);
       setProducts([]);
+      setSummary(defaultSummary);
       setLoading(false);
       return () => {
         ignore = true;
@@ -88,8 +106,9 @@ export default function useSellerWorkspace() {
       api.getProducts(),
       api.getProductImages().catch(() => []),
       api.getShopImages().catch(() => []),
+      api.getSellerSummary().catch(() => null),
     ])
-      .then(([shopRows, productRows, productImageRows, imageRows]) => {
+      .then(([shopRows, productRows, productImageRows, imageRows, summaryRow]) => {
         if (ignore) return;
 
         const productImageMap = createProductImageMap(productImageRows);
@@ -102,6 +121,7 @@ export default function useSellerWorkspace() {
           setError("No shop profile found for this account");
           setShop(null);
           setProducts([]);
+          setSummary(defaultSummary);
           setLoading(false);
           return;
         }
@@ -134,15 +154,24 @@ export default function useSellerWorkspace() {
           location: getLocation(ownedShop),
           address: ownedShop.address || "-",
           verified: Number(ownedShop.verified_status) === 1,
+          reviewStatus: ownedShop.review_status || "pending",
+          openingHours: ownedShop.opening_hours || "",
           image: coverImage ? assetUrl(coverImage) : null,
         });
         setProducts(ownProducts);
+        setSummary({
+          paidOrders30d: Number(summaryRow?.paid_orders_30d || 0),
+          pendingOrders: Number(summaryRow?.pending_orders || 0),
+          revenue30d: Number(summaryRow?.revenue_30d || 0),
+          units30d: Number(summaryRow?.units_30d || 0),
+        });
       })
       .catch((fetchError) => {
         if (!ignore) {
           setError(fetchError.message || "Failed to load seller workspace");
           setShop(null);
           setProducts([]);
+          setSummary(defaultSummary);
         }
       })
       .finally(() => {
@@ -159,6 +188,6 @@ export default function useSellerWorkspace() {
     error,
     shop,
     products,
+    summary,
   };
 }
-

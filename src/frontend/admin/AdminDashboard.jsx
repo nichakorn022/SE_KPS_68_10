@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { adminApi } from "./adminApi";
 
+function getVerificationStatusLabel(value) {
+  return Number(value) === 1 ? "approved" : Number(value) === 2 ? "rejected" : "pending";
+}
+
 const AUTO_REFRESH_MS = 45000;
 
 function getMonthDateRange(offset = 0) {
@@ -159,8 +163,8 @@ export default function AdminDashboard() {
     const currentMonth = getMonthDateRange(0);
     const previousMonth = getMonthDateRange(-1);
 
-    const pendingShops = shops.filter((item) => !Number(item.verified_status)).length;
-    const pendingOrganizers = organizers.filter((item) => !Number(item.verified_status)).length;
+    const pendingShops = shops.filter((item) => Number(item.verified_status) === 0).length;
+    const pendingOrganizers = organizers.filter((item) => Number(item.verified_status) === 0).length;
     const pendingReports = reports.filter((item) => String(item.status).toLowerCase() === "pending").length;
     const pendingSponsors = sponsors.filter((item) => String(item.status).toLowerCase() === "pending").length;
     const monthlyRequests = [...shops, ...organizers, ...reports, ...sponsors].filter((item) =>
@@ -259,7 +263,7 @@ export default function AdminDashboard() {
       id: `shop-${shop.shop_id}`,
       title: shop.shop_name || `Shop #${shop.shop_id}`,
       subtitle: shop.email || `User #${shop.user_id}`,
-      status: Number(shop.verified_status) ? "approved" : "pending",
+      status: getVerificationStatusLabel(shop.verified_status),
       createdAt: shop.created_at,
       href: "/admin/requests-reports?type=shop",
     }));
@@ -272,7 +276,7 @@ export default function AdminDashboard() {
         organizer.username ||
         `Organizer #${organizer.organizer_id}`,
       subtitle: organizer.email || `User #${organizer.user_id}`,
-      status: Number(organizer.verified_status) ? "approved" : "pending",
+      status: getVerificationStatusLabel(organizer.verified_status),
       createdAt: organizer.created_at,
       href: "/admin/requests-reports?type=organizer",
     }));

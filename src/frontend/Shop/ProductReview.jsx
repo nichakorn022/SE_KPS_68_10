@@ -682,14 +682,18 @@ const s = {
   },
   featuredGrid: {
     display: "grid",
-    gridTemplateColumns: "1fr 1fr",
+    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     gap: 16,
+    alignItems: "stretch",
   },
   featuredCard: {
     background: "#ffffff",
     borderRadius: 12,
     padding: "18px 20px",
     border: "1px solid #ede9e0",
+    minWidth: 0,
+    boxSizing: "border-box",
+    overflow: "hidden",
   },
   // Review card (all reviews)
   reviewCard: {
@@ -709,11 +713,15 @@ const s = {
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: 10,
+    gap: 12,
+    flexWrap: "wrap",
   },
   reviewActionButtons: {
     display: "flex",
     alignItems: "center",
     gap: 8,
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
   },
   actionBtn: {
     padding: "4px 8px",
@@ -737,6 +745,8 @@ const s = {
     display: "flex",
     alignItems: "center",
     gap: 12,
+    minWidth: 0,
+    flex: "1 1 220px",
   },
   avatar: {
     width: 44,
@@ -758,6 +768,7 @@ const s = {
     fontWeight: 700,
     color: "#1c1917",
     fontFamily: FONT_SERIF,
+    overflowWrap: "anywhere",
   },
   verifiedBadge: {
     fontSize: 11,
@@ -787,6 +798,7 @@ const s = {
     fontSize: 14,
     color: "#44403c",
     lineHeight: 1.7,
+    overflowWrap: "anywhere",
   },
   photoThumb: {
     marginTop: 12,

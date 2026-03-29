@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import generatePromptPayPayload from "promptpay-qr";
 import { apiUrl } from "../../lib/api";
 import { getAuthHeaders, getStoredToken, getUserIdFromToken } from "./authClient";
+import { useAuthModal } from "../../App";
 import usePersistentCart from "../hooks/usePersistentCart";
 
 function formatPrice(price) {
@@ -166,7 +167,7 @@ function PromptPayMockModal({ open, orderId, total, processing, onClose, onConfi
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#8b9a79]">Mock QR Payment</p>
-            <h3 className="mt-2 text-[1.65rem] font-semibold text-[#22321f]">พร้อมเพย์จำลอง</h3>
+            <h3 className="mt-2 text-[1.65rem] font-semibold text-[#22321f]">Mock PromptPay</h3>
           </div>
           <button
             type="button"
@@ -204,7 +205,7 @@ function PromptPayMockModal({ open, orderId, total, processing, onClose, onConfi
             <div className="mt-4 text-center">
               <p className="text-sm text-[#8b8176]">Order #{orderId}</p>
               <p className="mt-1 text-xs uppercase tracking-[0.16em] text-[#9b927f]">Ref {reference}</p>
-              <p className="mt-2 text-[13px] leading-6 text-[#6f665b]">QR นี้สร้างจาก payload พร้อมเพย์ mock จริงของ order นี้ เพื่อให้หน้าตาและประสบการณ์ใกล้เคียงของจริงมากขึ้น</p>
+              <p className="mt-2 text-[13px] leading-6 text-[#6f665b]">This QR is generated from the real mock PromptPay payload of this order to make the appearance and experience closer to the real one</p>
             </div>
           </div>
         </div>
@@ -216,7 +217,7 @@ function PromptPayMockModal({ open, orderId, total, processing, onClose, onConfi
             disabled={processing}
             className="flex-1 rounded-[18px] bg-[#7B9A67] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
           >
-            {processing ? "กำลังยืนยัน..." : "จำลองสแกนสำเร็จ"}
+            {processing ? "Confirming..." : "Simulate Scan Success"}
           </button>
           <button
             type="button"
@@ -224,7 +225,7 @@ function PromptPayMockModal({ open, orderId, total, processing, onClose, onConfi
             disabled={processing}
             className="rounded-[18px] border border-[#e2d9cb] bg-[#fffdf9] px-5 py-3 text-sm font-semibold text-[#6f665b] disabled:opacity-60"
           >
-            ไว้ก่อน
+            Later
           </button>
         </div>
       </div>
@@ -255,7 +256,7 @@ function OrderItem({ item, onUpdateQty }) {
         <div className="mt-3 flex items-end justify-between gap-3">
           <div>
             <p className="text-[1.1rem] font-semibold text-[#5D7A4B]">{formatPrice(subtotal)}</p>
-            <p className="text-xs text-[#a19689]">{formatPrice(item.price)} ต่อชิ้น</p>
+            <p className="text-xs text-[#a19689]">{formatPrice(item.price)} per piece</p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full bg-[#faf6f0] px-2 py-1">
             <button
@@ -282,11 +283,11 @@ function OrderItem({ item, onUpdateQty }) {
 
 function AddressSummary({ address, loading }) {
   if (loading) {
-    return <p className="text-sm text-[#8b8176]">กำลังโหลดที่อยู่...</p>;
+    return <p className="text-sm text-[#8b8176]">Loading address...</p>;
   }
 
   if (!address) {
-    return <p className="text-sm text-[#577049]">โปรดเลือกที่อยู่</p>;
+    return <p className="text-sm text-[#577049]">Please select address</p>;
   }
 
   const fullAddress = [
@@ -311,12 +312,13 @@ function AddressSummary({ address, loading }) {
 
 async function getErrorMessage(response, fallbackMessage) {
   const data = await response.json().catch(() => ({}));
-  if (response.status === 401) return "กรุณาเข้าสู่ระบบก่อนสั่งสินค้า";
+  if (response.status === 401) return "Please log in before ordering";
   return data.error || data.message || fallbackMessage;
 }
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
+  const { openRegister } = useAuthModal();
   const [cart, setCart] = usePersistentCart();
   const [deliveryMethod, setDeliveryMethod] = useState("delivery");
   const [paymentMethod, setPaymentMethod] = useState("promptpay");
@@ -371,12 +373,12 @@ export default function CheckoutPage() {
     const userId = getUserIdFromToken();
 
     if (!userId) {
-      setSubmitError("กรุณาเข้าสู่ระบบก่อนสั่งสินค้า");
+      openRegister();
       return;
     }
 
     if (!address) {
-      setSubmitError("กรุณาเลือกที่อยู่จัดส่งก่อนสั่งสินค้า");
+      setSubmitError("Please select delivery address before ordering");
       return;
     }
 
@@ -411,7 +413,7 @@ export default function CheckoutPage() {
       });
 
       if (!response.ok) {
-        throw new Error(await getErrorMessage(response, "สั่งสินค้าไม่สำเร็จ"));
+        throw new Error(await getErrorMessage(response, "Order failed"));
       }
 
       const result = await response.json();
@@ -427,7 +429,7 @@ export default function CheckoutPage() {
       setCart([]);
       navigate(`/checkout/success/${result.order_id}`);
     } catch (error) {
-      setSubmitError(error.message || "สั่งสินค้าไม่สำเร็จ");
+      setSubmitError(error.message || "Order failed");
     } finally {
       setSubmittingOrder(false);
     }
@@ -440,16 +442,16 @@ export default function CheckoutPage() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#E6EEDC] text-3xl text-[#577049]">
             🛒
           </div>
-          <h1 className="mt-5 text-[2rem] font-semibold">ยังไม่มีสินค้าในตะกร้า</h1>
+          <h1 className="mt-5 text-[2rem] font-semibold">No items in cart</h1>
           <p className="mx-auto mt-3 max-w-lg text-[15px] leading-7 text-[#7a7064]">
-            เพิ่มผงชาที่ต้องการก่อน แล้วค่อยกลับมายืนยันการสั่งซื้อในหน้านี้
+            Add the tea powder you want first, then come back to confirm the order on this page
           </p>
           <button
             type="button"
             onClick={() => navigate("/shop")}
             className="mt-7 rounded-full bg-[#485B3B] px-6 py-3.5 text-sm font-semibold text-white"
           >
-            กลับไปเลือกสินค้า
+            Go back to select products
           </button>
         </div>
       </div>
@@ -472,13 +474,13 @@ export default function CheckoutPage() {
       });
 
       if (!response.ok) {
-        throw new Error(await getErrorMessage(response, "ยืนยันการชำระเงินไม่สำเร็จ"));
+        throw new Error(await getErrorMessage(response, "Payment confirmation failed"));
       }
 
       setCart([]);
       navigate(`/checkout/success/${promptPayOrder.orderId}`);
     } catch (error) {
-      setSubmitError(error.message || "ยืนยันการชำระเงินไม่สำเร็จ");
+      setSubmitError(error.message || "Payment confirmation failed");
     } finally {
       setConfirmingPromptPay(false);
     }
@@ -506,14 +508,14 @@ export default function CheckoutPage() {
             ←
           </button>
           <div className="text-center">
-            <p className="text-[1.5rem] font-semibold sm:text-[2rem]">ทำการสั่งซื้อ</p>
-            <p className="mt-1 text-sm text-[#8f8478]">ผงชาและอุปกรณ์สำหรับร้านของคุณ</p>
+            <p className="text-[1.5rem] font-semibold sm:text-[2rem]">Place Order</p>
+            <p className="mt-1 text-sm text-[#8f8478]">Tea powder and equipment for your shop</p>
           </div>
           <Link
             to="/shop"
             className="hidden rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-medium text-[#7a7064] sm:inline-flex"
           >
-            กลับไปเลือกสินค้า
+            Go back to select products
           </Link>
         </div>
       </header>
@@ -523,7 +525,7 @@ export default function CheckoutPage() {
           <div className="space-y-5">
             <PageCard>
               <SectionHeader
-                title="ที่อยู่สำหรับจัดส่ง"
+                title="Delivery Address"
                 icon={
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s6-5.4 6-11a6 6 0 1 0-12 0c0 5.6 6 11 6 11Z" />
@@ -548,8 +550,8 @@ export default function CheckoutPage() {
 
             <PageCard>
               <SectionHeader
-                title="ตัวเลือกการจัดส่ง"
-                action="ดูทั้งหมด"
+                title="Delivery Options"
+                action="View all"
                 icon={
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h11v7H3z" />
@@ -563,27 +565,27 @@ export default function CheckoutPage() {
                 <DeliveryOption
                   selected={deliveryMethod === "delivery"}
                   onClick={() => setDeliveryMethod("delivery")}
-                  title="จัดส่งถึงบ้าน"
-                  subtitle="บริการจัดส่งมาตรฐานสำหรับผงชาและสินค้าในตะกร้า"
-                  meta="1-2 วัน"
-                  priceText={deliveryFee === 0 ? "ส่งฟรี" : formatPrice(deliveryFee)}
+                  title="Home Delivery"
+                  subtitle="Standard delivery service for tea powder and items in cart"
+                  meta="1-2 days"
+                  priceText={deliveryFee === 0 ? "Free shipping" : formatPrice(deliveryFee)}
                 />
-                <p className="text-sm text-[#7f766a]">รับโค้ดส่วนลด ฿30 หากได้รับสินค้าล่าช้า</p>
+                <p className="text-sm text-[#7f766a]">Get ฿30 discount code if goods are delayed</p>
                 <DeliveryOption
                   selected={deliveryMethod === "pickup"}
                   onClick={() => setDeliveryMethod("pickup")}
-                  title="รับที่ร้าน"
-                  subtitle="มารับเองที่หน้าร้าน Tea Artisan"
-                  meta="พร้อมใน 15 นาที"
-                  priceText="ไม่มีค่าส่ง"
+                  title="Pickup at store"
+                  subtitle="Come pick up at Tea Artisan store"
+                  meta="Ready in 15 minutes"
+                  priceText="No shipping fee"
                 />
               </div>
             </PageCard>
 
             <PageCard>
               <SectionHeader
-                title="โค้ดส่วนลดร้านค้า"
-                action="กดใช้โค้ด"
+                title="Store Discount Code"
+                action="Apply code"
                 icon={
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="m9 5 10 10-5 5L4 10V5h5Z" />
@@ -596,11 +598,11 @@ export default function CheckoutPage() {
                   <input
                     value={promoCode}
                     onChange={(event) => setPromoCode(event.target.value)}
-                    placeholder="ใส่โค้ดส่วนลด"
+                    placeholder="Enter discount code"
                     className="w-full rounded-[18px] border border-[#D8E1CE] bg-[#FCFDF9] px-4 py-3.5 text-[15px] text-[#24321F] outline-none placeholder:text-[#9AA791] focus:border-[#7A9466] focus:shadow-[0_0_0_4px_rgba(122,148,102,0.10)]"
                   />
                   <button type="button" className="rounded-[18px] bg-[#7B9A67] px-5 py-3.5 text-sm font-semibold text-white">
-                    ใช้โค้ด
+                    Use code
                   </button>
                 </div>
               </div>
@@ -608,8 +610,8 @@ export default function CheckoutPage() {
 
             <PageCard>
               <SectionHeader
-                title="ช่องทางการชำระเงิน"
-                action="ดูทั้งหมด"
+                title="Payment Methods"
+                action="View all"
                 icon={
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
                     <rect x="3" y="6" width="18" height="12" rx="2.5" />
@@ -621,15 +623,15 @@ export default function CheckoutPage() {
                 <PaymentOption
                   selected={paymentMethod === "promptpay"}
                   onClick={() => setPaymentMethod("promptpay")}
-                  title="QR พร้อมเพย์"
-                  description="ชำระผ่าน QR Code ของร้าน"
-                  badge="แนะนำ"
+                  title="PromptPay QR"
+                  description="Pay via store QR Code"
+                  badge="Recommended"
                 />
                 <PaymentOption
                   selected={paymentMethod === "cod"}
                   onClick={() => setPaymentMethod("cod")}
-                  title="เก็บเงินปลายทาง"
-                  description="ชำระเมื่อได้รับสินค้า"
+                  title="Cash on Delivery"
+                  description="Pay when receiving goods"
                 />
               </div>
             </PageCard>
@@ -639,8 +641,8 @@ export default function CheckoutPage() {
             <div className="space-y-5 xl:sticky xl:top-28">
               <PageCard className="overflow-hidden">
                 <SectionHeader
-                  title={`รายการสินค้า ${itemCount} ชิ้น`}
-                  action="ดูทั้งหมด"
+                  title={`Product List ${itemCount} items`}
+                  action="View all"
                   icon={
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
                       <path strokeLinecap="round" d="M6 7h12" />
@@ -655,7 +657,7 @@ export default function CheckoutPage() {
                   ))}
                 </div>
                 <div className="flex items-center justify-between border-t border-[#f1ebe1] px-5 py-4 text-[1.05rem] sm:px-6">
-                  <span className="font-semibold text-[#312922]">สินค้ารวม {itemCount} ชิ้น</span>
+                  <span className="font-semibold text-[#312922]">Total items {itemCount} items</span>
                   <span className="text-[1.35rem] font-semibold text-[#1e1915]">{formatPrice(subtotal)}</span>
                 </div>
               </PageCard>
@@ -663,31 +665,31 @@ export default function CheckoutPage() {
               <PageCard className="overflow-hidden">
                 <div className="border-b border-[#f1ebe1] px-6 py-5">
                   <p className="text-sm font-medium uppercase tracking-[0.2em] text-[#a39380]">Order Summary</p>
-                  <h2 className="mt-2 text-[1.9rem] font-semibold text-[#1e1915]">สรุปคำสั่งซื้อ</h2>
+                  <h2 className="mt-2 text-[1.9rem] font-semibold text-[#1e1915]">Order Summary</h2>
                 </div>
                 <div className="space-y-3 border-t border-[#f1ebe1] px-6 py-5 text-[15px]">
                   <div className="flex items-center justify-between text-[#71685c]">
-                    <span>ราคาสินค้า</span>
+                    <span>Product price</span>
                     <span>{formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[#71685c]">
-                    <span>ค่าจัดส่ง</span>
-                    <span>{deliveryFee === 0 ? "ส่งฟรี" : formatPrice(deliveryFee)}</span>
+                    <span>Shipping fee</span>
+                    <span>{deliveryFee === 0 ? "Free shipping" : formatPrice(deliveryFee)}</span>
                   </div>
                   <div className="flex items-center justify-between text-[#769069]">
-                    <span>ส่วนลด</span>
+                    <span>Discount</span>
                     <span>{discount > 0 ? `-${formatPrice(discount)}` : formatPrice(0)}</span>
                   </div>
                   <div className="border-t border-[#f1ebe1] pt-4">
                     <div className="flex items-end justify-between gap-4">
                       <div>
-                        <p className="text-sm text-[#8b8176]">รวมยอดสั่งซื้อ</p>
+                        <p className="text-sm text-[#8b8176]">Total order amount</p>
                         <p className="mt-1 text-[2.3rem] font-semibold leading-none text-[#5D7A4B]">
                           {formatPrice(total)}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm text-[#8b8176]">ประหยัดไป</p>
+                        <p className="text-sm text-[#8b8176]">Saved</p>
                         <p className="mt-1 text-xl font-semibold text-[#769069]">
                           {formatPrice(discount + (deliveryFee === 0 ? 30 : 0))}
                         </p>
@@ -704,10 +706,10 @@ export default function CheckoutPage() {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#eee3d3] bg-[rgba(255,252,247,0.96)] px-4 py-4 backdrop-blur-xl sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4">
           <div className="min-w-0">
-            <p className="text-sm text-[#877d72]">รวมยอดสั่งซื้อ</p>
+            <p className="text-sm text-[#877d72]">Total order amount</p>
             <p className="text-[1.8rem] font-semibold leading-none text-[#5D7A4B]">{formatPrice(total)}</p>
             <p className="mt-1 text-sm text-[#769069]">
-              ประหยัดไป {formatPrice(discount + (deliveryFee === 0 ? 30 : 0))}
+              Saved {formatPrice(discount + (deliveryFee === 0 ? 30 : 0))}
             </p>
             {submitError ? <p className="mt-2 text-sm font-medium text-[#577049]">{submitError}</p> : null}
           </div>
@@ -717,7 +719,7 @@ export default function CheckoutPage() {
             disabled={submittingOrder}
             className="min-w-[180px] rounded-[20px] bg-[#7B9A67] px-6 py-4 text-[1.05rem] font-semibold text-white shadow-[0_18px_36px_rgba(123,154,103,0.22)] transition-transform duration-300 hover:scale-[1.01] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submittingOrder ? "กำลังสั่งสินค้า..." : "สั่งสินค้า"}
+            {submittingOrder ? "Ordering..." : "Place Order"}
           </button>
         </div>
       </div>

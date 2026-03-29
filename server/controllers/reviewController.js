@@ -1,5 +1,6 @@
 const { query } = require("../utils/dbHelpers");
 const jwt = require("jsonwebtoken");
+const { repairLikelyMojibake } = require("../utils/textRepair");
 
 function getUserIdFromToken(token) {
   try {
@@ -41,7 +42,7 @@ exports.getReviews = async (req, res) => {
       userId: review.user_id,
       name: review.username,
       rating: review.rating,
-      text: review.comment,
+      text: repairLikelyMojibake(review.comment),
       date: new Date(review.created_at).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',

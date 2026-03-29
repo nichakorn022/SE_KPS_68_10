@@ -7,6 +7,7 @@ import "swiper/css/pagination";
 import { apiUrl, assetUrl } from "../../lib/api";
 import SiteNavbar from "../components/SiteNavbar";
 import FloatingCartButton from "../components/FloatingCartButton";
+import ShopCartDrawer from "../components/ShopCartDrawer";
 import usePersistentCart from "../hooks/usePersistentCart";
 import { getUserIdFromToken } from "./authClient";
 
@@ -310,12 +311,13 @@ function CategoryBar({ categories, active, onSelect }) {
   );
 }
 
-function ProductCard({ product, onAddToCart }) {
+function ProductCard({ product, onAddToCart, cartQty = 0 }) {
   const metaLabel = `ขายได้ ${formatCompactSalesCount(product.weeklySales)} ชิ้น`;
   const hasReviews = Number(product.reviewCount ?? 0) > 0;
   const ratingLabel = hasReviews
     ? `${Number(product.avgRating ?? 0).toFixed(1)} (${Number(product.reviewCount ?? 0)})`
     : "";
+  const cartFull = !product.soldOut && cartQty >= Number(product.stock ?? 0);
 
   return (
     <article className="group relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-[#DEE5D5] bg-white/92 shadow-[0_18px_50px_rgba(72,91,59,0.08)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_70px_rgba(72,91,59,0.14)]">
@@ -360,7 +362,7 @@ function ProductCard({ product, onAddToCart }) {
       </Link>
 
       <div className="flex flex-1 flex-col px-5 pb-4 pt-4">
-        <div className="space-y-2.5">
+        <div className="space-y-1">
           <div className="flex items-center justify-between gap-3">
             <p className="truncate text-[12px] font-medium uppercase tracking-[0.18em] text-[#8A9B7B]">
               {product.shop}
@@ -373,7 +375,7 @@ function ProductCard({ product, onAddToCart }) {
           </div>
 
           <Link to={`/product/${product.id}`} className="block">
-            <h3 className="min-h-[3.1rem] line-clamp-2 text-[18px] font-semibold leading-snug text-[#23311F] transition-colors duration-300 group-hover:text-[#485B3B]">
+            <h3 className="min-h-[2.6rem] line-clamp-2 text-[18px] font-semibold leading-snug text-[#23311F] transition-colors duration-300 group-hover:text-[#485B3B]">
               {product.name}
             </h3>
           </Link>
@@ -405,20 +407,25 @@ function ProductCard({ product, onAddToCart }) {
 
           <button
             type="button"
-            disabled={product.soldOut || product.isOwnProduct}
+            disabled={product.soldOut || product.isOwnProduct || cartFull}
             onClick={() => onAddToCart(product)}
             className={`min-w-[140px] rounded-full px-4 py-2.5 text-center text-sm font-semibold leading-tight transition-all duration-300 ${
-              product.soldOut || product.isOwnProduct
+              product.soldOut || product.isOwnProduct || cartFull
                 ? "cursor-not-allowed bg-[#E6E9E0] text-[#93A08C]"
                 : "bg-[#485B3B] text-white shadow-[0_14px_28px_rgba(72,91,59,0.22)] hover:-translate-y-0.5 hover:bg-[#394A31] active:scale-[0.98]"
             }`}
           >
-            {product.isOwnProduct ? "สินค้าร้านคุณ" : product.soldOut ? "ของหมด" : "เพิ่มลงตะกร้า"}
+            {product.isOwnProduct ? "สินค้าร้านคุณ" : product.soldOut ? "ของหมด" : cartFull ? "ครบจำนวนแล้ว" : "เพิ่มลงตะกร้า"}
           </button>
         </div>
       </div>
     </article>
   );
+}
+
+function clampCartQty(item, desiredQty) {
+  const stockLimit = Math.max(0, Number(item?.stock ?? 0));
+  return Math.max(0, Math.min(desiredQty, stockLimit));
 }
 
 function ShopCard({ shop }) {
@@ -775,13 +782,19 @@ export default function ShopHome() {
     (product) => {
       setCart((previous) => {
         const existing = previous.find((item) => item.id === product.id);
+        const nextQty = clampCartQty(existing || product, (existing?.qty || 0) + 1);
+
+        if (nextQty <= 0) {
+          return previous;
+        }
+
         if (existing) {
           return previous.map((item) =>
-            item.id === product.id ? { ...item, qty: item.qty + 1 } : item
+            item.id === product.id ? { ...item, qty: nextQty } : item
           );
         }
 
-        return [...previous, { ...product, qty: 1 }];
+        return [...previous, { ...product, qty: nextQty }];
       });
     },
     [setCart]
@@ -789,13 +802,13 @@ export default function ShopHome() {
 
   const updateQty = useCallback(
     (id, qty) => {
-      if (qty <= 0) {
-        setCart((previous) => previous.filter((item) => item.id !== id));
-        return;
-      }
-
       setCart((previous) =>
-        previous.map((item) => (item.id === id ? { ...item, qty } : item))
+        previous.flatMap((item) => {
+          if (item.id !== id) return [item];
+
+          const nextQty = clampCartQty(item, qty);
+          return nextQty > 0 ? [{ ...item, qty: nextQty }] : [];
+        })
       );
     },
     [setCart]
@@ -959,7 +972,12 @@ export default function ShopHome() {
                 ) : (
                   <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
                     {filteredProducts.map((product) => (
-                      <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
+                      <ProductCard
+                        key={product.id}
+                        product={product}
+                        onAddToCart={addToCart}
+                        cartQty={cart.find((item) => item.id === product.id)?.qty || 0}
+                      />
                     ))}
                   </div>
                 )}
@@ -1038,7 +1056,7 @@ export default function ShopHome() {
       </main>
 
       {cartOpen && (
-        <CartDrawer
+        <ShopCartDrawer
           cart={cart}
           onClose={() => setCartOpen(false)}
           onUpdateQty={updateQty}

@@ -1254,7 +1254,11 @@ export default function SellerAnalyticsDashboard() {
       .then(async (response) => {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
-          throw new Error(data.message || "Failed to load revenue trend");
+          const message =
+            data.error ||
+            data.message ||
+            `Failed to load revenue trend (HTTP ${response.status || "error"})`;
+          throw new Error(message);
         }
         return data;
       })

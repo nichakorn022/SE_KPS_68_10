@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const authRoutes = require("./routes/authRoutes");
@@ -210,6 +211,16 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/sponsors", sponsorRoutes);
 app.use("/api/reviews", reviewRoutes);
+
+// Serve built frontend (dist) so `/api/*` works even without Vite proxy (e.g. static hosting / file preview).
+const distPath = path.join(__dirname, "..", "dist");
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) return next();
+    return res.sendFile(path.join(distPath, "index.html"));
+  });
+}
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);

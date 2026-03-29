@@ -68,8 +68,9 @@ exports.getSellerRevenueTrend = async (req, res) => {
     const result = await orderService.getSellerRevenueTrend(req.user.user_id, days);
     return res.json(result);
   } catch (error) {
-    return res.status(error.statusCode || 500).json({
-      message: "Failed to fetch seller revenue trend",
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({
+      message: statusCode >= 400 && statusCode < 500 ? error.message : "Failed to fetch seller revenue trend",
       error: error.message,
     });
   }
@@ -86,8 +87,9 @@ exports.getSellerWorkspaceSummary = async (req, res) => {
     const result = await orderService.getSellerWorkspaceSummary(req.user.user_id);
     return res.json(result);
   } catch (error) {
-    return res.status(error.statusCode || 500).json({
-      message: "Failed to fetch seller workspace summary",
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({
+      message: statusCode >= 400 && statusCode < 500 ? error.message : "Failed to fetch seller workspace summary",
       error: error.message,
     });
   }

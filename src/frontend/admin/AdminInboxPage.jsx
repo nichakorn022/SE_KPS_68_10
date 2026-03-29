@@ -30,6 +30,14 @@ function getItemTimestamp(item) {
   return item.createdAt ? new Date(item.createdAt).getTime() : 0;
 }
 
+function isOpenModerationItem(item) {
+  if (item.type === "report") {
+    return ["pending", "reviewed"].includes(String(item.status).toLowerCase());
+  }
+
+  return String(item.status).toLowerCase() === "pending";
+}
+
 function formatDateTime(value) {
   if (!value) return "No timestamp";
   return new Date(value).toLocaleString();
@@ -42,7 +50,7 @@ function getTypeContext(type) {
         label: "Shop requests",
         searchPlaceholder: "Search by shop name, owner email, phone, or shop id...",
         resultLabel: "shop request",
-        queueLabel: "Filtered shop approval queue",
+        queueLabel: "Filtered shop requests",
         emptyLabel: "No matching shop requests.",
       };
     case "organizer":
@@ -50,7 +58,7 @@ function getTypeContext(type) {
         label: "Organizer requests",
         searchPlaceholder: "Search by organizer name, organization, email, or organizer id...",
         resultLabel: "organizer request",
-        queueLabel: "Filtered organizer approval queue",
+        queueLabel: "Filtered organizer requests",
         emptyLabel: "No matching organizer requests.",
       };
     case "sponsor":
@@ -58,7 +66,7 @@ function getTypeContext(type) {
         label: "Sponsor requests",
         searchPlaceholder: "Search by event, shop, product, or sponsor request details...",
         resultLabel: "sponsor request",
-        queueLabel: "Filtered sponsor review queue",
+        queueLabel: "Filtered sponsor requests",
         emptyLabel: "No matching sponsor requests.",
       };
     case "report":
@@ -66,7 +74,7 @@ function getTypeContext(type) {
         label: "Event reports",
         searchPlaceholder: "Search by event title, report type, reporter, or report details...",
         resultLabel: "report",
-        queueLabel: "Filtered report moderation queue",
+        queueLabel: "Filtered reports",
         emptyLabel: "No matching reports.",
       };
     default:
@@ -74,7 +82,7 @@ function getTypeContext(type) {
         label: "All moderation items",
         searchPlaceholder: "Search by shop, organizer, event, product, email...",
         resultLabel: "moderation item",
-        queueLabel: "Filtered review queue",
+        queueLabel: "Filtered records",
         emptyLabel: "No matching items.",
       };
   }
@@ -236,7 +244,11 @@ export default function AdminInboxPage() {
       if (filter === "approvals" && !["shop", "organizer", "sponsor"].includes(item.type)) return false;
       if (filter === "pending" && item.status !== "pending") return false;
       if (typeFilter !== "all" && item.type !== typeFilter) return false;
-      if (statusFilter !== "all" && String(item.status).toLowerCase() !== statusFilter) return false;
+      if (statusFilter === "all") {
+        if (!isOpenModerationItem(item)) return false;
+      } else if (String(item.status).toLowerCase() !== statusFilter) {
+        return false;
+      }
 
       if (createdFilter !== "all") {
         const createdAt = item.createdAt ? new Date(item.createdAt).getTime() : 0;
@@ -747,11 +759,11 @@ export default function AdminInboxPage() {
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] bg-[#fcfbf7] px-4 py-4 ring-1 ring-[#efe8d8]">
               <div>
                 <p className="text-sm font-medium text-[#2f3529]">
-                  Showing {items.length} {typeContext.resultLabel}
+                  Showing {items.length} open {typeContext.resultLabel}
                   {items.length === 1 ? "" : "s"}
                 </p>
                 <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#8d9577]">
-                  {hasActiveFilters ? typeContext.queueLabel : typeContext.label}
+                  {hasActiveFilters ? typeContext.queueLabel : "Open items awaiting action"}
                 </p>
               </div>
               <button
@@ -858,7 +870,7 @@ export default function AdminInboxPage() {
                     </div>
                     <p className="mt-4 font-semibold text-[#2f3529]">{item.title}</p>
                     <p className="mt-1 text-sm text-[#657056]">{item.subtitle}</p>
-                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[#8d9577]">Click to review</p>
+                    <p className="mt-3 text-xs uppercase tracking-[0.18em] text-[#8d9577]">Open details</p>
                   </button>
                 ))}
               </div>

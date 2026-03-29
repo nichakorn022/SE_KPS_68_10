@@ -2,6 +2,15 @@ const express = require("express");
 const router = express.Router();
 const reviewController = require("../controllers/reviewController");
 const authMiddleware = require("../middleware/authMiddleware");
+const adminMiddleware = require("../middleware/adminMiddleware");
+
+router.get("/admin/all", adminMiddleware, reviewController.getAdminReviews);
+router.delete("/admin/:contentType/:review_id", adminMiddleware, reviewController.deleteAdminReview);
+
+router.get("/events/:event_id", reviewController.getEventReviews);
+router.post("/events/:event_id", authMiddleware, reviewController.createEventReview);
+router.patch("/events/:event_id/:review_id", authMiddleware, reviewController.updateEventReview);
+router.delete("/events/:event_id/:review_id", authMiddleware, reviewController.deleteEventReview);
 
 // GET /api/reviews/seller - Get reviews for products sold by the current shop account
 router.get("/seller", authMiddleware, reviewController.getSellerReviews);

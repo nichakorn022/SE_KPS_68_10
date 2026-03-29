@@ -364,12 +364,11 @@ export default function AdminShopsPage() {
               <thead className="text-[#8d9577]">
                 <tr>
                   <th className="pb-3">Shop</th>
-                  <th className="pb-3">Owner</th>
-                  <th className="pb-3">Contact</th>
-                  <th className="pb-3">Location</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3 text-right">Action</th>
-                </tr>
+                <th className="pb-3">Owner</th>
+                <th className="pb-3">Contact</th>
+                <th className="pb-3">Location</th>
+                <th className="pb-3">Status</th>
+              </tr>
               </thead>
               <tbody>
                 {paginatedShops.items.map((shop) => (
@@ -384,29 +383,15 @@ export default function AdminShopsPage() {
                     }`}
                   >
                     <td className="py-4">
-                      <p className="font-semibold text-[#2f3529]">{shop.shop_name || `Shop #${shop.shop_id}`}</p>
-                      <p className="mt-1 text-xs text-[#7a8368]">Shop #{shop.shop_id}</p>
+                      <p className="font-semibold text-[#2f3529]">{shop.shop_name || `Shop ${shop.shop_id}`}</p>
                     </td>
-                    <td className="py-4">{shop.email || `User #${shop.user_id}`}</td>
+                    <td className="py-4">{shop.email || "Owner account"}</td>
                     <td className="py-4">{shop.phone || shop.contact_info || "-"}</td>
                     <td className="py-4">{[shop.province, shop.district, shop.subdistrict].filter(Boolean).join(", ") || "-"}</td>
                     <td className="py-4">
                       <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${getVerificationTone(shop.verified_status)}`}>
                         {getVerificationStatusLabel(shop.verified_status)}
                       </span>
-                    </td>
-                    <td className="py-4 text-right">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setSelectedShop(shop);
-                          setActiveProduct(null);
-                        }}
-                        className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b]"
-                      >
-                        Open
-                      </button>
                     </td>
                   </tr>
                 ))}
@@ -429,7 +414,7 @@ export default function AdminShopsPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">Shop Detail</p>
-                <h3 className="mt-3 text-3xl font-semibold text-[#2f3529]">{selectedShop.shop_name || `Shop #${selectedShop.shop_id}`}</h3>
+                <h3 className="mt-3 text-3xl font-semibold text-[#2f3529]">{selectedShop.shop_name || `Shop ${selectedShop.shop_id}`}</h3>
               </div>
                 <button
                   type="button"
@@ -606,38 +591,6 @@ export default function AdminShopsPage() {
               )}
             </div>
 
-            <div className="mt-6 flex gap-3">
-              <button
-                type="button"
-                onClick={() =>
-                  setConfirmAction({
-                    title: "Approve Shop",
-                    message: `Approve shop #${selectedShop.shop_id}?`,
-                    confirmLabel: "Approve Shop",
-                    tone: "primary",
-                    onConfirm: () => handleStatusChange(selectedShop.shop_id, 1),
-                  })
-                }
-                className="rounded-full bg-[#eef6ea] px-5 py-3 text-sm font-medium text-[#386132]"
-              >
-                Approve Shop
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  setConfirmAction({
-                    title: "Reject Shop",
-                    message: `Reject shop #${selectedShop.shop_id}?`,
-                    confirmLabel: "Reject Shop",
-                    tone: "danger",
-                    onConfirm: () => handleStatusChange(selectedShop.shop_id, 2),
-                  })
-                }
-                className="rounded-full bg-[#fff0ed] px-5 py-3 text-sm font-medium text-[#b33a24]"
-              >
-                Reject Shop
-              </button>
-            </div>
           </div>
         </div>
       )}

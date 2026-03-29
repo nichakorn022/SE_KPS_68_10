@@ -629,24 +629,6 @@ function OrderCard({ order, onViewOrder }) {
 
       <div className="mt-4">
         <div className="text-[10px] font-bold uppercase tracking-wider text-[#b0a99a]">Items</div>
-        <div className="mt-2 flex gap-2">
-          {order.items?.slice(0, 3).map((item, idx) => (
-            <div key={idx} className="relative h-11 w-11 rounded-lg bg-[#f0ede6] flex items-center justify-center overflow-hidden">
-              {item.image_path ? (
-                <img src={item.image_path} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <span className="text-xs font-bold text-[#485B3B]">
-                  {(item.name || item.tea_name || "?")[0]}
-                </span>
-              )}
-              {item.quantity > 1 && (
-                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[#485B3B] text-[9px] font-bold text-white">
-                  {item.quantity}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
         <div className="mt-2 text-sm text-[#6f7b70]">{itemNames}</div>
       </div>
 

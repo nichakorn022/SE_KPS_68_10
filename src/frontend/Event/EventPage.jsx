@@ -14,9 +14,11 @@ function EventPage() {
   const [filter, setFilter] = useState("all");
  const [interestedIds, setInterestedIds] = useState([]);
   const [error, setError] = useState(null);
+  const [organizerStatus, setOrganizerStatus] = useState(null);
 
   const { token } = useAuthModal();
   const [user, setUser] = useState(null);
+  
   const role = user?.role;
 
 
@@ -46,6 +48,27 @@ useEffect(() => {
     .catch(console.error);
 
 }, [search, role]);
+
+
+useEffect(() => {
+  if (!token) return;
+
+  fetch(apiUrl("/organizers/me"), {
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.exists) {
+        setOrganizerStatus(data.verified_status);
+      } else {
+        setOrganizerStatus(null);
+      }
+    })
+    .catch(console.error);
+
+}, [token]);
 
   // ----------------------------
   // 🔥 โหลด user (เช็ค role)
@@ -143,58 +166,35 @@ useEffect(() => {
           </p>
         )}
 
-        {/* 🔥 USER → BECOME ORGANIZER */}
-            {role === "user" && (
-              <div className="flex justify-center mb-6">
 
-                <Link to="/become-organizer">
-                  <button className="
-                    bg-[#6f8b5d] 
-                    text-white 
-                    px-6 py-2 
-                    rounded-full 
-                    shadow-md 
-                    hover:bg-[#5f7a4e] 
-                    transition
-                  ">
-                    Become Organizer
-                  </button>
-                </Link>
 
-              </div>
-            )}
+              {role === "user" && (
+                <div className="flex justify-center mb-6">
 
-        {/* 🔥 SHOP BUTTON */}
-              {role === "shop" && (
-                <div className="flex justify-center gap-4 mb-6">
+                  {/* ยังไม่สมัคร */}
+                  {organizerStatus === null && (
+                    <Link to="/become-organizer">
+                      <button className="bg-[#6f8b5d] text-white px-5 py-2 rounded-full">
+                        Become Organizer
+                      </button>
+                    </Link>
+                  )}
 
-                  {/* Become Sponsor */}
-                  <button className="
-                    bg-[#6f8b5d] 
-                    text-white 
-                    px-5 py-2 
-                    rounded-full 
-                    shadow-md 
-                    hover:bg-[#5f7a4e] 
-                    transition
-                  ">
-                    Sponsorship Requests
-                  </button>
+                  {/* รอ approve */}
+                  {organizerStatus === 0 && (
+                    <span className="text-yellow-600">
+                      Waiting for admin approval...
+                    </span>
+                  )}
 
-                  {/* My Sponsors */}
-                  <Link to="/my-sponsor">
-                    <button className="
-                      border border-[#6f8b5d] 
-                      text-[#6f8b5d] 
-                      px-5 py-2 
-                      rounded-full 
-                      hover:bg-[#6f8b5d] 
-                      hover:text-white 
-                      transition
-                    ">
-                      My Sponsors
-                    </button>
-                  </Link>
+                  {/* ผ่านแล้ว */}
+                  {organizerStatus === 1 && (
+                    <Link to="/my-events">
+                      <button className="bg-[#6f8b5d] text-white px-5 py-2 rounded-full">
+                        Manage My Events
+                      </button>
+                    </Link>
+                  )}
 
                 </div>
               )}

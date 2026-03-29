@@ -1,6 +1,6 @@
 ﻿const orderService = require("../services/orderService");
 const { query } = require("../utils/dbHelpers");
-const { sendOrderPlacedEmail, sendOrderPaidEmail } = require("../utils/mailer");
+const { sendOrderPaidEmail, sendCodReminderEmail } = require("../utils/mailer");
 
 async function fetchUserEmail(userId) {
   const rows = await query("SELECT username, email FROM users WHERE user_id = ? LIMIT 1", [userId]);
@@ -21,21 +21,23 @@ exports.createOrder = async (req, res) => {
   try {
     const result = await orderService.createOrder(req.body);
 
-    // Send "order placed – please pay" email
-    try {
-      const userInfo = await fetchUserEmail(req.body.user_id);
-      if (userInfo?.email) {
-        const items = await fetchOrderItems(result.order_id);
-        await sendOrderPlacedEmail({
-          to: userInfo.email,
-          username: userInfo.username,
-          orderId: result.order_id,
-          items,
-          totalAmount: result.total_amount,
-        });
+    // Send COD reminder email when payment method is cash on delivery
+    if (req.body.payment_method === "cod") {
+      try {
+        const userInfo = await fetchUserEmail(req.body.user_id);
+        if (userInfo?.email) {
+          const items = await fetchOrderItems(result.order_id);
+          await sendCodReminderEmail({
+            to: userInfo.email,
+            username: userInfo.username,
+            orderId: result.order_id,
+            items,
+            totalAmount: result.total_amount,
+          });
+        }
+      } catch (emailError) {
+        console.error("Failed to send COD reminder email:", emailError.message);
       }
-    } catch (emailError) {
-      console.error("Failed to send order placed email:", emailError.message);
     }
 
     return res.status(201).json(result);

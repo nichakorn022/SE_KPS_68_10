@@ -29,12 +29,14 @@ export default function AdminEventsPage() {
   const { adminToken } = useOutletContext();
   const [events, setEvents] = useState([]);
   const [eventImages, setEventImages] = useState([]);
+  const [sponsors, setSponsors] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("all");
   const [organizerFilter, setOrganizerFilter] = useState("");
   const [page, setPage] = useState(1);
   const [eventImagesPage, setEventImagesPage] = useState(1);
+  const [sponsorsPage, setSponsorsPage] = useState(1);
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -42,11 +44,12 @@ export default function AdminEventsPage() {
   const [loading, setLoading] = useState(true);
   const [imageStatus, setImageStatus] = useState("");
   const [confirmAction, setConfirmAction] = useState(null);
+  const [sponsorNotes, setSponsorNotes] = useState({});
 
   async function loadEvents() {
     setLoading(true);
     try {
-      const eventRows = await adminApi.getEvents(adminToken);
+      const [eventRows, sponsorRows] = await Promise.all([adminApi.getEvents(adminToken), adminApi.getSponsors(adminToken)]);
       let imageRows = [];
 
       try {
@@ -59,6 +62,7 @@ export default function AdminEventsPage() {
 
       setEvents(eventRows);
       setEventImages(imageRows);
+      setSponsors(sponsorRows);
       setStatus({ type: "", message: "" });
     } catch (error) {
       setStatus({ type: "error", message: error.message });
@@ -126,6 +130,25 @@ export default function AdminEventsPage() {
   useEffect(() => {
     setEventImagesPage(1);
   }, [editingId, eventImages]);
+
+  useEffect(() => {
+    setSponsorsPage(1);
+  }, [editingId, sponsors]);
+
+  useEffect(() => {
+    if (!editingId) {
+      setSponsorNotes({});
+      return;
+    }
+
+    const nextNotes = {};
+    sponsors.forEach((sponsor) => {
+      if (String(sponsor.event_id) === String(editingId)) {
+        nextNotes[sponsor.sponsor_id] = sponsor.admin_note || "";
+      }
+    });
+    setSponsorNotes(nextNotes);
+  }, [editingId, sponsors]);
 
   const paginatedEvents = useMemo(() => paginate(filteredEvents, page), [filteredEvents, page]);
   const hasActiveFilters =
@@ -201,6 +224,15 @@ export default function AdminEventsPage() {
 
   const selectedEventImages = eventImages.filter((image) => String(image.event_id) === String(editingId));
   const paginatedEventImages = useMemo(() => paginate(selectedEventImages, eventImagesPage), [selectedEventImages, eventImagesPage]);
+  const selectedEventSponsors = useMemo(
+    () =>
+      sponsors.filter((sponsor) => {
+        if (!editingId) return false;
+        return String(sponsor.event_id) === String(editingId);
+      }),
+    [editingId, sponsors]
+  );
+  const paginatedEventSponsors = useMemo(() => paginate(selectedEventSponsors, sponsorsPage), [selectedEventSponsors, sponsorsPage]);
 
   const handleImageUpload = async (event) => {
     const file = event.target.files?.[0];
@@ -222,6 +254,26 @@ export default function AdminEventsPage() {
       await adminApi.deleteEventImage(adminToken, imageId);
       resetForm();
       setStatus({ type: "success", message: "Event image deleted" });
+      await loadEvents();
+    } catch (error) {
+      setStatus({ type: "error", message: error.message });
+    }
+  };
+
+  const handleSponsorStatusChange = async (sponsorId, nextStatus) => {
+    try {
+      await adminApi.updateSponsorStatus(adminToken, sponsorId, nextStatus, sponsorNotes[sponsorId] || null);
+      setStatus({ type: "success", message: "Sponsor request updated" });
+      await loadEvents();
+    } catch (error) {
+      setStatus({ type: "error", message: error.message });
+    }
+  };
+
+  const handleSponsorDelete = async (sponsorId) => {
+    try {
+      await adminApi.deleteSponsor(adminToken, sponsorId);
+      setStatus({ type: "success", message: "Sponsor request deleted" });
       await loadEvents();
     } catch (error) {
       setStatus({ type: "error", message: error.message });
@@ -257,7 +309,7 @@ export default function AdminEventsPage() {
         <div className="mb-5 flex items-center justify-between gap-4">
           <div>
             <p className="text-lg font-semibold text-[#2f3529]">Events</p>
-            <p className="mt-1 text-sm text-[#657056]">Select an event to open its details in a popup.</p>
+            <p className="mt-1 text-sm text-[#657056]">Open an event to review details, images, and sponsor support.</p>
           </div>
           <button
             type="button"
@@ -318,7 +370,7 @@ export default function AdminEventsPage() {
               Showing {filteredEvents.length} event{filteredEvents.length === 1 ? "" : "s"}
             </p>
             <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#8d9577]">
-              {hasActiveFilters ? "Filtered event queue" : "All event records"}
+              {hasActiveFilters ? "Filtered event records" : "All event records"}
             </p>
           </div>
           <button
@@ -344,7 +396,6 @@ export default function AdminEventsPage() {
                 <th className="pb-3">Location</th>
                 <th className="pb-3">Price</th>
                 <th className="pb-3">Status</th>
-                <th className="pb-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -358,8 +409,8 @@ export default function AdminEventsPage() {
                 >
                   <td className="py-4">
                     <p className="font-semibold text-[#2f3529]">{eventItem.title}</p>
-                    <p className="mt-1 text-xs text-[#7a8368]">Organizer #{eventItem.organizer_id}</p>
-                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#8d9577]">Click to review</p>
+                    <p className="mt-1 text-xs text-[#7a8368]">Organizer</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#8d9577]">Open details</p>
                   </td>
                   <td className="py-4">{String(eventItem.event_date).slice(0, 10)}</td>
                   <td className="py-4">{eventItem.location || "-"}</td>
@@ -368,36 +419,6 @@ export default function AdminEventsPage() {
                     <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${eventStatusStyles[eventItem.status || "draft"] || eventStatusStyles.draft}`}>
                       {eventItem.status || "draft"}
                     </span>
-                  </td>
-                  <td className="py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleEdit(eventItem);
-                        }}
-                        className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b]"
-                      >
-                        Open
-                      </button>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setConfirmAction({
-                            title: "Delete Event",
-                            message: `Delete event #${eventItem.event_id}?`,
-                            confirmLabel: "Delete Event",
-                            tone: "danger",
-                            onConfirm: () => handleDelete(eventItem.event_id),
-                          });
-                        }}
-                        className="rounded-full bg-[#fff0ed] px-4 py-2 text-xs font-medium text-[#b33a24]"
-                      >
-                        Delete
-                      </button>
-                    </div>
                   </td>
                 </tr>
               ))}
@@ -409,7 +430,7 @@ export default function AdminEventsPage() {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/35 px-4 py-6" onClick={resetForm}>
-          <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-[32px] bg-white p-7 shadow-2xl ring-1 ring-[#e6ddc9]" onClick={(event) => event.stopPropagation()}>
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[32px] bg-white p-7 shadow-2xl ring-1 ring-[#e6ddc9]" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">
@@ -471,61 +492,196 @@ export default function AdminEventsPage() {
               </Field>
 
               {editingId && (
-                <div className="space-y-4 rounded-[24px] bg-[#f8f4eb] p-5">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Event Images</p>
-                      <p className="mt-2 text-sm text-[#4b5541]">Upload or remove event images.</p>
+                <div className="grid gap-4 xl:grid-cols-[1.2fr,0.8fr]">
+                  <div className="space-y-4 rounded-[24px] bg-[#f8f4eb] p-5">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Event Images</p>
+                        <p className="mt-2 text-sm text-[#4b5541]">Upload or remove event images.</p>
+                      </div>
+                      <label className="rounded-full bg-[#485b3b] px-4 py-2 text-xs font-medium text-white">
+                        Upload
+                        <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                      </label>
                     </div>
-                    <label className="rounded-full bg-[#485b3b] px-4 py-2 text-xs font-medium text-white">
-                      Upload
-                      <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-                    </label>
+
+                    {selectedEventImages.length === 0 ? (
+                      <div className="rounded-2xl bg-white px-4 py-6 text-sm text-[#7a8368]">No images yet.</div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          {paginatedEventImages.items.map((image) => (
+                            <div key={image.image_id} className="overflow-hidden rounded-[24px] bg-white ring-1 ring-[#e6ddc9]">
+                              <img src={assetUrl(image.image_path)} alt="" className="h-40 w-full object-cover" />
+                              <div className="flex items-center justify-between gap-3 px-4 py-3">
+                                <p className="text-xs text-[#7a8368]">Image #{image.image_id}</p>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setConfirmAction({
+                                      title: "Delete Event Image",
+                                      message: `Delete image #${image.image_id}?`,
+                                      confirmLabel: "Delete Image",
+                                      tone: "danger",
+                                      onConfirm: () => handleImageDelete(image.image_id),
+                                    })
+                                  }
+                                  className="rounded-full bg-[#fff0ed] px-3 py-2 text-xs font-medium text-[#b33a24]"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <Pagination
+                          currentPage={paginatedEventImages.page}
+                          totalPages={paginatedEventImages.totalPages}
+                          onPageChange={setEventImagesPage}
+                        />
+                      </div>
+                    )}
                   </div>
 
-                  {selectedEventImages.length === 0 ? (
-                    <div className="rounded-2xl bg-white px-4 py-6 text-sm text-[#7a8368]">No images yet.</div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        {paginatedEventImages.items.map((image) => (
-                          <div key={image.image_id} className="overflow-hidden rounded-[24px] bg-white ring-1 ring-[#e6ddc9]">
-                            <img src={assetUrl(image.image_path)} alt="" className="h-40 w-full object-cover" />
-                            <div className="flex items-center justify-between gap-3 px-4 py-3">
-                              <p className="text-xs text-[#7a8368]">Image #{image.image_id}</p>
+                  <div className="space-y-4 rounded-[24px] bg-[#fcfbf7] p-5 ring-1 ring-[#efe8d8]">
+                    <div>
+                      <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Sponsor Support</p>
+                      <p className="mt-2 text-sm text-[#4b5541]">Shops sponsoring this event and the request details.</p>
+                    </div>
+
+                    {selectedEventSponsors.length === 0 ? (
+                      <div className="rounded-2xl bg-white px-4 py-6 text-sm text-[#7a8368]">No sponsor requests linked to this event yet.</div>
+                    ) : (
+                      <div className="space-y-3">
+                        {paginatedEventSponsors.items.map((sponsor) => (
+                          <div key={sponsor.sponsor_id} className="rounded-[24px] bg-white p-4 ring-1 ring-[#e6ddc9]">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <p className="font-semibold text-[#2f3529]">{sponsor.shop_name || `Shop ${sponsor.shop_id}`}</p>
+                                <p className="mt-1 text-xs text-[#7a8368]">Sponsor #{sponsor.sponsor_id}</p>
+                              </div>
+                              <span
+                                className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${
+                                  sponsor.status === "approved"
+                                    ? "bg-[#eef6ea] text-[#386132]"
+                                    : sponsor.status === "rejected"
+                                      ? "bg-[#fff0ed] text-[#b33a24]"
+                                      : "bg-[#fff4e2] text-[#a46317]"
+                                }`}
+                              >
+                                {sponsor.status || "pending"}
+                              </span>
+                            </div>
+
+                            <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                              <SponsorMeta label="Product" value={sponsor.product_name || `Product #${sponsor.product_id}`} />
+                              <SponsorMeta label="Quantity" value={sponsor.quantity || "-"} />
+                              <SponsorMeta label="Requested By" value={sponsor.request_by || "-"} />
+                              <SponsorMeta
+                                label="Requested At"
+                                value={sponsor.created_at ? new Date(sponsor.created_at).toLocaleString() : "-"}
+                              />
+                            </dl>
+
+                            <label className="mt-4 block">
+                              <span className="mb-2 block text-[11px] uppercase tracking-[0.2em] text-[#8d9577]">Admin Note</span>
+                              <textarea
+                                value={sponsorNotes[sponsor.sponsor_id] || ""}
+                                onChange={(event) =>
+                                  setSponsorNotes((current) => ({
+                                    ...current,
+                                    [sponsor.sponsor_id]: event.target.value,
+                                  }))
+                                }
+                                placeholder="Add review note or decision reason..."
+                                className="admin-input min-h-24"
+                              />
+                            </label>
+
+                            <div className="mt-4 grid gap-2 sm:grid-cols-3">
                               <button
                                 type="button"
                                 onClick={() =>
                                   setConfirmAction({
-                                    title: "Delete Event Image",
-                                    message: `Delete image #${image.image_id}?`,
-                                    confirmLabel: "Delete Image",
-                                    tone: "danger",
-                                    onConfirm: () => handleImageDelete(image.image_id),
+                                    title: "Approve Sponsor",
+                                    message: `Approve sponsor request #${sponsor.sponsor_id}?`,
+                                    confirmLabel: "Approve Sponsor",
+                                    tone: "primary",
+                                    onConfirm: () => handleSponsorStatusChange(sponsor.sponsor_id, "approved"),
                                   })
                                 }
-                                className="rounded-full bg-[#fff0ed] px-3 py-2 text-xs font-medium text-[#b33a24]"
+                                className="rounded-full bg-[#485b3b] px-4 py-2 text-xs font-medium text-white"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setConfirmAction({
+                                    title: "Reject Sponsor",
+                                    message: `Reject sponsor request #${sponsor.sponsor_id}?`,
+                                    confirmLabel: "Reject Sponsor",
+                                    tone: "danger",
+                                    onConfirm: () => handleSponsorStatusChange(sponsor.sponsor_id, "rejected"),
+                                  })
+                                }
+                                className="rounded-full bg-[#fff0ed] px-4 py-2 text-xs font-medium text-[#b33a24]"
+                              >
+                                Reject
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setConfirmAction({
+                                    title: "Delete Sponsor",
+                                    message: `Delete sponsor request #${sponsor.sponsor_id}?`,
+                                    confirmLabel: "Delete Sponsor",
+                                    tone: "danger",
+                                    onConfirm: () => handleSponsorDelete(sponsor.sponsor_id),
+                                  })
+                                }
+                                className="rounded-full bg-[#fff0ed] px-4 py-2 text-xs font-medium text-[#b33a24]"
                               >
                                 Delete
                               </button>
                             </div>
                           </div>
                         ))}
+
+                        <Pagination
+                          currentPage={paginatedEventSponsors.page}
+                          totalPages={paginatedEventSponsors.totalPages}
+                          onPageChange={setSponsorsPage}
+                        />
                       </div>
-                      <Pagination
-                        currentPage={paginatedEventImages.page}
-                        totalPages={paginatedEventImages.totalPages}
-                        onPageChange={setEventImagesPage}
-                      />
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
 
               <div className="flex justify-center pt-2">
-                <button type="submit" className="rounded-full bg-[#485b3b] px-5 py-3 text-sm font-medium text-white">
-                  {editingId ? "Update Event" : "Create Event"}
-                </button>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <button type="submit" className="rounded-full bg-[#485b3b] px-5 py-3 text-sm font-medium text-white">
+                    {editingId ? "Update Event" : "Create Event"}
+                  </button>
+                  {editingId ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setConfirmAction({
+                          title: "Delete Event",
+                          message: `Delete event #${editingId}?`,
+                          confirmLabel: "Delete Event",
+                          tone: "danger",
+                          onConfirm: () => handleDelete(editingId),
+                        })
+                      }
+                      className="rounded-full bg-[#fff0ed] px-5 py-3 text-sm font-medium text-[#b33a24]"
+                    >
+                      Delete Event
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </form>
           </div>
@@ -584,6 +740,15 @@ function Field({ label, children }) {
       <span className="mb-2 block text-sm font-medium text-[#4b5541]">{label}</span>
       {children}
     </label>
+  );
+}
+
+function SponsorMeta({ label, value, fullWidth = false }) {
+  return (
+    <div className={fullWidth ? "sm:col-span-2" : ""}>
+      <dt className="text-[11px] uppercase tracking-[0.2em] text-[#8d9577]">{label}</dt>
+      <dd className="mt-2 text-sm text-[#2f3529]">{value || "-"}</dd>
+    </div>
   );
 }
 

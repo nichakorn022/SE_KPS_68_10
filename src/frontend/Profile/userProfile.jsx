@@ -234,7 +234,7 @@ export default function UserProfile() {
       <SiteNavbar active="" />
 
       <div className="mx-auto max-w-[1200px] px-6 pb-16">
-        <div className="relative -mt-6 mb-6 h-44 rounded-lg bg-white/90">
+        <div className="relative -mt-6 mb-6 h-44 rounded-lg">
           <img
             src={user?.cover || "/Pictrue/cover-default.jpg"}
             alt="cover"

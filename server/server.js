@@ -296,15 +296,10 @@ app.use("/api/reviews", reviewRoutes);
 const distPath = path.join(__dirname, "..", "dist");
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
-<<<<<<< Updated upstream
   // SPA fallback: serve index.html for non-API, non-upload routes.
   app.get(/^\/(?!api|uploads).*/, (req, res, next) => {
     const accept = String(req.headers.accept || "");
     if (accept && !accept.includes("text/html")) return next();
-=======
-  app.get("/{*path}", (req, res, next) => {
-    if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) return next();
->>>>>>> Stashed changes
     return res.sendFile(path.join(distPath, "index.html"));
   });
 }

@@ -49,7 +49,10 @@ async function createEventImage({ event_id, image_path }) {
 
   return {
     message: "Event image created",
-    image_id: result.insertId
+    image_id: result.insertId,
+    event_id,
+    image_path,
+    uploaded_at: new Date().toISOString()
   };
 }
 

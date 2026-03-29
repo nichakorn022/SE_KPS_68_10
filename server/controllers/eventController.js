@@ -108,6 +108,9 @@ exports.updateEvent = async (req, res) => {
       });
     }
 
+    // Ensure organizer_id remains set
+    req.body.organizer_id = org.organizer_id;
+
     await eventService.updateEvent(id, req.body);
     res.json({ message: "updated" });
   } catch (err) {

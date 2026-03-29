@@ -1,4 +1,5 @@
 const eventImageService = require("../services/eventImageService");
+const eventService = require("../services/eventService");
 const { uploadImageFile, deleteImageByPath } = require("../utils/r2Storage");
 
 exports.getEventImages = async (req, res) => {
@@ -35,10 +36,31 @@ exports.createEventImage = async (req, res) => {
   try {
     const payload = { ...req.body };
 
+    if (!req.user || !req.user.user_id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     if (req.file && (payload.event_id === undefined || payload.event_id === null || payload.event_id === "")) {
       const error = new Error("event_id is required");
       error.statusCode = 400;
       throw error;
+    }
+
+    const event = await eventService.getEventById(payload.event_id);
+    if (!event) {
+      const error = new Error("Event not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    let userOrganizerId = req.user.organizer_id;
+    if (!userOrganizerId) {
+      const org = await eventService.getVerifiedOrganizer(req.user.user_id);
+      userOrganizerId = org?.organizer_id;
+    }
+
+    if (String(event.organizer_id) !== String(userOrganizerId) && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only event organizer or admin can upload images" });
     }
 
     if (req.file) {
@@ -62,6 +84,17 @@ exports.createEventImage = async (req, res) => {
 
 exports.deleteEventImage = async (req, res) => {
   try {
+    if (!req.user || !req.user.user_id) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const image = await eventImageService.getEventImageById(req.params.id);
+    const event = await eventService.getEventById(image.event_id);
+
+    if (String(event.organizer_id) !== String(req.user.organizer_id) && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Only event organizer or admin can delete this image" });
+    }
+
     const result = await eventImageService.deleteEventImage(req.params.id);
     await deleteImageByPath(result.image_path);
     return res.json(result);

@@ -26,6 +26,9 @@ export default function EditEventPage() {
   const [loading, setLoading] = useState(false);
   const [loadingEvent, setLoadingEvent] = useState(true);
   const [registrationCount, setRegistrationCount] = useState(0);
+  const [existingImages, setExistingImages] = useState([]);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
 
   // Check organizer status
   useEffect(() => {
@@ -76,6 +79,14 @@ export default function EditEventPage() {
       .then(res => res.json())
       .then(data => setRegistrationCount(data.registration_count || 0))
       .catch(console.error);
+
+    // Load existing event images
+    fetch(apiUrl(`/event-images/event/${id}`), {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => setExistingImages(Array.isArray(data) ? data : []))
+      .catch(console.error);
   }, [id, token]);
 
   const handleChange = (e) => {
@@ -84,6 +95,27 @@ export default function EditEventPage() {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    setImageFile(file || null);
+    setImagePreview(file ? URL.createObjectURL(file) : null);
+  };
+
+  const handleDeleteImage = async (imageId) => {
+    if (!window.confirm("Remove this image?")) return;
+    try {
+      const res = await fetch(apiUrl(`/event-images/${imageId}`), {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to delete image");
+      setExistingImages((prev) => prev.filter((img) => img.image_id !== imageId));
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -119,6 +151,38 @@ export default function EditEventPage() {
         setError(data.message || "Failed to update event");
         setErrorCode(data.code || null);
         return;
+      }
+
+      if (imageFile) {
+        try {
+          const imagePayload = new FormData();
+          imagePayload.append("event_id", String(id));
+          imagePayload.append("image", imageFile);
+
+          const imageRes = await fetch(apiUrl("/event-images"), {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: imagePayload,
+          });
+
+          if (!imageRes.ok) {
+            const imageData = await imageRes.json();
+            console.warn("Event image upload failed", imageData);
+            alert("Event updated, but image upload failed: " + (imageData.message || "Unknown error"));
+          } else {
+            await fetch(apiUrl(`/event-images/event/${id}`), {
+              headers: { Authorization: `Bearer ${token}` }
+            })
+              .then(res2 => res2.json())
+              .then(data2 => setExistingImages(Array.isArray(data2) ? data2 : []))
+              .catch(console.error);
+            setImageFile(null);
+            setImagePreview(null);
+          }
+        } catch (imgErr) {
+          console.error("Event image upload failed", imgErr);
+          alert("Event updated, but image upload failed: " + imgErr.message);
+        }
       }
 
       alert("Event updated successfully!");
@@ -285,6 +349,47 @@ export default function EditEventPage() {
                 step="0.01"
                 className="w-full border border-[#DFE6D6] rounded-[1rem] px-4 py-3 text-sm text-[#253621] bg-white focus:outline-none focus:ring-2 focus:ring-[#6f8b5d]/30"
               />
+            </div>
+
+            {/* Existing Event Images */}
+            {existingImages.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-[#253621]">Current Images</p>
+                <div className="flex flex-wrap gap-2">
+                  {existingImages.map((img) => (
+                    <div key={img.image_id} className="relative w-28 h-28 border border-[#DFE6D6] rounded-lg overflow-hidden">
+                      <img src={img.image_path} alt={`Event image ${img.image_id}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteImage(img.image_id)}
+                        className="absolute top-1 right-1 text-white bg-red-500 rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upload New Event Image */}
+            <div>
+              <label className="block text-sm font-semibold text-[#253621] mb-2">
+                Upload New Image (optional)
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="w-full border border-[#DFE6D6] rounded-[1rem] px-4 py-2 text-sm text-[#253621] bg-white"
+              />
+              {imagePreview && (
+                <img
+                  src={imagePreview}
+                  alt="New image preview"
+                  className="mt-3 w-40 h-40 object-cover rounded-lg border border-[#DFE6D6]"
+                />
+              )}
             </div>
 
             {/* Buttons */}

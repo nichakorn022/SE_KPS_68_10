@@ -39,6 +39,9 @@ export default function CreateEventPage() {
     price: ""
   });
 
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+
   const [error, setError] = useState(null);
   const [errorCode, setErrorCode] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -49,6 +52,12 @@ export default function CreateEventPage() {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    setImageFile(file || null);
+    setImagePreview(file ? URL.createObjectURL(file) : null);
   };
 
   const handleSubmit = async (e) => {
@@ -84,6 +93,34 @@ export default function CreateEventPage() {
         setError(data.message || "Failed to create event");
         setErrorCode(data.code || null);
         return;
+      }
+
+      const newEventId = data.event_id;
+
+      if (imageFile) {
+        try {
+          const imagePayload = new FormData();
+          imagePayload.append("event_id", String(newEventId));
+          imagePayload.append("image", imageFile);
+
+          const imageRes = await fetch(apiUrl("/event-images"), {
+            method: "POST",
+            headers: { Authorization: `Bearer ${token}` },
+            body: imagePayload,
+          });
+
+          if (!imageRes.ok) {
+            const imageData = await imageRes.json();
+            console.warn("Event image upload failed", imageData);
+            alert("Event created, but image upload failed: " + (imageData.message || "Unknown error"));
+          } else {
+            setImageFile(null);
+            setImagePreview(null);
+          }
+        } catch (imgErr) {
+          console.error("Event image upload failed", imgErr);
+          alert("Event created, but image upload failed: " + imgErr.message);
+        }
       }
 
       alert("Event created successfully!");
@@ -232,6 +269,26 @@ export default function CreateEventPage() {
                 step="0.01"
                 className="w-full border border-[#DFE6D6] rounded-[1rem] px-4 py-3 text-sm text-[#253621] bg-white focus:outline-none focus:ring-2 focus:ring-[#6f8b5d]/30"
               />
+            </div>
+
+            {/* Event Image */}
+            <div>
+              <label className="block text-sm font-semibold text-[#253621] mb-2">
+                Event Image (optional)
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="w-full border border-[#DFE6D6] rounded-[1rem] px-4 py-2 text-sm text-[#253621] bg-white"
+              />
+              {imagePreview && (
+                <img
+                  src={imagePreview}
+                  alt="Event preview"
+                  className="mt-3 w-40 h-40 object-cover rounded-lg border border-[#DFE6D6]"
+                />
+              )}
             </div>
 
             {/* Buttons */}

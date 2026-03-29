@@ -193,6 +193,7 @@ export default function Eventdetails() {
   const { id } = useParams();
 
   const [event, setEvent] = useState(null);
+  const [eventImages, setEventImages] = useState([]);
   const [isInterested, setIsInterested] = useState(false);
   const { token } = useAuthModal();
   const [error, setError] = useState(null);
@@ -242,6 +243,11 @@ export default function Eventdetails() {
       })
       .then(data => { setEvent(data); setError(null); })
       .catch(err => { setEvent(null); setError(err.message); });
+
+    fetch(apiUrl(`/event-images/event/${id}`))
+      .then(res => res.json())
+      .then(data => setEventImages(Array.isArray(data) ? data : []))
+      .catch(console.error);
 
     if (token) {
       fetch(apiUrl(`/events/${id}/interested/check`), {
@@ -418,6 +424,17 @@ export default function Eventdetails() {
 
           {/* LEFT — info */}
           <div className="p-8 lg:p-10 flex flex-col gap-7">
+
+            {/* Poster image */}
+            {eventImages && eventImages.length > 0 && (
+              <div className="rounded-xl overflow-hidden border border-[#DFE6D6] shadow-sm">
+                <img
+                  src={eventImages[0].image_path}
+                  alt={event.title}
+                  className="w-full h-72 object-cover"
+                />
+              </div>
+            )}
 
             {/* Title block */}
             <div>

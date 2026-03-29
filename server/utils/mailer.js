@@ -251,4 +251,77 @@ async function sendOrderPaidEmail({ to, username, orderId, items, totalAmount })
   });
 }
 
-module.exports = { sendRegistrationConfirmation, sendWelcomeEmail, sendOrderPlacedEmail, sendOrderPaidEmail };
+/**
+ * Send COD reminder email after placing a cash-on-delivery order.
+ */
+async function sendCodReminderEmail({ to, username, orderId, items, totalAmount }) {
+  if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
+    console.warn("MAIL_USER / MAIL_PASS not set – skipping COD reminder email");
+    return;
+  }
+
+  const itemRows = (items || [])
+    .map(
+      (item) =>
+        `<tr>
+          <td style="padding:8px 12px;border-bottom:1px solid #f0ede6;color:#24321F;font-size:14px">${item.tea_name || item.name || '\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32'}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f0ede6;color:#6f7b70;font-size:14px;text-align:center">${item.quantity}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f0ede6;color:#6f7b70;font-size:14px;text-align:right">\u0e3f${Number(item.unit_price || 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}</td>
+          <td style="padding:8px 12px;border-bottom:1px solid #f0ede6;color:#24321F;font-size:14px;text-align:right;font-weight:600">\u0e3f${Number(item.subtotal || 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}</td>
+        </tr>`
+    )
+    .join("");
+
+  const formattedTotal = `\u0e3f${Number(totalAmount || 0).toLocaleString("th-TH", { minimumFractionDigits: 2 })}`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="th">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f5f3ed;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ed;padding:32px 0">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+        <tr><td style="background:#D4A017;padding:28px 40px;text-align:center">
+          <h1 style="margin:0;color:#fff;font-size:24px;font-weight:700">\u0e2a\u0e31\u0e48\u0e07\u0e0b\u0e37\u0e49\u0e2d\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08 — \u0e0a\u0e33\u0e23\u0e30\u0e40\u0e07\u0e34\u0e19\u0e1b\u0e25\u0e32\u0e22\u0e17\u0e32\u0e07 \ud83d\udce6</h1>
+        </td></tr>
+        <tr><td style="padding:36px 40px 20px">
+          <p style="margin:0 0 20px;color:#24321F;font-size:16px"><strong>\u0e40\u0e23\u0e35\u0e22\u0e19 ${username || "\u0e1c\u0e39\u0e49\u0e43\u0e0a\u0e49\u0e07\u0e32\u0e19"}</strong></p>
+          <p style="margin:0 0 16px;color:#4a4a4a;font-size:15px;line-height:1.7">\u0e04\u0e33\u0e2a\u0e31\u0e48\u0e07\u0e0b\u0e37\u0e49\u0e2d <strong>#ORD-${orderId}</strong> \u0e02\u0e2d\u0e07\u0e17\u0e48\u0e32\u0e19\u0e16\u0e39\u0e01\u0e2a\u0e23\u0e49\u0e32\u0e07\u0e40\u0e23\u0e35\u0e22\u0e1a\u0e23\u0e49\u0e2d\u0e22\u0e41\u0e25\u0e49\u0e27 \u0e42\u0e14\u0e22\u0e40\u0e25\u0e37\u0e2d\u0e01\u0e0a\u0e33\u0e23\u0e30\u0e40\u0e07\u0e34\u0e19\u0e1b\u0e25\u0e32\u0e22\u0e17\u0e32\u0e07 (Cash on Delivery)</p>
+          <p style="margin:0 0 16px;color:#c0392b;font-size:15px;line-height:1.7;font-weight:600">\u26a0\ufe0f \u0e01\u0e23\u0e38\u0e13\u0e32\u0e2d\u0e22\u0e48\u0e32\u0e25\u0e37\u0e21\u0e0a\u0e33\u0e23\u0e30\u0e40\u0e07\u0e34\u0e19\u0e1b\u0e25\u0e32\u0e22\u0e17\u0e32\u0e07\u0e40\u0e21\u0e37\u0e48\u0e2d\u0e44\u0e14\u0e49\u0e23\u0e31\u0e1a\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32\u0e19\u0e30\u0e04\u0e23\u0e31\u0e1a</p>
+          <table width="100%" style="background:#faf8f2;border-radius:10px;margin:20px 0;border-collapse:collapse"><tr><td style="padding:20px 24px">
+            <p style="margin:0 0 12px;color:#6f7b70;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:700">\u0e23\u0e32\u0e22\u0e01\u0e32\u0e23\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32</p>
+            <table width="100%" style="border-collapse:collapse">
+              <tr style="background:#f0ede6">
+                <th style="padding:8px 12px;text-align:left;color:#6f7b70;font-size:12px;font-weight:600">\u0e2a\u0e34\u0e19\u0e04\u0e49\u0e32</th>
+                <th style="padding:8px 12px;text-align:center;color:#6f7b70;font-size:12px;font-weight:600">\u0e08\u0e33\u0e19\u0e27\u0e19</th>
+                <th style="padding:8px 12px;text-align:right;color:#6f7b70;font-size:12px;font-weight:600">\u0e23\u0e32\u0e04\u0e32/\u0e0a\u0e34\u0e49\u0e19</th>
+                <th style="padding:8px 12px;text-align:right;color:#6f7b70;font-size:12px;font-weight:600">\u0e23\u0e27\u0e21</th>
+              </tr>
+              ${itemRows}
+            </table>
+            <div style="margin-top:12px;padding-top:12px;border-top:2px solid #e6e3da;text-align:right">
+              <span style="color:#6f7b70;font-size:14px">\u0e22\u0e2d\u0e14\u0e0a\u0e33\u0e23\u0e30\u0e1b\u0e25\u0e32\u0e22\u0e17\u0e32\u0e07: </span>
+              <span style="color:#24321F;font-size:18px;font-weight:700">${formattedTotal}</span>
+            </div>
+          </td></tr></table>
+          <p style="margin:16px 0;color:#4a4a4a;font-size:15px;line-height:1.7">\u0e01\u0e23\u0e38\u0e13\u0e32\u0e40\u0e15\u0e23\u0e35\u0e22\u0e21\u0e40\u0e07\u0e34\u0e19\u0e2a\u0e14\u0e43\u0e2b\u0e49\u0e1e\u0e23\u0e49\u0e2d\u0e21\u0e40\u0e21\u0e37\u0e48\u0e2d\u0e1e\u0e19\u0e31\u0e01\u0e07\u0e32\u0e19\u0e08\u0e31\u0e14\u0e2a\u0e48\u0e07\u0e21\u0e32\u0e16\u0e36\u0e07 \u0e2b\u0e32\u0e01\u0e21\u0e35\u0e02\u0e49\u0e2d\u0e2a\u0e07\u0e2a\u0e31\u0e22\u0e2a\u0e32\u0e21\u0e32\u0e23\u0e16\u0e15\u0e34\u0e14\u0e15\u0e48\u0e2d\u0e40\u0e23\u0e32\u0e44\u0e14\u0e49\u0e15\u0e25\u0e2d\u0e14\u0e40\u0e27\u0e25\u0e32</p>
+          <p style="margin:24px 0 0;color:#4a4a4a;font-size:15px">\u0e02\u0e2d\u0e02\u0e2d\u0e1a\u0e1e\u0e23\u0e30\u0e04\u0e38\u0e13\u0e17\u0e35\u0e48\u0e43\u0e0a\u0e49\u0e1a\u0e23\u0e34\u0e01\u0e32\u0e23 ATC Tea Community</p>
+        </td></tr>
+        <tr><td style="padding:20px 40px 32px;border-top:1px solid #f0ede6">
+          <p style="margin:0;color:#b0a99a;font-size:12px;text-align:center">\u00a9 ${new Date().getFullYear()} ATC Tea Community \u2014 \u0e2d\u0e35\u0e40\u0e21\u0e25\u0e19\u0e35\u0e49\u0e2a\u0e48\u0e07\u0e42\u0e14\u0e22\u0e2d\u0e31\u0e15\u0e42\u0e19\u0e21\u0e31\u0e15\u0e34 \u0e01\u0e23\u0e38\u0e13\u0e32\u0e2d\u0e22\u0e48\u0e32\u0e15\u0e2d\u0e1a\u0e01\u0e25\u0e31\u0e1a</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+
+  await transporter.sendMail({
+    from: `"ATC Tea Community" <${process.env.MAIL_USER}>`,
+    to,
+    subject: `\u0e2a\u0e31\u0e48\u0e07\u0e0b\u0e37\u0e49\u0e2d\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08 #ORD-${orderId} — \u0e0a\u0e33\u0e23\u0e30\u0e40\u0e07\u0e34\u0e19\u0e1b\u0e25\u0e32\u0e22\u0e17\u0e32\u0e07`,
+    html,
+  });
+}
+
+module.exports = { sendRegistrationConfirmation, sendWelcomeEmail, sendOrderPlacedEmail, sendOrderPaidEmail, sendCodReminderEmail };

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SiteNavbar from "../components/SiteNavbar";
 import { apiUrl } from "../../lib/api";
@@ -9,6 +9,35 @@ import {
   getTokenPayload,
   getAuthHeaders,
 } from "../Shop/authClient";
+
+function extractDominantColor(imgSrc) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const size = 64;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, size, size);
+      const data = ctx.getImageData(0, 0, size, size).data;
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < data.length; i += 16) {
+        r += data[i];
+        g += data[i + 1];
+        b += data[i + 2];
+        count++;
+      }
+      r = Math.round(r / count);
+      g = Math.round(g / count);
+      b = Math.round(b / count);
+      resolve({ r, g, b });
+    };
+    img.onerror = () => resolve(null);
+    img.src = imgSrc;
+  });
+}
 
 function formatPrice(price) {
   return `THB ${Number(price ?? 0).toLocaleString("th-TH", {
@@ -36,6 +65,7 @@ export default function UserProfile() {
   const [purchaseFilter, setPurchaseFilter] = useState("all");
   const [purchaseSearch, setPurchaseSearch] = useState("");
   const [orderPage, setOrderPage] = useState(1);
+  const [coverColor, setCoverColor] = useState(null);
   const ORDERS_PER_PAGE = 10;
 
   const tokenPayload = getTokenPayload();
@@ -149,6 +179,19 @@ export default function UserProfile() {
     user?.username || user?.name || tokenPayload?.username || tokenPayload?.name || "User";
   const displayBio = user?.bio || tokenPayload?.bio || EMPTY_STATE.bio;
 
+  const avatarSrc = previewUrl || user?.avatar || getStoredAvatar() || tokenPayload?.avatar || "/Pictrue/default-avatar.png";
+
+  useEffect(() => {
+    if (!avatarSrc) return;
+    extractDominantColor(avatarSrc).then((color) => {
+      if (color) setCoverColor(color);
+    });
+  }, [avatarSrc]);
+
+  const coverGradient = coverColor
+    ? `linear-gradient(135deg, rgb(${coverColor.r}, ${coverColor.g}, ${coverColor.b}) 0%, rgb(${Math.min(255, coverColor.r + 40)}, ${Math.min(255, coverColor.g + 35)}, ${Math.min(255, coverColor.b + 30)}) 50%, rgb(${Math.min(255, coverColor.r + 70)}, ${Math.min(255, coverColor.g + 60)}, ${Math.min(255, coverColor.b + 50)}) 100%)`
+    : "linear-gradient(135deg, #b89463 0%, #d2ae7b 48%, #7d5e39 100%)";
+
   function TabButton({ id, label }) {
     const active = activeTab === id;
     return (
@@ -244,63 +287,67 @@ export default function UserProfile() {
     <div className="min-h-screen bg-[#FAF8F2]">
       <SiteNavbar active="" />
 
-      <div className="mx-auto max-w-[1200px] px-6 pb-16">
-        <div className="relative -mt-6 mb-6 h-44 rounded-lg">
-          <img
-            src={user?.cover || "/Pictrue/cover-default.jpg"}
-            alt="cover"
-            className="h-44 w-full rounded-lg object-cover"
-          />
-        </div>
+      {/* ── Hero cover (gradient from avatar color) ── */}
+      <section className="relative overflow-hidden">
+        <div
+          className="h-[24rem] w-full sm:h-[28rem] lg:h-[32rem] transition-all duration-700"
+          style={{ background: coverGradient }}
+        />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(28,23,17,0.05)_0%,rgba(250,248,242,0.10)_50%,#FAF8F2_90%)]" />
 
-        <div className="-mt-24 flex items-end gap-6">
-          <div className="h-40 w-40 overflow-hidden rounded-full border-4 border-white bg-white shadow-sm">
-            <img
-              src={
-                previewUrl ||
-                user?.avatar ||
-                getStoredAvatar() ||
-                tokenPayload?.avatar ||
-                "/Pictrue/default-avatar.png"
-              }
-              alt="avatar"
-              className="h-full w-full object-cover"
-            />
-          </div>
-
-          <div>
-            <h1 className="font-serif text-3xl text-[#24321F]">{displayName}</h1>
-            <p className="mt-2 text-[#6f7b70]">{displayBio}</p>
-
-            <div className="mt-4 flex items-center gap-3">
-              <label className="cursor-pointer rounded-md border border-[#e6e3da] bg-white px-3 py-2 text-sm hover:bg-[#fbfdf7]">
-                Choose image
-                <input
-                  type="file"
-                  name="avatar"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) {
-                      setSelectedFile(file);
-                      setPreviewUrl(URL.createObjectURL(file));
-                    }
-                  }}
+        <div className="absolute inset-x-0 bottom-0">
+          <div className="mx-auto flex max-w-[1280px] px-6 pb-10">
+            <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:gap-8">
+              {/* Avatar */}
+              <div className="h-36 w-36 overflow-hidden rounded-full border-[6px] border-white bg-white shadow-[0_20px_50px_rgba(61,47,31,0.20)] sm:h-44 sm:w-44">
+                <img
+                  src={avatarSrc}
+                  alt="avatar"
+                  className="h-full w-full object-cover"
                 />
-              </label>
+              </div>
 
-              <button
-                disabled={!selectedFile || uploading}
-                onClick={uploadAvatar}
-                className="rounded-md bg-[#485B3B] px-4 py-2 text-sm text-white disabled:opacity-60"
-              >
-                {uploading ? "Uploading..." : "Upload"}
-              </button>
+              {/* Name + bio + buttons */}
+              <div className="pb-2">
+                <h1 className="font-serif text-[clamp(2.1rem,4vw,4.2rem)] tracking-[-0.04em] text-[#24321F]">
+                  {displayName}
+                </h1>
+                <p className="mt-3 text-[1.1rem] text-[#68786a] sm:text-[1.35rem]">{displayBio}</p>
+
+                <div className="mt-5 flex flex-wrap items-center gap-3">
+                  <label className="cursor-pointer rounded-full border border-[#D4DDC9] bg-white/90 px-5 py-2.5 text-sm font-semibold text-[#51684A] shadow-[0_10px_24px_rgba(195,170,128,0.12)]">
+                    Choose image
+                    <input
+                      type="file"
+                      name="avatar"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) {
+                          setSelectedFile(file);
+                          setPreviewUrl(URL.createObjectURL(file));
+                        }
+                      }}
+                    />
+                  </label>
+
+                  <button
+                    disabled={!selectedFile || uploading}
+                    onClick={uploadAvatar}
+                    className="rounded-full bg-[#485B3B] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_24px_rgba(195,170,128,0.12)] disabled:opacity-60"
+                  >
+                    {uploading ? "Uploading..." : "Upload"}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+      </section>
 
+      {/* ── Main content ── */}
+      <main className="mx-auto max-w-[1280px] px-6 pb-20">
         <div className="mt-8 rounded-[14px] bg-white p-4 shadow-sm">
           <div className="flex items-center gap-6">
             <TabButton id="overview" label="Overview" />
@@ -389,7 +436,7 @@ export default function UserProfile() {
             </div>
           ) : null}
         </div>
-      </div>
+      </main>
 
       {showOrderModal && selectedOrder ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center">

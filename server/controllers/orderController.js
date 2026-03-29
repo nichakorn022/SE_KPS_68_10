@@ -1,6 +1,6 @@
 ﻿const orderService = require("../services/orderService");
 const { query } = require("../utils/dbHelpers");
-const { sendOrderPaidEmail, sendCodReminderEmail } = require("../utils/mailer");
+const { sendOrderPaidEmail, sendCodPaidEmail, sendCodReminderEmail } = require("../utils/mailer");
 
 async function fetchUserEmail(userId) {
   const rows = await query("SELECT username, email FROM users WHERE user_id = ? LIMIT 1", [userId]);
@@ -221,7 +221,7 @@ exports.sellerMarkOrderPaid = async (req, res) => {
         const userInfo = await fetchUserEmail(order.user_id);
         if (userInfo?.email) {
           const items = await fetchOrderItems(id);
-          await sendOrderPaidEmail({
+          await sendCodPaidEmail({
             to: userInfo.email,
             username: userInfo.username,
             orderId: id,
@@ -230,7 +230,7 @@ exports.sellerMarkOrderPaid = async (req, res) => {
           });
         }
       } catch (emailError) {
-        console.error("Failed to send order paid email:", emailError.message);
+        console.error("Failed to send COD paid email:", emailError.message);
       }
     }
 

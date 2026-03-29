@@ -46,7 +46,6 @@ export default function AdminEventsPage() {
   const [loading, setLoading] = useState(true);
   const [imageStatus, setImageStatus] = useState("");
   const [confirmAction, setConfirmAction] = useState(null);
-  const [sponsorNotes, setSponsorNotes] = useState({});
 
   async function loadEvents() {
     setLoading(true);
@@ -135,21 +134,6 @@ export default function AdminEventsPage() {
 
   useEffect(() => {
     setSponsorsPage(1);
-  }, [editingId, sponsors]);
-
-  useEffect(() => {
-    if (!editingId) {
-      setSponsorNotes({});
-      return;
-    }
-
-    const nextNotes = {};
-    sponsors.forEach((sponsor) => {
-      if (String(sponsor.event_id) === String(editingId)) {
-        nextNotes[sponsor.sponsor_id] = sponsor.admin_note || "";
-      }
-    });
-    setSponsorNotes(nextNotes);
   }, [editingId, sponsors]);
 
   const paginatedEvents = useMemo(() => paginate(filteredEvents, page), [filteredEvents, page]);
@@ -264,7 +248,7 @@ export default function AdminEventsPage() {
 
   const handleSponsorStatusChange = async (sponsorId, nextStatus) => {
     try {
-      await adminApi.updateSponsorStatus(adminToken, sponsorId, nextStatus, sponsorNotes[sponsorId] || null);
+      await adminApi.updateSponsorStatus(adminToken, sponsorId, nextStatus);
       setStatus({ type: "success", message: "Sponsor request updated" });
       await loadEvents();
     } catch (error) {
@@ -584,21 +568,6 @@ export default function AdminEventsPage() {
                                 value={sponsor.created_at ? new Date(sponsor.created_at).toLocaleString() : "-"}
                               />
                             </dl>
-
-                            <label className="mt-4 block">
-                              <span className="mb-2 block text-[11px] uppercase tracking-[0.2em] text-[#8d9577]">Admin Note</span>
-                              <textarea
-                                value={sponsorNotes[sponsor.sponsor_id] || ""}
-                                onChange={(event) =>
-                                  setSponsorNotes((current) => ({
-                                    ...current,
-                                    [sponsor.sponsor_id]: event.target.value,
-                                  }))
-                                }
-                                placeholder="Add review note or decision reason..."
-                                className="admin-input min-h-24"
-                              />
-                            </label>
 
                             <div className="mt-4 grid gap-2 sm:grid-cols-3">
                               <button

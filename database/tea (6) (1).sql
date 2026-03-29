@@ -358,7 +358,7 @@ INSERT INTO `users` (`user_id`, `username`, `email`, `password`, `role`, `create
 (8, 't', 't', '$2b$10$ESiSeLqqVvfUIiRuq.0g2ux66hDkn4eKFHr8MMD6AwqQOtnuxxe3G', 'user', '2026-03-11 02:40:43'),
 (9, 'q', '1', '$2b$10$Ezbn8l5Rn8cvR2FQwNQPxuZ5J6BU/Ieql4n1Ri6cRa35dUeTKSuKC', 'user', '2026-03-11 03:19:30'),
 (10, 'w', '2', '$2b$10$fK.Fyc8Z53K1ZbYW4BiPku/exbddhAPZNa7Kr9DCSGFojUQ8FtyM.', 'user', '2026-03-11 03:22:13'),
-(11, 'admin', 'admin@atc.local', '$2b$10$bj1rhPSQmr0KCgd1D857teaTzYs0mIRUsA2.Yzg0MDpkwV.BRGo5q', 'admin', '2026-03-27 18:40:00');
+(11, 'admin', 'admin@tea.ac', '$2b$10$bj1rhPSQmr0KCgd1D857teaTzYs0mIRUsA2.Yzg0MDpkwV.BRGo5q', 'admin', '2026-03-27 18:40:00');
 
 --
 -- Indexes for dumped tables

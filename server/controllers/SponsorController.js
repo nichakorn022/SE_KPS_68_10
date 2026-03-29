@@ -25,12 +25,23 @@ class SponsorController {
 
   static async updateSponsorStatus(req, res) {
     try {
-      const result = await sponsorService.updateSponsorStatus(req.params.id, req.body.status, req.body.admin_note);
+      const result = await sponsorService.updateSponsorStatus(req.params.id, req.body.status);
       res.json(result);
     } catch (error) {
       res
         .status(error.statusCode || 500)
         .json({ message: error.message || "Failed to update sponsor status" });
+    }
+  }
+
+  static async deleteSponsorRequest(req, res) {
+    try {
+      const result = await sponsorService.deleteSponsorRequest(req.params.id);
+      res.json(result);
+    } catch (error) {
+      res
+        .status(error.statusCode || 500)
+        .json({ message: error.message || "Failed to delete sponsor request" });
     }
   }
 }

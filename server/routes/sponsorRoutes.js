@@ -8,6 +8,7 @@ const adminMiddleware = require("../middleware/adminMiddleware");
 router.post("/request", authMiddleware, SponsorController.requestSponsor);
 router.get("/", adminMiddleware, SponsorController.getSponsorRequests);
 router.patch("/:id/status", adminMiddleware, SponsorController.updateSponsorStatus);
+router.delete("/:id", adminMiddleware, SponsorController.deleteSponsorRequest);
 
 // Backward-compatible aliases for the earlier sponsor API shape.
 router.get("/requests", adminMiddleware, SponsorController.getSponsorRequests);

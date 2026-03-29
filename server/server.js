@@ -133,7 +133,7 @@ const { query } = require("./utils/dbHelpers");
   }
 })();
 
-(async function ensureAdminNoteColumns() {
+(async function removeAdminNoteColumns() {
   const targets = [
     { table: "tea_shop", column: "admin_note" },
     { table: "organizer", column: "admin_note" },
@@ -153,11 +153,11 @@ const { query } = require("./utils/dbHelpers");
         [target.table, target.column]
       );
 
-      if (rows.length === 0) {
-        await query(`ALTER TABLE ${target.table} ADD COLUMN ${target.column} TEXT NULL`);
+      if (rows.length > 0) {
+        await query(`ALTER TABLE ${target.table} DROP COLUMN ${target.column}`);
       }
     } catch (err) {
-      console.warn(`Could not ensure ${target.table}.${target.column} column:`, err.message);
+      console.warn(`Could not remove ${target.table}.${target.column} column:`, err.message);
     }
   }
 })();

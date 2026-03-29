@@ -1,6 +1,6 @@
 const registrationService = require("../services/registrationService");
 const { query } = require("../utils/dbHelpers");
-const { sendRegistrationConfirmation } = require("../utils/mailer");
+const { sendRegistrationConfirmation, sendEventPaymentConfirmation } = require("../utils/mailer");
 
 class RegistrationController {
 
@@ -133,6 +133,29 @@ class RegistrationController {
       }
 
       const data = await registrationService.updateRegistrationStatus(id, "confirmed");
+
+      // Send event payment confirmation email
+      try {
+        const [[user], [reg]] = await Promise.all([
+          query("SELECT username, email FROM users WHERE user_id = ? LIMIT 1", [userId]),
+          query(
+            `SELECT e.title, e.event_date FROM event_registration r
+             JOIN event e ON e.event_id = r.event_id
+             WHERE r.registration_id = ? LIMIT 1`,
+            [id]
+          ),
+        ]);
+        if (user?.email && reg?.title) {
+          sendEventPaymentConfirmation({
+            to: user.email,
+            username: user.username,
+            eventTitle: reg.title,
+            eventDate: reg.event_date,
+          }).catch((err) => console.error("Event payment email failed:", err.message));
+        }
+      } catch (mailErr) {
+        console.error("Event payment email lookup failed:", mailErr.message);
+      }
 
       res.json({
         message: "Payment confirmed",

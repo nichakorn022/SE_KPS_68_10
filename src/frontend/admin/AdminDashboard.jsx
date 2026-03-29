@@ -166,11 +166,10 @@ export default function AdminDashboard() {
     const pendingShops = shops.filter((item) => Number(item.verified_status) === 0).length;
     const pendingOrganizers = organizers.filter((item) => Number(item.verified_status) === 0).length;
     const pendingReports = reports.filter((item) => String(item.status).toLowerCase() === "pending").length;
-    const pendingSponsors = sponsors.filter((item) => String(item.status).toLowerCase() === "pending").length;
-    const monthlyRequests = [...shops, ...organizers, ...reports, ...sponsors].filter((item) =>
+    const monthlyRequests = [...shops, ...organizers, ...reports].filter((item) =>
       isWithinRange(item.created_at, currentMonth)
     ).length;
-    const previousMonthlyRequests = [...shops, ...organizers, ...reports, ...sponsors].filter((item) =>
+    const previousMonthlyRequests = [...shops, ...organizers, ...reports].filter((item) =>
       isWithinRange(item.created_at, previousMonth)
     ).length;
     const monthlyEvents = events.filter((item) => isWithinRange(item.event_date, currentMonth)).length;
@@ -184,8 +183,7 @@ export default function AdminDashboard() {
       pendingShops,
       pendingOrganizers,
       pendingReports,
-      pendingSponsors,
-      totalPending: pendingShops + pendingOrganizers + pendingReports + pendingSponsors,
+      totalPending: pendingShops + pendingOrganizers + pendingReports,
       totalUsers: users.length,
       totalShops: shops.length,
       totalEvents: events.length,
@@ -226,13 +224,6 @@ export default function AdminDashboard() {
         helper: "Organizer accounts waiting for review",
         href: "/admin/requests-reports?type=organizer&status=pending",
         tone: summary.pendingOrganizers > 0 ? "danger" : "neutral",
-      },
-      {
-        title: "Pending Sponsors",
-        value: summary.pendingSponsors,
-        helper: "Sponsor requests pending a decision",
-        href: "/admin/requests-reports?type=sponsor&status=pending",
-        tone: summary.pendingSponsors > 0 ? "danger" : "neutral",
       },
     ],
     [summary]
@@ -337,7 +328,7 @@ export default function AdminDashboard() {
     {
       label: "Pending actions",
       value: summary.totalPending,
-      helper: "Requests, reports, and sponsor items awaiting action",
+      helper: "Requests and reports awaiting action",
       href: "/admin/requests-reports?status=pending",
     },
     {
@@ -543,7 +534,7 @@ export default function AdminDashboard() {
 
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <StatCard label="New Users This Month" value={summary.monthlyNewUsers} helper="Monthly signup total" />
-          <StatCard label="Requests This Month" value={summary.monthlyRequests} helper="Shops, organizers, reports, and sponsors" />
+          <StatCard label="Requests This Month" value={summary.monthlyRequests} helper="Shops, organizers, and reports" />
           <StatCard label="Reports This Month" value={summary.monthlyReports} helper="Event reports created this month" />
           <StatCard label="Orders This Month" value={summary.monthlyOrders} helper="Orders based on order date" />
         </div>

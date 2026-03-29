@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { apiUrl, assetUrl } from "../../lib/api";
 import {
   getAuthHeaders,
@@ -69,6 +69,7 @@ export default function useSellerWorkspace() {
   const [shop, setShop] = useState(null);
   const [products, setProducts] = useState([]);
   const [summary, setSummary] = useState(defaultSummary);
+  const [reloadKey, setReloadKey] = useState(0);
 
   const userId = getUserIdFromToken();
   const role = getUserRoleFromToken();
@@ -181,7 +182,7 @@ export default function useSellerWorkspace() {
     return () => {
       ignore = true;
     };
-  }, [role, userId]);
+  }, [reloadKey, role, userId]);
 
   return {
     loading,
@@ -189,5 +190,6 @@ export default function useSellerWorkspace() {
     shop,
     products,
     summary,
+    refreshWorkspace: () => setReloadKey((current) => current + 1),
   };
 }

@@ -15,6 +15,7 @@ const MyEventsPage = lazy(() => import("./frontend/Event/MyEventsPage.jsx"));
 const ShopProfile = lazy(() => import("./frontend/Shop/ShopProfile.jsx"));
 const ShopChatPage = lazy(() => import("./frontend/Shop/ShopChatPage.jsx"));
 const SellerDashboard = lazy(() => import("./frontend/Shop/SellerDashboard.jsx"));
+const SellerPendingOrdersPage = lazy(() => import("./frontend/Shop/SellerPendingOrdersPage.jsx"));
 const SellerAnalyticsDashboard = lazy(() => import("./frontend/Shop/SellerAnalyticsDashboard.jsx"));
 const SellerProductsPage = lazy(() => import("./frontend/Shop/SellerProductsPage.jsx"));
 const SellerFeedbackPage = lazy(() => import("./frontend/Shop/SellerFeedbackPage.jsx"));
@@ -110,6 +111,7 @@ function App() {
               <Route path="/shop/:id" element={<ShopProfile />} />
               <Route path="/shop/:id/chat" element={<ShopChatPage />} />
               <Route path="/seller" element={<SellerDashboard />} />
+              <Route path="/seller/orders" element={<SellerPendingOrdersPage />} />
               <Route path="/seller/dashboard" element={<SellerAnalyticsDashboard />} />
               <Route path="/seller/products" element={<SellerProductsPage />} />
               <Route path="/seller/feedback" element={<SellerFeedbackPage />} />
@@ -172,4 +174,3 @@ function RouteFallback() {
 }
 
 export default App;
-

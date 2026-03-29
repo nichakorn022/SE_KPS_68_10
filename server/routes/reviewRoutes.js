@@ -3,6 +3,12 @@ const router = express.Router();
 const reviewController = require("../controllers/reviewController");
 const authMiddleware = require("../middleware/authMiddleware");
 
+// GET /api/reviews/seller - Get reviews for products sold by the current shop account
+router.get("/seller", authMiddleware, reviewController.getSellerReviews);
+
+// POST /api/reviews/:review_id/reply - Create/update a seller reply for a review
+router.post("/:review_id/reply", authMiddleware, reviewController.replyToReview);
+
 // GET /api/reviews/:product_id - Get reviews for a product
 router.get("/:product_id", reviewController.getReviews);
 

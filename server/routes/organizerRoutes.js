@@ -9,6 +9,7 @@ const { query } = require("../utils/dbHelpers");
 
 router.get("/", adminMiddleware, organizerController.getOrganizers);
 router.patch("/:id/verification", adminMiddleware, organizerController.updateOrganizerVerification);
+router.delete("/:id/request", adminMiddleware, organizerController.deleteOrganizerRequest);
 // 🔥 สมัคร organizer
 // ================== REGISTER ORGANIZER (FULL DATA) ==================
 router.post("/register", authMiddleware, async (req, res) => {

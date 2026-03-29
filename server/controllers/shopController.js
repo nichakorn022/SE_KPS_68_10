@@ -53,11 +53,22 @@ exports.updateShopVerification = (req, res) => {
   const { id } = req.params;
 
   shopService
-    .updateShopVerification(id, req.body.verified_status, req.body.admin_note)
+    .updateShopVerification(id, req.body.verified_status)
     .then((result) => res.json(result))
     .catch((error) =>
       res
         .status(error.statusCode || 500)
         .json({ message: "Failed to update shop verification", error: error.message })
+    );
+};
+
+exports.deleteShopRequest = (req, res) => {
+  const { id } = req.params;
+
+  shopService
+    .deleteShopRequest(id)
+    .then((result) => res.json(result))
+    .catch((error) =>
+      res.status(error.statusCode || 500).json({ message: error.message || "Failed to delete shop request" })
     );
 };

@@ -1,4 +1,5 @@
 const { query } = require("../utils/dbHelpers");
+const { sendApprovalDecisionEmail } = require("../utils/mailer");
 
 const allowedStatuses = new Set(["pending", "approved", "rejected", "cancelled"]);
 
@@ -69,33 +70,56 @@ async function getSponsorRequests() {
         s.quantity,
         s.request_by,
         s.status,
-        s.admin_note,
         s.created_at,
         s.updated_at,
         e.title AS event_title,
         ts.shop_name,
-        tp.tea_name AS product_name
+        tp.tea_name AS product_name,
+        u.email,
+        u.username
      FROM sponsor s
      LEFT JOIN event e ON e.event_id = s.event_id
      LEFT JOIN tea_shop ts ON ts.shop_id = s.shop_id
+     LEFT JOIN users u ON u.user_id = ts.user_id
      LEFT JOIN tea_product tp ON tp.product_id = s.product_id
      ORDER BY s.created_at DESC, s.sponsor_id DESC`
   );
 }
 
-async function updateSponsorStatus(id, status, adminNote) {
+async function updateSponsorStatus(id, status) {
   const nextStatus = normalizeStatus(status);
-  const result = await query(
-    `UPDATE sponsor
-     SET status = ?, admin_note = ?, updated_at = CURRENT_TIMESTAMP
-     WHERE sponsor_id = ?`,
-    [nextStatus, adminNote ?? null, id]
+  const rows = await query(
+    `SELECT s.sponsor_id, s.status, e.title AS event_title, ts.shop_name, u.email, u.username
+     FROM sponsor s
+     LEFT JOIN event e ON e.event_id = s.event_id
+     LEFT JOIN tea_shop ts ON ts.shop_id = s.shop_id
+     LEFT JOIN users u ON u.user_id = ts.user_id
+     WHERE s.sponsor_id = ?
+     LIMIT 1`,
+    [id]
   );
 
-  if (result.affectedRows === 0) {
+  if (rows.length === 0) {
     const error = new Error("Sponsor request not found");
     error.statusCode = 404;
     throw error;
+  }
+
+  const result = await query(
+    `UPDATE sponsor
+     SET status = ?, updated_at = CURRENT_TIMESTAMP
+     WHERE sponsor_id = ?`,
+    [nextStatus, id]
+  );
+
+  if (nextStatus === "approved" || nextStatus === "rejected") {
+    await sendApprovalDecisionEmail({
+      to: rows[0].email,
+      username: rows[0].username,
+      subjectType: "sponsor request",
+      subjectName: rows[0].event_title || rows[0].shop_name || `Sponsor ${id}`,
+      approved: nextStatus === "approved",
+    });
   }
 
   return {
@@ -103,8 +127,42 @@ async function updateSponsorStatus(id, status, adminNote) {
   };
 }
 
+async function deleteSponsorRequest(id) {
+  const rows = await query(
+    `SELECT s.sponsor_id, e.title AS event_title, ts.shop_name, u.email, u.username
+     FROM sponsor s
+     LEFT JOIN event e ON e.event_id = s.event_id
+     LEFT JOIN tea_shop ts ON ts.shop_id = s.shop_id
+     LEFT JOIN users u ON u.user_id = ts.user_id
+     WHERE s.sponsor_id = ?
+     LIMIT 1`,
+    [id]
+  );
+
+  if (rows.length === 0) {
+    const error = new Error("Sponsor request not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  await query("DELETE FROM sponsor WHERE sponsor_id = ?", [id]);
+
+  await sendApprovalDecisionEmail({
+    to: rows[0].email,
+    username: rows[0].username,
+    subjectType: "sponsor request",
+    subjectName: rows[0].event_title || rows[0].shop_name || `Sponsor ${id}`,
+    approved: false,
+  });
+
+  return {
+    message: "Sponsor request deleted"
+  };
+}
+
 module.exports = {
   requestSponsor,
   getSponsorRequests,
-  updateSponsorStatus
+  updateSponsorStatus,
+  deleteSponsorRequest,
 };

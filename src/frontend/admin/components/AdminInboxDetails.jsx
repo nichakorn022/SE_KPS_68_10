@@ -41,20 +41,7 @@ function ActionButton({ onClick, tone = "neutral", children }) {
   );
 }
 
-function NoteField({ value, onChange, placeholder }) {
-  return (
-    <AdminField label="Admin Note">
-      <textarea
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="admin-input min-h-28"
-      />
-    </AdminField>
-  );
-}
-
-export function ShopDetail({ item, images, note, onNoteChange, onUploadImage, onDeleteImage, onAction, getVerificationStatusLabel }) {
+export function ShopDetail({ item, images, onUploadImage, onDeleteImage, onAction, getVerificationStatusLabel }) {
   return (
     <DetailShell
       badge="Shop Approval"
@@ -117,7 +104,6 @@ export function ShopDetail({ item, images, note, onNoteChange, onUploadImage, on
           </div>
         )}
       </div>
-      <NoteField value={note} onChange={onNoteChange} placeholder="Add approval note or rejection reason..." />
       <div className="flex gap-3">
         <ActionButton tone="positive" onClick={() => onAction(item.shop_id, 1)}>Approve Shop</ActionButton>
         <ActionButton tone="danger" onClick={() => onAction(item.shop_id, 2)}>Reject Shop</ActionButton>
@@ -126,7 +112,7 @@ export function ShopDetail({ item, images, note, onNoteChange, onUploadImage, on
   );
 }
 
-export function OrganizerDetail({ item, note, onNoteChange, onAction, getVerificationStatusLabel }) {
+export function OrganizerDetail({ item, onAction, getVerificationStatusLabel }) {
   return (
     <DetailShell
       badge="Organizer Approval"
@@ -146,7 +132,6 @@ export function OrganizerDetail({ item, note, onNoteChange, onAction, getVerific
         <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Description</p>
         <p className="mt-3 text-sm leading-7 text-[#4b5541]">{item.description || "No description provided."}</p>
       </div>
-      <NoteField value={note} onChange={onNoteChange} placeholder="Add approval note or rejection reason..." />
       <div className="flex gap-3">
         <ActionButton tone="positive" onClick={() => onAction(item.organizer_id, 1)}>Approve Organizer</ActionButton>
         <ActionButton tone="danger" onClick={() => onAction(item.organizer_id, 2)}>Reject Organizer</ActionButton>
@@ -157,8 +142,6 @@ export function OrganizerDetail({ item, note, onNoteChange, onAction, getVerific
 
 export function ReportDetail({
   item,
-  note,
-  onNoteChange,
   onReportStatusChange,
   onEventStatusChange,
   reportStatuses,
@@ -197,7 +180,6 @@ export function ReportDetail({
         <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Report Detail</p>
         <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[#4b5541]">{item.report_detail}</p>
       </div>
-      <NoteField value={note} onChange={onNoteChange} placeholder="Add review note or resolution reason..." />
       <div className="grid gap-4 md:grid-cols-2">
         <AdminField label="Report Status">
           <select

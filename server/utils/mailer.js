@@ -398,6 +398,7 @@ async function sendCodPaidEmail({ to, username, orderId, items, totalAmount }) {
   });
 }
 
+<<<<<<< Updated upstream
 /**
  * Send email after user pays for event registration.
  */
@@ -414,11 +415,32 @@ async function sendEventPaymentConfirmation({ to, username, eventTitle, eventDat
   const html = `
 <!DOCTYPE html>
 <html lang="th">
+=======
+async function sendApprovalDecisionEmail({ to, username, subjectType, subjectName, approved }) {
+  if (!process.env.MAIL_USER || !process.env.MAIL_PASS) {
+    console.warn("MAIL_USER / MAIL_PASS not set - skipping approval decision email");
+    return;
+  }
+
+  const safeType = String(subjectType || "request").trim() || "request";
+  const safeName = String(subjectName || "your request").trim() || "your request";
+  const decisionText = approved ? "approved" : "rejected";
+  const accent = approved ? "#485B3B" : "#B33A24";
+  const heading = approved ? `${safeType} approved` : `${safeType} not approved`;
+  const body = approved
+    ? `Your ${safeType.toLowerCase()} for "${safeName}" has been approved. You can now continue using the related features in teactive.`
+    : `Your ${safeType.toLowerCase()} for "${safeName}" was not approved. You can review your information and submit a new request if needed.`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="en">
+>>>>>>> Stashed changes
 <head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#f5f3ed;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f3ed;padding:32px 0">
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08)">
+<<<<<<< Updated upstream
         <tr><td style="background:#485B3B;padding:28px 40px;text-align:center">
           <h1 style="margin:0;color:#fff;font-size:24px;font-weight:700">\u0e0a\u0e33\u0e23\u0e30\u0e40\u0e07\u0e34\u0e19\u0e2a\u0e21\u0e31\u0e04\u0e23\u0e01\u0e34\u0e08\u0e01\u0e23\u0e23\u0e21\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08 \ud83c\udf89</h1>
         </td></tr>
@@ -436,6 +458,23 @@ async function sendEventPaymentConfirmation({ to, username, eventTitle, eventDat
         </td></tr>
         <tr><td style="padding:20px 40px 32px;border-top:1px solid #f0ede6">
           <p style="margin:0;color:#b0a99a;font-size:12px;text-align:center">\u00a9 ${new Date().getFullYear()} ATC Tea Community \u2014 \u0e2d\u0e35\u0e40\u0e21\u0e25\u0e19\u0e35\u0e49\u0e2a\u0e48\u0e07\u0e42\u0e14\u0e22\u0e2d\u0e31\u0e15\u0e42\u0e19\u0e21\u0e31\u0e15\u0e34 \u0e01\u0e23\u0e38\u0e13\u0e32\u0e2d\u0e22\u0e48\u0e32\u0e15\u0e2d\u0e1a\u0e01\u0e25\u0e31\u0e1a</p>
+=======
+        <tr><td style="background:${accent};padding:28px 40px;text-align:center">
+          <h1 style="margin:0;color:#fff;font-size:24px;font-weight:700;text-transform:capitalize">${heading}</h1>
+        </td></tr>
+        <tr><td style="padding:36px 40px 20px">
+          <p style="margin:0 0 20px;color:#24321F;font-size:16px"><strong>Hello ${username || "there"}</strong></p>
+          <p style="margin:0 0 16px;color:#4a4a4a;font-size:15px;line-height:1.7">${body}</p>
+          <table width="100%" style="background:#faf8f2;border-radius:10px;margin:20px 0"><tr><td style="padding:20px 24px">
+            <p style="margin:0 0 8px;color:#6f7b70;font-size:12px;text-transform:uppercase;letter-spacing:1px;font-weight:700">Request details</p>
+            <p style="margin:0 0 6px;color:#24321F;font-size:15px">Type: <strong>${safeType}</strong></p>
+            <p style="margin:0;color:#24321F;font-size:15px">Name: <strong>${safeName}</strong></p>
+          </td></tr></table>
+          <p style="margin:24px 0 0;color:#4a4a4a;font-size:15px">This is an automated email from teactive.</p>
+        </td></tr>
+        <tr><td style="padding:20px 40px 32px;border-top:1px solid #f0ede6">
+          <p style="margin:0;color:#b0a99a;font-size:12px;text-align:center">© ${new Date().getFullYear()} teactive</p>
+>>>>>>> Stashed changes
         </td></tr>
       </table>
     </td></tr>
@@ -443,13 +482,20 @@ async function sendEventPaymentConfirmation({ to, username, eventTitle, eventDat
 </body></html>`;
 
   await transporter.sendMail({
+<<<<<<< Updated upstream
     from: `"ATC Tea Community" <${process.env.MAIL_USER}>`,
     to,
     subject: `\u0e0a\u0e33\u0e23\u0e30\u0e40\u0e07\u0e34\u0e19\u0e2a\u0e21\u0e31\u0e04\u0e23\u0e01\u0e34\u0e08\u0e01\u0e23\u0e23\u0e21\u0e2a\u0e33\u0e40\u0e23\u0e47\u0e08 \u2014 ${eventTitle}`,
+=======
+    from: `"teactive" <${process.env.MAIL_USER}>`,
+    to,
+    subject: `teactive: ${safeType} ${decisionText}`,
+>>>>>>> Stashed changes
     html,
   });
 }
 
+<<<<<<< Updated upstream
 /**
  * Send email after user cancels a confirmed (paid) event registration.
  */
@@ -504,3 +550,14 @@ async function sendEventCancellationEmail({ to, username, eventTitle, eventDate 
 }
 
 module.exports = { sendRegistrationConfirmation, sendWelcomeEmail, sendOrderPlacedEmail, sendOrderPaidEmail, sendCodPaidEmail, sendCodReminderEmail, sendEventPaymentConfirmation, sendEventCancellationEmail };
+=======
+module.exports = {
+  sendRegistrationConfirmation,
+  sendWelcomeEmail,
+  sendOrderPlacedEmail,
+  sendOrderPaidEmail,
+  sendCodPaidEmail,
+  sendCodReminderEmail,
+  sendApprovalDecisionEmail,
+};
+>>>>>>> Stashed changes

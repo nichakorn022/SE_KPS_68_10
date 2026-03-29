@@ -3,7 +3,7 @@ import { useLocation, useOutletContext, useSearchParams } from "react-router-dom
 import { adminApi } from "./adminApi";
 import AdminPagination, { paginate } from "./components/AdminPagination";
 import AdminConfirmActionModal from "./components/AdminConfirmActionModal";
-import { OrganizerDetail, ReportDetail, ShopDetail, SponsorDetail } from "./components/AdminInboxDetails";
+import { OrganizerDetail, ReportDetail, ShopDetail } from "./components/AdminInboxDetails";
 
 function getVerificationStatusLabel(value) {
   return Number(value) === 1 ? "approved" : Number(value) === 2 ? "rejected" : "pending";
@@ -15,7 +15,6 @@ const eventStatuses = ["draft", "open", "closed", "cancelled"];
 const typeStyles = {
   shop: "bg-[#eef6ea] text-[#386132]",
   organizer: "bg-[#eef2ff] text-[#3d4f93]",
-  sponsor: "bg-[#fff4e2] text-[#a46317]",
   report: "bg-[#fff0ed] text-[#b33a24]",
 };
 
@@ -63,14 +62,6 @@ function getTypeContext(type) {
         queueLabel: "Filtered organizer requests",
         emptyLabel: "No matching organizer requests.",
       };
-    case "sponsor":
-      return {
-        label: "Sponsor requests",
-        searchPlaceholder: "Search by event, shop, product, or sponsor request details...",
-        resultLabel: "sponsor request",
-        queueLabel: "Filtered sponsor requests",
-        emptyLabel: "No matching sponsor requests.",
-      };
     case "report":
       return {
         label: "Event reports",
@@ -99,12 +90,10 @@ export default function AdminInboxPage() {
   const [organizers, setOrganizers] = useState([]);
   const [reports, setReports] = useState([]);
   const [events, setEvents] = useState([]);
-  const [sponsors, setSponsors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState({ type: "", message: "" });
   const [selectedId, setSelectedId] = useState("");
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [notesById, setNotesById] = useState({});
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -124,20 +113,18 @@ export default function AdminInboxPage() {
     setLoading(true);
 
     try {
-      const [shopRows, shopImageRows, organizerRows, reportRows, eventRows, sponsorRows] = await Promise.all([
+      const [shopRows, shopImageRows, organizerRows, reportRows, eventRows] = await Promise.all([
         adminApi.getShops(adminToken),
         adminApi.getShopImages(adminToken),
         adminApi.getOrganizers(adminToken),
         adminApi.getReports(adminToken),
         adminApi.getEvents(adminToken),
-        adminApi.getSponsors(adminToken),
       ]);
       setShops(shopRows);
       setShopImages(shopImageRows);
       setOrganizers(organizerRows);
       setReports(reportRows);
       setEvents(eventRows);
-      setSponsors(sponsorRows);
       setStatus({ type: "", message: "" });
     } catch (error) {
       setStatus({ type: "error", message: error.message });
@@ -167,13 +154,13 @@ export default function AdminInboxPage() {
       setFilter(initialFilter);
     }
 
-    if (["all", "shop", "organizer", "sponsor", "report"].includes(queryType || "")) {
+    if (["all", "shop", "organizer", "report"].includes(queryType || "")) {
       setTypeFilter(queryType);
     } else {
       setTypeFilter("all");
     }
 
-    if (["all", "pending", "approved", "reviewed", "resolved", "dismissed", "rejected"].includes(queryStatus || "")) {
+    if (["all", "pending", "approved", "reviewed", "resolved", "dismissed"].includes(queryStatus || "")) {
       setStatusFilter(queryStatus);
     } else {
       setStatusFilter("all");
@@ -227,23 +214,13 @@ export default function AdminInboxPage() {
       raw: report,
     }));
 
-    const sponsorItems = sponsors.map((sponsor) => ({
-      id: `sponsor-${sponsor.sponsor_id}`,
-      type: "sponsor",
-      status: sponsor.status || "pending",
-      title: sponsor.event_title || `Event #${sponsor.event_id}`,
-      subtitle: sponsor.shop_name || `Shop #${sponsor.shop_id}`,
-      createdAt: sponsor.created_at || null,
-      raw: sponsor,
-    }));
-
-    const merged = [...shopItems, ...organizerItems, ...reportItems, ...sponsorItems];
+    const merged = [...shopItems, ...organizerItems, ...reportItems];
 
     const filtered = merged.filter((item) => {
       const now = Date.now();
 
       if (filter === "reports" && item.type !== "report") return false;
-      if (filter === "approvals" && !["shop", "organizer", "sponsor"].includes(item.type)) return false;
+      if (filter === "approvals" && !["shop", "organizer"].includes(item.type)) return false;
       if (filter === "pending" && item.status !== "pending") return false;
       if (typeFilter !== "all" && item.type !== typeFilter) return false;
       if (statusFilter === "all") {
@@ -263,10 +240,7 @@ export default function AdminInboxPage() {
         const relatedEventStatus =
           item.type === "report"
             ? String(item.raw?.event_status || "draft").toLowerCase()
-            : item.type === "sponsor"
-              ? String(events.find((eventItem) => String(eventItem.event_id) === String(item.raw?.event_id))?.status || "")
-                  .toLowerCase()
-              : "all";
+            : "all";
 
         if (!relatedEventStatus || relatedEventStatus !== eventStatusFilter) return false;
       }
@@ -305,7 +279,7 @@ export default function AdminInboxPage() {
 
       return getItemTimestamp(right) - getItemTimestamp(left);
     });
-  }, [createdFilter, eventStatusFilter, events, filter, organizers, reports, searchTerm, shops, sortBy, sponsors, statusFilter, typeFilter]);
+  }, [createdFilter, eventStatusFilter, events, filter, organizers, reports, searchTerm, shops, sortBy, statusFilter, typeFilter]);
 
   useEffect(() => {
     setPage(1);
@@ -341,17 +315,12 @@ export default function AdminInboxPage() {
         tone: "organizer",
       },
       {
-        label: "Pending Sponsors",
-        value: sponsors.filter((sponsor) => String(sponsor.status).toLowerCase() === "pending").length,
-        tone: "sponsor",
-      },
-      {
         label: "Pending Reports",
         value: reports.filter((report) => String(report.status).toLowerCase() === "pending").length,
         tone: "report",
       },
     ],
-    [organizers, reports, shops, sponsors]
+    [organizers, reports, shops]
   );
   const paginatedItems = useMemo(() => paginate(items, page), [items, page]);
   const hasActiveFilters =
@@ -367,16 +336,6 @@ export default function AdminInboxPage() {
         { value: "all", label: "All statuses" },
         { value: "pending", label: "Pending" },
         { value: "approved", label: "Approved" },
-        { value: "rejected", label: "Rejected" },
-      ];
-    }
-
-    if (typeFilter === "sponsor") {
-      return [
-        { value: "all", label: "All statuses" },
-        { value: "pending", label: "Pending" },
-        { value: "approved", label: "Approved" },
-        { value: "rejected", label: "Rejected" },
       ];
     }
 
@@ -397,10 +356,9 @@ export default function AdminInboxPage() {
       { value: "reviewed", label: "Reviewed" },
       { value: "resolved", label: "Resolved" },
       { value: "dismissed", label: "Dismissed" },
-      { value: "rejected", label: "Rejected" },
     ];
   }, [typeFilter]);
-  const showEventStatusFilter = typeFilter === "all" || typeFilter === "report" || typeFilter === "sponsor";
+  const showEventStatusFilter = typeFilter === "all" || typeFilter === "report";
   const typeContext = useMemo(() => getTypeContext(typeFilter), [typeFilter]);
   const selectedItems = useMemo(
     () => items.filter((item) => selectedIds.includes(item.id)),
@@ -414,14 +372,6 @@ export default function AdminInboxPage() {
       return [
         { key: "approve", label: "Approve selected" },
         { key: "reject", label: "Reject selected" },
-      ];
-    }
-
-    if (selectableBulkType === "sponsor") {
-      return [
-        { key: "approve", label: "Approve selected" },
-        { key: "reject", label: "Reject selected" },
-        { key: "pending", label: "Keep pending" },
       ];
     }
 
@@ -479,14 +429,18 @@ export default function AdminInboxPage() {
 
   const handleShopVerification = async (shopId, nextValue) => {
     try {
-      await adminApi.updateShopVerification(
-        adminToken,
-        shopId,
-        nextValue,
-        notesById[`shop-${shopId}`] || null
-      );
-      setStatus({ type: "success", message: `Shop #${shopId} updated` });
-      loadData();
+      if (Number(nextValue) === 2) {
+        await adminApi.deleteShopRequest(adminToken, shopId);
+        setStatus({ type: "success", message: `Shop request #${shopId} removed` });
+      } else {
+        await adminApi.updateShopVerification(
+          adminToken,
+          shopId,
+          nextValue
+        );
+        setStatus({ type: "success", message: `Shop #${shopId} updated` });
+      }
+      await loadData();
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     }
@@ -494,14 +448,18 @@ export default function AdminInboxPage() {
 
   const handleOrganizerVerification = async (organizerId, nextValue) => {
     try {
-      await adminApi.updateOrganizerVerification(
-        adminToken,
-        organizerId,
-        nextValue,
-        notesById[`organizer-${organizerId}`] || null
-      );
-      setStatus({ type: "success", message: `Organizer #${organizerId} updated` });
-      loadData();
+      if (Number(nextValue) === 2) {
+        await adminApi.deleteOrganizerRequest(adminToken, organizerId);
+        setStatus({ type: "success", message: `Organizer request #${organizerId} removed` });
+      } else {
+        await adminApi.updateOrganizerVerification(
+          adminToken,
+          organizerId,
+          nextValue
+        );
+        setStatus({ type: "success", message: `Organizer #${organizerId} updated` });
+      }
+      await loadData();
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     }
@@ -509,7 +467,7 @@ export default function AdminInboxPage() {
 
   const handleReportStatusChange = async (reportId, nextStatus) => {
     try {
-      await adminApi.updateReportStatus(adminToken, reportId, nextStatus, notesById[`report-${reportId}`] || null);
+      await adminApi.updateReportStatus(adminToken, reportId, nextStatus);
       setStatus({ type: "success", message: `Report #${reportId} updated` });
       loadData();
     } catch (error) {
@@ -537,20 +495,6 @@ export default function AdminInboxPage() {
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     }
-  };
-
-  const handleSponsorStatusChange = async (sponsorId, nextStatus) => {
-    try {
-      await adminApi.updateSponsorStatus(adminToken, sponsorId, nextStatus, notesById[`sponsor-${sponsorId}`] || null);
-      setStatus({ type: "success", message: `Sponsor #${sponsorId} updated` });
-      loadData();
-    } catch (error) {
-      setStatus({ type: "error", message: error.message });
-    }
-  };
-
-  const handleNoteChange = (itemId, value) => {
-    setNotesById((current) => ({ ...current, [itemId]: value }));
   };
 
   const handleShopImageUpload = async (shopId, file) => {
@@ -603,37 +547,31 @@ export default function AdminInboxPage() {
       if (selectableBulkType === "shop") {
         await Promise.all(
           selectedItems.map((item) =>
-            adminApi.updateShopVerification(
-              adminToken,
-              item.raw.shop_id,
-              actionKey === "approve" ? 1 : 2,
-              notesById[item.id] || null
-            )
+            actionKey === "reject"
+              ? adminApi.deleteShopRequest(adminToken, item.raw.shop_id)
+              : adminApi.updateShopVerification(
+                  adminToken,
+                  item.raw.shop_id,
+                  1
+                )
           )
         );
       } else if (selectableBulkType === "organizer") {
         await Promise.all(
           selectedItems.map((item) =>
-            adminApi.updateOrganizerVerification(
-              adminToken,
-              item.raw.organizer_id,
-              actionKey === "approve" ? 1 : 2,
-              notesById[item.id] || null
-            )
-          )
-        );
-      } else if (selectableBulkType === "sponsor") {
-        const nextStatus =
-          actionKey === "approve" ? "approved" : actionKey === "reject" ? "rejected" : "pending";
-        await Promise.all(
-          selectedItems.map((item) =>
-            adminApi.updateSponsorStatus(adminToken, item.raw.sponsor_id, nextStatus, notesById[item.id] || null)
+            actionKey === "reject"
+              ? adminApi.deleteOrganizerRequest(adminToken, item.raw.organizer_id)
+              : adminApi.updateOrganizerVerification(
+                  adminToken,
+                  item.raw.organizer_id,
+                  1
+                )
           )
         );
       } else if (selectableBulkType === "report") {
         await Promise.all(
           selectedItems.map((item) =>
-            adminApi.updateReportStatus(adminToken, item.raw.report_id, actionKey, notesById[item.id] || null)
+            adminApi.updateReportStatus(adminToken, item.raw.report_id, actionKey)
           )
         );
       }
@@ -707,7 +645,6 @@ export default function AdminInboxPage() {
                   <option value="all">All types</option>
                   <option value="shop">Shop</option>
                   <option value="organizer">Organizer</option>
-                  <option value="sponsor">Sponsor</option>
                   <option value="report">Report</option>
                 </select>
               </label>
@@ -887,11 +824,7 @@ export default function AdminInboxPage() {
             className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[32px] bg-white p-7 shadow-2xl ring-1 ring-[#e6ddc9]"
             onClick={(event) => event.stopPropagation()}
           >
-            <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">Review Detail</p>
-                <h3 className="mt-3 text-3xl font-semibold text-[#2f3529]">{selectedItem.title}</h3>
-              </div>
+            <div className="mb-6 flex items-start justify-end gap-4">
               <button
                 type="button"
                 onClick={closeDetail}
@@ -905,8 +838,6 @@ export default function AdminInboxPage() {
                 <ShopDetail
                   item={selectedItem.raw}
                   images={shopImages.filter((image) => String(image.shop_id) === String(selectedItem.raw.shop_id))}
-                  note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
-                  onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
                   onUploadImage={handleShopImageUpload}
                   getVerificationStatusLabel={getVerificationStatusLabel}
                   onDeleteImage={(imageId) =>
@@ -937,8 +868,6 @@ export default function AdminInboxPage() {
             ) : selectedItem.type === "organizer" ? (
                 <OrganizerDetail
                   item={selectedItem.raw}
-                  note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
-                  onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
                   getVerificationStatusLabel={getVerificationStatusLabel}
                   onAction={(organizerId, nextValue) =>
                     requestConfirmation({
@@ -953,29 +882,9 @@ export default function AdminInboxPage() {
                   })
                 }
               />
-            ) : selectedItem.type === "sponsor" ? (
-              <SponsorDetail
-                item={selectedItem.raw}
-                note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
-                onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
-                onStatusChange={(sponsorId, nextStatus) =>
-                  requestConfirmation({
-                    title: `Update sponsor to ${nextStatus}`,
-                    message: `Confirm this sponsor status change for request #${sponsorId}?`,
-                    confirmLabel: "Confirm status",
-                    tone: nextStatus === "approved" ? "positive" : "danger",
-                    action: async () => {
-                      await handleSponsorStatusChange(sponsorId, nextStatus);
-                      closeDetail();
-                    },
-                  })
-                }
-              />
             ) : (
               <ReportDetail
                 item={selectedItem.raw}
-                note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
-                onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
                 onReportStatusChange={(reportId, nextStatus) =>
                   requestConfirmation({
                     title: `Update report to ${nextStatus}`,

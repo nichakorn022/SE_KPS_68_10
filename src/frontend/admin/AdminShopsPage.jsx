@@ -55,7 +55,6 @@ export default function AdminShopsPage() {
   const [productSaving, setProductSaving] = useState(false);
   const [productDeleting, setProductDeleting] = useState(false);
   const [confirmAction, setConfirmAction] = useState(null);
-  const [notesByShopId, setNotesByShopId] = useState({});
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState({ type: "", message: "" });
 
@@ -178,12 +177,7 @@ export default function AdminShopsPage() {
 
   const handleStatusChange = async (shopId, verifiedStatus) => {
     try {
-      await adminApi.updateShopVerification(
-        adminToken,
-        shopId,
-        verifiedStatus,
-        notesByShopId[shopId] ?? selectedShop?.admin_note ?? null
-      );
+      await adminApi.updateShopVerification(adminToken, shopId, verifiedStatus);
       setActiveProduct(null);
       setSelectedShop(null);
       setStatus({ type: "success", message: `Shop #${shopId} updated` });
@@ -408,8 +402,6 @@ export default function AdminShopsPage() {
           handleUpdateShop={handleUpdateShop}
           shopSaving={shopSaving}
           setConfirmAction={setConfirmAction}
-          notesByShopId={notesByShopId}
-          setNotesByShopId={setNotesByShopId}
           selectedImages={selectedImages}
           paginatedShopImages={paginatedShopImages}
           setShopImagesPage={setShopImagesPage}

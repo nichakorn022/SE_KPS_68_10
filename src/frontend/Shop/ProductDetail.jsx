@@ -487,6 +487,13 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
     shop: shop?.shop_name || `Shop #${product.shop_id}`,
   };
 
+  const handleBuyNow = () => {
+    if (!inStock || isOwnProduct) return;
+
+    addToCart(currentProduct, qty);
+    navigate("/checkout");
+  };
+
   return (
     <div className="min-h-screen bg-[#F5F3E9] font-sans text-gray-800">
       {console.log("ProductDetail rendering", { product, loading, error })}
@@ -587,6 +594,7 @@ export default function ProductDetail({ cart: cartProp, onAddToCart }) {
                   {isOwnProduct ? "สินค้าร้านคุณ" : addedFeedback ? "เพิ่มแล้ว ✓" : "เพิ่มไปยังตะกร้า"}
                 </button>
                 <button
+                  onClick={handleBuyNow}
                   disabled={!inStock || isOwnProduct}
                   className="flex-1 bg-[#485B3B] text-white font-bold py-3 rounded-2xl hover:bg-[#3a4a2f] transition-all shadow-lg active:scale-95 disabled:opacity-40"
                 >

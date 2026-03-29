@@ -132,6 +132,25 @@ exports.getSellerWorkspaceSummary = async (req, res) => {
   }
 };
 
+exports.getSellerOrders = async (req, res) => {
+  try {
+    if (req.user?.role !== "shop") {
+      return res.status(403).json({
+        message: "This workspace is available only for shop accounts",
+      });
+    }
+
+    const rows = await orderService.getSellerOrders(req.user.user_id, req.query);
+    return res.json(rows);
+  } catch (error) {
+    const statusCode = error.statusCode || 500;
+    return res.status(statusCode).json({
+      message: statusCode >= 400 && statusCode < 500 ? error.message : "Failed to fetch seller orders",
+      error: error.message,
+    });
+  }
+};
+
 exports.updateOrderStatus = async (req, res) => {
   const { id } = req.params;
 
@@ -180,6 +199,45 @@ exports.mockMarkOrderPaid = async (req, res) => {
   } catch (error) {
     return res.status(error.statusCode || 500).json({
       message: error.message || "Failed to mark order as paid",
+    });
+  }
+};
+
+exports.sellerMarkOrderPaid = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    if (req.user?.role !== "shop") {
+      return res.status(403).json({
+        message: "This workspace is available only for shop accounts",
+      });
+    }
+
+    const order = await orderService.getOrderById(id);
+    const result = await orderService.markSellerOrderPaid(req.user.user_id, id);
+
+    if (result.message !== "Order already paid") {
+      try {
+        const userInfo = await fetchUserEmail(order.user_id);
+        if (userInfo?.email) {
+          const items = await fetchOrderItems(id);
+          await sendOrderPaidEmail({
+            to: userInfo.email,
+            username: userInfo.username,
+            orderId: id,
+            items,
+            totalAmount: order.total_amount,
+          });
+        }
+      } catch (emailError) {
+        console.error("Failed to send order paid email:", emailError.message);
+      }
+    }
+
+    return res.json(result);
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.message || "Failed to confirm order payment",
     });
   }
 };

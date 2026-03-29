@@ -326,7 +326,7 @@ export default function OrderSuccessPage() {
         <section className="flex flex-wrap justify-center gap-4 pb-16 pt-10">
           <button
             type="button"
-            onClick={handleTrackOrder}
+            onClick={() => navigate("/profile")}
             className="inline-flex items-center gap-2 rounded-full bg-[#7B9A67] px-8 py-4 text-lg font-semibold text-white shadow-[0_18px_36px_rgba(123,154,103,0.20)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_24px_44px_rgba(123,154,103,0.28)] active:translate-y-[1px]"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-5 w-5">

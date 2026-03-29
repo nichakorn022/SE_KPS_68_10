@@ -334,6 +334,82 @@ async function getSellerWorkspaceSummary(userId) {
   };
 }
 
+async function getSellerOrders(userId, { payment_status, status } = {}) {
+  const shop = await ensureShopByOwner(userId);
+  const conditions = ["tp.shop_id = ?"];
+  const values = [shop.shop_id];
+
+  if (payment_status) {
+    conditions.push("o.payment_status = ?");
+    values.push(payment_status);
+  }
+
+  if (status) {
+    conditions.push("o.status = ?");
+    values.push(status);
+  }
+
+  return query(
+    `SELECT
+        o.order_id,
+        o.user_id,
+        u.username,
+        o.order_date,
+        o.status,
+        o.payment_status,
+        o.fulfillment_status,
+        o.total_amount,
+        COUNT(DISTINCT od.order_detail_id) AS seller_line_items,
+        COALESCE(SUM(od.quantity), 0) AS seller_quantity,
+        COALESCE(SUM(od.subtotal), 0) AS seller_subtotal,
+        CASE
+          WHEN (
+            SELECT COUNT(DISTINCT tp_scope.shop_id)
+            FROM order_details od_scope
+            JOIN tea_product tp_scope ON tp_scope.product_id = od_scope.product_id
+            WHERE od_scope.order_id = o.order_id
+          ) <= 1 THEN 1
+          ELSE 0
+        END AS is_single_shop_order
+     FROM order_details od
+     JOIN tea_product tp ON tp.product_id = od.product_id
+     JOIN orders o ON o.order_id = od.order_id
+     JOIN users u ON u.user_id = o.user_id
+     WHERE ${conditions.join(" AND ")}
+     GROUP BY
+       o.order_id,
+       o.user_id,
+       u.username,
+       o.order_date,
+       o.status,
+       o.payment_status,
+       o.fulfillment_status,
+       o.total_amount
+     ORDER BY
+       CASE
+         WHEN o.payment_status = 'unpaid' THEN 0
+         WHEN o.status = 'pending' THEN 1
+         ELSE 2
+       END,
+       o.order_date DESC,
+       o.order_id DESC`,
+    values
+  );
+}
+
+async function getSellerOrderScope(userId, orderId) {
+  const orders = await getSellerOrders(userId);
+  const order = orders.find((row) => Number(row.order_id) === Number(orderId));
+
+  if (!order) {
+    const error = new Error("Order not found for this shop");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return order;
+}
+
 async function updateOrderStatus(id, status) {
   if (!allowedStatuses.has(status)) {
     const error = new Error("status must be pending, paid, or cancelled");
@@ -439,6 +515,18 @@ async function markOrderPaid(id) {
   }
 }
 
+async function markSellerOrderPaid(userId, id) {
+  const order = await getSellerOrderScope(userId, id);
+
+  if (!Number(order.is_single_shop_order)) {
+    const error = new Error("This order contains products from multiple shops and must be confirmed by admin");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return markOrderPaid(id);
+}
+
 async function deleteOrder(id) {
   try {
     await beginTransaction();
@@ -485,8 +573,10 @@ module.exports = {
   getOrdersByUser,
   getSellerRevenueTrend,
   getSellerWorkspaceSummary,
+  getSellerOrders,
   updateOrderStatus,
   markOrderPaid,
+  markSellerOrderPaid,
   deleteOrder
 };
 

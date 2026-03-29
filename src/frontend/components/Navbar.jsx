@@ -13,7 +13,7 @@ export default function Navbar() {
   return (
     <nav className="flex items-center justify-between px-8 py-2 bg-[#AEBC9F] w-full sticky top-0 z-50 shadow-sm">
       <div className="flex items-center h-16 w-32 md:w-40">
-        <img src="./Pictrue/Logo.png" alt="ATC Logo" className="h-full object-contain" />
+        <img src="./Pictrue/Logo.png" alt="Teactive Logo" className="h-full object-contain" />
       </div>
 
       <div className="flex items-center gap-6 md:gap-12 text-[17px] font-medium text-[#4a4a4a]">

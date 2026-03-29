@@ -1,8 +1,43 @@
 ﻿const orderService = require("../services/orderService");
+const { query } = require("../utils/dbHelpers");
+const { sendOrderPlacedEmail, sendOrderPaidEmail } = require("../utils/mailer");
+
+async function fetchUserEmail(userId) {
+  const rows = await query("SELECT username, email FROM users WHERE user_id = ? LIMIT 1", [userId]);
+  return rows[0] || null;
+}
+
+async function fetchOrderItems(orderId) {
+  return query(
+    `SELECT od.product_id, tp.tea_name, od.quantity, od.unit_price, od.subtotal
+     FROM order_details od
+     JOIN tea_product tp ON tp.product_id = od.product_id
+     WHERE od.order_id = ?`,
+    [orderId]
+  );
+}
 
 exports.createOrder = async (req, res) => {
   try {
     const result = await orderService.createOrder(req.body);
+
+    // Send "order placed – please pay" email
+    try {
+      const userInfo = await fetchUserEmail(req.body.user_id);
+      if (userInfo?.email) {
+        const items = await fetchOrderItems(result.order_id);
+        await sendOrderPlacedEmail({
+          to: userInfo.email,
+          username: userInfo.username,
+          orderId: result.order_id,
+          items,
+          totalAmount: result.total_amount,
+        });
+      }
+    } catch (emailError) {
+      console.error("Failed to send order placed email:", emailError.message);
+    }
+
     return res.status(201).json(result);
   } catch (error) {
     return res.status(error.statusCode || 400).json({
@@ -119,6 +154,26 @@ exports.mockMarkOrderPaid = async (req, res) => {
     }
 
     const result = await orderService.markOrderPaid(id);
+
+    // Send "payment success" email
+    if (result.message !== "Order already paid") {
+      try {
+        const userInfo = await fetchUserEmail(order.user_id);
+        if (userInfo?.email) {
+          const items = await fetchOrderItems(id);
+          await sendOrderPaidEmail({
+            to: userInfo.email,
+            username: userInfo.username,
+            orderId: id,
+            items,
+            totalAmount: order.total_amount,
+          });
+        }
+      } catch (emailError) {
+        console.error("Failed to send order paid email:", emailError.message);
+      }
+    }
+
     return res.json(result);
   } catch (error) {
     return res.status(error.statusCode || 500).json({

@@ -623,12 +623,6 @@ export default function CheckoutPage() {
                   badge="แนะนำ"
                 />
                 <PaymentOption
-                  selected={paymentMethod === "bank"}
-                  onClick={() => setPaymentMethod("bank")}
-                  title="โอนผ่านธนาคาร"
-                  description="แนบสลิปหลังชำระเงิน"
-                />
-                <PaymentOption
                   selected={paymentMethod === "cod"}
                   onClick={() => setPaymentMethod("cod")}
                   title="เก็บเงินปลายทาง"

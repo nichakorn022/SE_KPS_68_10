@@ -56,7 +56,7 @@ const HERO_SLIDES = [
   },
 ];
 
-const TABS = ["ทั้งหมด", "เมนูใหม่", "ยอดฮิต", "แนะนำ", "โปรโมชัน"];
+const TABS = ["ทั้งหมด", "เมนูใหม่", "ยอดฮิต", "แนะนำ"];
 const CATEGORIES = ["Green Tea", "Black Tea", "Oolong Tea", "White Tea", "Herbal Tea"];
 
 function toAssetUrl(imagePath) {
@@ -65,6 +65,13 @@ function toAssetUrl(imagePath) {
 
 function formatPrice(price) {
   return `฿${Number(price ?? 0).toLocaleString("th-TH")}`;
+}
+
+function formatCompactSalesCount(value) {
+  const count = Number(value ?? 0);
+  if (count >= 1000000) return `${(count / 1000000).toFixed(count >= 10000000 ? 0 : 1)}M+`;
+  if (count >= 1000) return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1)}K+`;
+  return `${count}`;
 }
 
 function getLocation(shop) {
@@ -87,18 +94,67 @@ function buildProductSignals(product) {
   const stock = Number(product.stock ?? 0);
   const price = Number(product.price ?? 0);
   const weeklySales = Number(product.sales_7d ?? 0);
+  const avgRating = Number(product.avg_rating ?? 0);
+  const reviewCount = Number(product.review_count ?? 0);
 
   return {
     stock,
     price,
     weeklySales,
+    avgRating,
+    reviewCount,
     soldOut: stock <= 0,
     lowStock: stock > 0 && stock <= 3,
     popular: weeklySales > 0,
     featured: price >= 90,
     freshPick: stock > 3 && stock <= 8,
-    promo: price <= 70,
   };
+}
+
+function scoreRecommendedProduct(product) {
+  const rating = Number(product.avgRating ?? 0);
+  const reviewCount = Number(product.reviewCount ?? 0);
+  const weeklySales = Number(product.weeklySales ?? 0);
+  const stock = Number(product.stock ?? 0);
+  const productId = Number(product.id ?? 0);
+
+  return (
+    rating * 1000 +
+    Math.min(reviewCount, 50) * 25 +
+    Math.min(weeklySales, 200) * 5 +
+    Math.min(stock, 20) +
+    productId / 1000
+  );
+}
+
+function getTabFilteredProducts(products, activeTab) {
+  if (activeTab === "เมนูใหม่") {
+    return [...products]
+      .filter((product) => !product.soldOut)
+      .sort((a, b) => Number(b.id ?? 0) - Number(a.id ?? 0))
+      .slice(0, 8);
+  }
+
+  if (activeTab === "ยอดฮิต") {
+    return [...products].sort((a, b) => {
+      const salesDiff = Number(b.weeklySales ?? 0) - Number(a.weeklySales ?? 0);
+      if (salesDiff !== 0) return salesDiff;
+      return Number(b.id ?? 0) - Number(a.id ?? 0);
+    });
+  }
+
+  if (activeTab === "แนะนำ") {
+    return [...products]
+      .filter((product) => !product.soldOut)
+      .sort((a, b) => {
+        const scoreDiff = scoreRecommendedProduct(b) - scoreRecommendedProduct(a);
+        if (scoreDiff !== 0) return scoreDiff;
+        return Number(b.id ?? 0) - Number(a.id ?? 0);
+      })
+      .slice(0, 8);
+  }
+
+  return products;
 }
 
 function normalizeProduct(product, shopsById, productImageMap) {
@@ -131,25 +187,10 @@ function filterProducts(products, { search, activeTab, activeCategory }) {
 
     const matchesCategory = !activeCategory || product.tag === activeCategory;
 
-    const matchesTab =
-      activeTab === "ทั้งหมด" ||
-      (activeTab === "เมนูใหม่" && product.freshPick) ||
-      (activeTab === "ยอดฮิต" && product.popular) ||
-      (activeTab === "แนะนำ" && product.featured) ||
-      (activeTab === "โปรโมชัน" && product.promo);
-
-    return matchesSearch && matchesCategory && matchesTab;
+    return matchesSearch && matchesCategory;
   });
 
-  if (activeTab === "ยอดฮิต") {
-    return [...filtered].sort((a, b) => {
-      const salesDiff = Number(b.weeklySales ?? 0) - Number(a.weeklySales ?? 0);
-      if (salesDiff !== 0) return salesDiff;
-      return Number(b.id ?? 0) - Number(a.id ?? 0);
-    });
-  }
-
-  return filtered;
+  return getTabFilteredProducts(filtered, activeTab);
 }
 
 function getSectionTitle(search, activeTab, activeCategory) {
@@ -169,7 +210,6 @@ function getSectionDescription(search, activeTab, activeCategory) {
   if (activeTab === "เมนูใหม่") return "เมนูที่สต็อกยังสดและเหมาะกับการสำรวจร้านใหม่ๆ";
   if (activeTab === "ยอดฮิต") return "จัดอันดับจากจำนวนชิ้นที่ขายได้จริงในช่วง 7 วันล่าสุด แล้วเรียงจากมากไปน้อย";
   if (activeTab === "แนะนำ") return "เครื่องดื่มที่ราคาสูงขึ้นนิด แต่ภาพรวมดูพรีเมียมและเหมาะเป็นตัวเด่น";
-  if (activeTab === "โปรโมชัน") return "เมนูเข้าถึงง่าย เหมาะสำหรับเริ่มลองหรือสั่งหลายแก้ว";
   return "หน้าเดียวสำหรับค้นหาเมนู ดูร้าน และหยิบสินค้าลงตะกร้าแบบไม่รู้สึกโล่งหรือแข็งเกินไป";
 }
 
@@ -271,6 +311,12 @@ function CategoryBar({ categories, active, onSelect }) {
 }
 
 function ProductCard({ product, onAddToCart }) {
+  const metaLabel = `ขายได้ ${formatCompactSalesCount(product.weeklySales)} ชิ้น`;
+  const hasReviews = Number(product.reviewCount ?? 0) > 0;
+  const ratingLabel = hasReviews
+    ? `${Number(product.avgRating ?? 0).toFixed(1)} (${Number(product.reviewCount ?? 0)})`
+    : "";
+
   return (
     <article className="group relative overflow-hidden rounded-[2rem] border border-[#DEE5D5] bg-white/92 shadow-[0_18px_50px_rgba(72,91,59,0.08)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_70px_rgba(72,91,59,0.14)]">
       <Link to={`/product/${product.id}`} className="block">
@@ -337,10 +383,24 @@ function ProductCard({ product, onAddToCart }) {
           </p>
         </div>
 
-        <div className="flex items-end justify-between gap-3">
-          <div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 space-y-1.5">
             <p className="text-[13px] text-[#859479]">เริ่มต้น</p>
-            <p className="text-[20px] font-semibold text-[#253621]">{formatPrice(product.price)}</p>
+            <div className="flex items-center gap-2 overflow-hidden whitespace-nowrap">
+              <p className="text-[20px] font-semibold text-[#253621]">{formatPrice(product.price)}</p>
+              <div className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[11px] text-[#3C4636]">
+                {hasReviews ? (
+                  <>
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-[#F0C65A] bg-[#FFF7D9] px-1.5 py-[2px] font-semibold leading-none text-[#2D2A24]">
+                      <span className="text-[10px] text-[#E0AA20]">★</span>
+                      <span>{ratingLabel}</span>
+                    </span>
+                    <span className="h-3.5 w-px shrink-0 bg-[#D8DDD2]" />
+                  </>
+                ) : null}
+                <span className="truncate font-medium text-[#3D4337]">{metaLabel}</span>
+              </div>
+            </div>
           </div>
 
           <button
@@ -612,7 +672,7 @@ function CartDrawer({ cart, onClose, onUpdateQty, onCheckout }) {
 
 function LoadingState() {
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {[...Array(8)].map((_, index) => (
         <div
           key={index}
@@ -897,7 +957,7 @@ export default function ShopHome() {
                     onClearFilters={clearFilters}
                   />
                 ) : (
-                  <div className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-5">
+                  <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
                     {filteredProducts.map((product) => (
                       <ProductCard key={product.id} product={product} onAddToCart={addToCart} />
                     ))}

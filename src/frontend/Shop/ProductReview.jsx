@@ -302,7 +302,6 @@ export default function ProductReview({ productId }) {
                     <div>
                       <div style={s.nameRow}>
                         <span style={s.reviewerName}>{review.name}</span>
-                        {review.verified && <span style={s.verifiedBadge}>Verified Buyer</span>}
                       </div>
                       <p style={s.reviewDate}>{review.date}</p>
                     </div>
@@ -405,7 +404,6 @@ export default function ProductReview({ productId }) {
                     <div>
                       <div style={s.nameRow}>
                         <span style={s.reviewerName}>{review.name}</span>
-                        {review.verified && <span style={s.verifiedBadgeDark}>Verified Buyer</span>}
                       </div>
                       <p style={s.reviewDate}>{review.date}</p>
                     </div>

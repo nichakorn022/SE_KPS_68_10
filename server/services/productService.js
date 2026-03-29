@@ -1,4 +1,4 @@
-const { query } = require("../utils/dbHelpers");
+﻿const { query } = require("../utils/dbHelpers");
 
 async function getProducts() {
   return query(
@@ -10,6 +10,8 @@ async function getProducts() {
         tp.description,
         tp.price,
         tp.stock,
+        COALESCE(review_stats.avg_rating, 0) AS avg_rating,
+        COALESCE(review_stats.review_count, 0) AS review_count,
         COALESCE(SUM(
           CASE
             WHEN o.status = 'paid' AND o.order_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
@@ -18,9 +20,27 @@ async function getProducts() {
           END
         ), 0) AS sales_7d
      FROM tea_product tp
+     LEFT JOIN (
+       SELECT
+         od.product_id,
+         AVG(pr.rating) AS avg_rating,
+         COUNT(pr.review_id) AS review_count
+       FROM product_review pr
+       INNER JOIN order_details od ON od.order_detail_id = pr.order_detail_id
+       GROUP BY od.product_id
+     ) review_stats ON review_stats.product_id = tp.product_id
      LEFT JOIN order_details od ON od.product_id = tp.product_id
      LEFT JOIN orders o ON o.order_id = od.order_id
-     GROUP BY tp.product_id, tp.shop_id, tp.tea_name, tp.tea_type, tp.description, tp.price, tp.stock
+     GROUP BY
+       tp.product_id,
+       tp.shop_id,
+       tp.tea_name,
+       tp.tea_type,
+       tp.description,
+       tp.price,
+       tp.stock,
+       review_stats.avg_rating,
+       review_stats.review_count
      ORDER BY tp.product_id DESC`
   );
 }
@@ -165,3 +185,4 @@ module.exports = {
   updateProductByOwner,
   deleteProductByOwner
 };
+

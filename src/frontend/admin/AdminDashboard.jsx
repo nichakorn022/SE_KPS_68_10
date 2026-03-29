@@ -216,7 +216,7 @@ export default function AdminDashboard() {
       {
         title: "Pending Shops",
         value: summary.pendingShops,
-        helper: "Tea shop requests waiting for approval",
+        helper: "Shop requests waiting for approval",
         href: "/admin/requests-reports?type=shop&status=pending",
         tone: summary.pendingShops > 0 ? "danger" : "neutral",
       },
@@ -335,9 +335,9 @@ export default function AdminDashboard() {
 
   const dailyChecklist = [
     {
-      label: "Moderation queue",
+      label: "Pending actions",
       value: summary.totalPending,
-      helper: "Pending requests, reports, and sponsors",
+      helper: "Requests, reports, and sponsor items awaiting action",
       href: "/admin/requests-reports?status=pending",
     },
     {
@@ -390,11 +390,10 @@ export default function AdminDashboard() {
             <div>
               <p className="text-sm uppercase tracking-[0.35em] text-white/70">Admin Overview</p>
               <h3 className="mt-4 max-w-2xl text-4xl font-semibold leading-tight">
-                Track approvals, moderation, events, and platform movement from one dashboard.
+                Admin dashboard
               </h3>
               <p className="mt-5 max-w-2xl text-sm leading-7 text-white/80">
-                Signed in as {adminUser?.email || "admin"}. Use this page as the daily starting point for pending actions
-                and monthly summaries.
+                Signed in as {adminUser?.email || "admin"}. Review pending actions, recent activity, and monthly totals from here.
               </p>
               <p className="mt-3 text-xs uppercase tracking-[0.22em] text-white/60">
                 Auto refresh every 45s | Last updated {formatDate(lastUpdatedAt)}
@@ -405,7 +404,7 @@ export default function AdminDashboard() {
               onClick={handleRefreshNow}
               className="rounded-full bg-white/10 px-4 py-2 text-xs font-medium text-white transition hover:bg-white/15"
             >
-              Refresh now
+              Refresh
             </button>
           </div>
 
@@ -452,10 +451,10 @@ export default function AdminDashboard() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">Urgent Queue</p>
-              <h3 className="mt-3 text-2xl font-semibold text-[#2f3529]">Items that need attention now</h3>
+              <h3 className="mt-3 text-2xl font-semibold text-[#2f3529]">Priority items</h3>
             </div>
             <Link to="/admin/requests-reports?status=pending" className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b]">
-              Open queue
+              Open requests
             </Link>
           </div>
 
@@ -491,10 +490,10 @@ export default function AdminDashboard() {
       <div className="rounded-[32px] bg-white p-7 shadow-sm ring-1 ring-[#e6ddc9]">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">Daily Focus</p>
-            <h3 className="mt-3 text-2xl font-semibold text-[#2f3529]">Operational checkpoints for today</h3>
+            <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">Daily Operations</p>
+            <h3 className="mt-3 text-2xl font-semibold text-[#2f3529]">Admin shortcuts</h3>
             <p className="mt-2 text-sm text-[#5b654d]">
-              Use these shortcuts to move between the pages admin teams open most during routine review work.
+              Open the main admin pages used for routine review and account management.
             </p>
           </div>
         </div>
@@ -534,16 +533,16 @@ export default function AdminDashboard() {
       <div className="rounded-[32px] bg-white p-7 shadow-sm ring-1 ring-[#e6ddc9]">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">Summary Report</p>
+            <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">Monthly Summary</p>
             <h3 className="mt-3 text-2xl font-semibold text-[#2f3529]">Monthly admin summary</h3>
             <p className="mt-2 text-sm text-[#5b654d]">
-              A consolidated report for users, requests, reports, events, and order activity.
+              Monthly totals for accounts, requests, reports, events, and orders.
             </p>
           </div>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="New Users This Month" value={summary.monthlyNewUsers} helper="Compared against last month in the hero section" />
+          <StatCard label="New Users This Month" value={summary.monthlyNewUsers} helper="Monthly signup total" />
           <StatCard label="Requests This Month" value={summary.monthlyRequests} helper="Shops, organizers, reports, and sponsors" />
           <StatCard label="Reports This Month" value={summary.monthlyReports} helper="Event reports created this month" />
           <StatCard label="Orders This Month" value={summary.monthlyOrders} helper="Orders based on order date" />

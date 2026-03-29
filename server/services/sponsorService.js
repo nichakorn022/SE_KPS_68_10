@@ -103,8 +103,27 @@ async function updateSponsorStatus(id, status, adminNote) {
   };
 }
 
+async function deleteSponsorRequest(id) {
+  const result = await query(
+    `DELETE FROM sponsor
+     WHERE sponsor_id = ?`,
+    [id]
+  );
+
+  if (result.affectedRows === 0) {
+    const error = new Error("Sponsor request not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return {
+    message: "Sponsor request deleted"
+  };
+}
+
 module.exports = {
   requestSponsor,
   getSponsorRequests,
-  updateSponsorStatus
+  updateSponsorStatus,
+  deleteSponsorRequest
 };

@@ -43,7 +43,7 @@ export default function AdminLogin({ onLoginSuccess }) {
       <div className="mx-auto grid min-h-[calc(100vh-5rem)] max-w-6xl overflow-hidden rounded-[36px] bg-white shadow-[0_30px_80px_rgba(48,54,38,0.18)] lg:grid-cols-[1.1fr_0.9fr]">
         <section className="flex flex-col justify-between bg-[#485b3b] p-8 text-white md:p-12">
           <div>
-            <p className="text-sm uppercase tracking-[0.4em] text-white/70">ATC Admin</p>
+            <p className="text-sm uppercase tracking-[0.4em] text-white/70">teactive Admin</p>
             <h1 className="mt-6 max-w-md text-5xl font-semibold leading-tight">
               Control products, events, and orders from one place.
             </h1>

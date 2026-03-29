@@ -29,6 +29,7 @@ const AdminShopsPage = lazy(() => import("./frontend/admin/AdminShopsPage.jsx"))
 const AdminEventsPage = lazy(() => import("./frontend/admin/AdminEventsPage.jsx"));
 const AdminOrdersPage = lazy(() => import("./frontend/admin/AdminOrdersPage.jsx"));
 const AdminUsersPage = lazy(() => import("./frontend/admin/AdminUsersPage.jsx"));
+const AdminCommentsPage = lazy(() => import("./frontend/admin/AdminCommentsPage.jsx"));
 
 export const AuthModalContext = createContext(null);
 export const useAuthModal = () => useContext(AuthModalContext);
@@ -141,6 +142,7 @@ function App() {
               <Route path="events" element={<AdminEventsPage />} />
               <Route path="orders" element={<AdminOrdersPage />} />
               <Route path="users" element={<AdminUsersPage />} />
+              <Route path="comments" element={<AdminCommentsPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

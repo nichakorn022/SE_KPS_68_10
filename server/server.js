@@ -69,6 +69,34 @@ const { query } = require("./utils/dbHelpers");
       `);
       console.log("Created product_review table");
     }
+
+    const eventReviewTables = await query(
+      `SELECT TABLE_NAME
+       FROM INFORMATION_SCHEMA.TABLES
+       WHERE TABLE_SCHEMA = DATABASE()
+         AND TABLE_NAME = 'event_review'
+       LIMIT 1`
+    );
+
+    if (eventReviewTables.length === 0) {
+      await query(`
+        CREATE TABLE event_review (
+          review_id INT AUTO_INCREMENT PRIMARY KEY,
+          registration_id INT NOT NULL,
+          overall_rating INT NOT NULL,
+          location_rating INT NOT NULL,
+          atmosphere_rating INT NOT NULL,
+          value_rating INT NOT NULL,
+          comment TEXT,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          CONSTRAINT fk_event_review_registration
+            FOREIGN KEY (registration_id) REFERENCES event_registration(registration_id) ON DELETE CASCADE,
+          UNIQUE KEY unique_registration_review (registration_id)
+        )
+      `);
+      console.log("Created event_review table");
+    }
   } catch (err) {
     console.warn("Could not ensure tables:", err.message);
   }
@@ -237,10 +265,15 @@ app.use("/api/reviews", reviewRoutes);
 const distPath = path.join(__dirname, "..", "dist");
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
+<<<<<<< Updated upstream
   // SPA fallback: serve index.html for non-API, non-upload routes.
   app.get(/^\/(?!api|uploads).*/, (req, res, next) => {
     const accept = String(req.headers.accept || "");
     if (accept && !accept.includes("text/html")) return next();
+=======
+  app.get("/{*path}", (req, res, next) => {
+    if (req.path.startsWith("/api") || req.path.startsWith("/uploads")) return next();
+>>>>>>> Stashed changes
     return res.sendFile(path.join(distPath, "index.html"));
   });
 }

@@ -14,6 +14,7 @@ export default function AdminLayout({ adminUser, onLogout, children }) {
     { label: "Users", href: "/admin/users" },
     { label: "Shops", href: "/admin/shops" },
     { label: "Events", href: "/admin/events" },
+    { label: "Comments", href: "/admin/comments" },
   ];
 
   return (
@@ -22,7 +23,7 @@ export default function AdminLayout({ adminUser, onLogout, children }) {
         <aside className="border-r border-[#d7ceb8] bg-[#e6ddc9] px-6 py-8">
           <div className="mb-10">
             <p className="text-xs uppercase tracking-[0.35em] text-[#6d7759]">Admin Panel</p>
-            <h1 className="mt-3 text-3xl font-semibold text-[#35412a]">ATC Backoffice</h1>
+            <h1 className="mt-3 text-3xl font-semibold text-[#35412a]">teactive Admin</h1>
           </div>
 
           <nav className="space-y-3">

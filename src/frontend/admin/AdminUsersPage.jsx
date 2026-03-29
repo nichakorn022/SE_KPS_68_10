@@ -267,7 +267,7 @@ export default function AdminUsersPage() {
           : current
       );
       setSelectedUser(null);
-      setStatus({ type: "success", message: `User #${selectedUser.user_id} updated` });
+      setStatus({ type: "success", message: "User updated" });
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     } finally {
@@ -283,7 +283,7 @@ export default function AdminUsersPage() {
       await adminApi.deleteUser(adminToken, selectedUser.user_id);
       await loadUsers();
       setSelectedUser(null);
-      setStatus({ type: "success", message: `User #${selectedUser.user_id} deleted` });
+      setStatus({ type: "success", message: "User deleted" });
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     } finally {
@@ -399,8 +399,8 @@ export default function AdminUsersPage() {
                         )}
                         <div>
                           <p className="font-semibold text-[#2f3529]">{user.username || "-"}</p>
-                          <p className="mt-1 text-xs text-[#7a8368]">User #{user.user_id}</p>
-                          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#8d9577]">Click to review</p>
+                          <p className="mt-1 text-xs text-[#7a8368]">{user.email || user.role || "User account"}</p>
+                          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#8d9577]">Open details</p>
                         </div>
                       </div>
                     </td>

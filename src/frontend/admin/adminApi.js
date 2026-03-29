@@ -42,6 +42,21 @@ export const adminApi = {
   getProducts(adminToken) {
     return adminFetch("/products", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
+  getAdminReviews(adminToken) {
+    return adminFetch("/reviews/admin/all", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
+  },
+  deleteAdminReview(adminToken, reviewId) {
+    return adminFetch(`/reviews/admin/product/${reviewId}`, adminToken, {
+      method: "DELETE",
+      body: JSON.stringify({}),
+    });
+  },
+  deleteAdminComment(adminToken, contentType, reviewId) {
+    return adminFetch(`/reviews/admin/${contentType}/${reviewId}`, adminToken, {
+      method: "DELETE",
+      body: JSON.stringify({}),
+    });
+  },
   getProductImages(adminToken) {
     return adminFetch("/product-images", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
@@ -232,6 +247,12 @@ export const adminApi = {
     return adminFetch(`/sponsors/${sponsorId}/status`, adminToken, {
       method: "PATCH",
       body: JSON.stringify({ status, admin_note: adminNote }),
+    });
+  },
+  deleteSponsor(adminToken, sponsorId) {
+    return adminFetch(`/sponsors/${sponsorId}`, adminToken, {
+      method: "DELETE",
+      body: JSON.stringify({}),
     });
   },
 };

@@ -327,7 +327,7 @@ export default function OrderSuccessPage() {
           <button
             type="button"
             onClick={() => navigate("/profile")}
-            className="inline-flex items-center gap-2 rounded-full bg-[#7B9A67] px-8 py-4 text-lg font-semibold text-white shadow-[0_18px_36px_rgba(123,154,103,0.20)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_24px_44px_rgba(123,154,103,0.28)] active:translate-y-[1px]"
+            className="inline-flex min-w-[220px] items-center justify-center gap-2 rounded-full bg-[#7B9A67] px-8 py-4 text-lg font-semibold text-white shadow-[0_18px_36px_rgba(123,154,103,0.20)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_24px_44px_rgba(123,154,103,0.28)] active:translate-y-[1px]"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-5 w-5">
               <path d="M7 17 17 7" />
@@ -338,24 +338,13 @@ export default function OrderSuccessPage() {
           <button
             type="button"
             onClick={() => navigate("/shop")}
-            className="inline-flex items-center gap-2 rounded-full border-2 border-[#7B9A67] bg-white px-8 py-4 text-lg font-semibold text-[#7B9A67] transition-transform duration-300 hover:-translate-y-1 hover:border-[#5f7e4f] hover:text-[#5f7e4f] hover:shadow-[0_18px_36px_rgba(123,154,103,0.14)] active:translate-y-[1px]"
+            className="inline-flex min-w-[220px] items-center justify-center gap-2 rounded-full border-2 border-[#7B9A67] bg-white px-8 py-4 text-lg font-semibold text-[#7B9A67] transition-transform duration-300 hover:-translate-y-1 hover:border-[#5f7e4f] hover:text-[#5f7e4f] hover:shadow-[0_18px_36px_rgba(123,154,103,0.14)] active:translate-y-[1px]"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-6 w-6">
               <path d="M6 8.5h12l-1 10.5a1 1 0 0 1-1 .9H8a1 1 0 0 1-1-.9L6 8.5Z" />
               <path d="M9 9V7a3 3 0 0 1 6 0v2" />
             </svg>
             Back to Shop
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/shop")}
-            className="inline-flex items-center gap-2 rounded-full border border-[#e0dbd0] bg-white px-8 py-4 text-lg font-medium text-[#485B3B] transition-transform duration-300 hover:-translate-y-1 hover:border-[#cfc5b7] hover:shadow-[0_18px_34px_rgba(195,170,128,0.12)] active:translate-y-[1px]"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" className="h-5 w-5">
-              <path d="M20 11a8 8 0 1 1-2.35-5.65" />
-              <path d="M20 4v7h-7" />
-            </svg>
-            Order Again
           </button>
         </section>
 

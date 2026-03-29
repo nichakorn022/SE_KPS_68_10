@@ -210,10 +210,16 @@ export const adminApi = {
       body: JSON.stringify({}),
     });
   },
-  updateShopVerification(adminToken, shopId, verifiedStatus, adminNote = null) {
+  updateShopVerification(adminToken, shopId, verifiedStatus) {
     return adminFetch(`/shops/${shopId}/verification`, adminToken, {
       method: "PATCH",
-      body: JSON.stringify({ verified_status: verifiedStatus, admin_note: adminNote }),
+      body: JSON.stringify({ verified_status: verifiedStatus }),
+    });
+  },
+  deleteShopRequest(adminToken, shopId) {
+    return adminFetch(`/shops/${shopId}/request`, adminToken, {
+      method: "DELETE",
+      body: JSON.stringify({}),
     });
   },
   updateShop(adminToken, shopId, payload) {
@@ -225,28 +231,34 @@ export const adminApi = {
   getOrganizers(adminToken) {
     return adminFetch("/organizers", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
-  updateOrganizerVerification(adminToken, organizerId, verifiedStatus, adminNote = null) {
+  updateOrganizerVerification(adminToken, organizerId, verifiedStatus) {
     return adminFetch(`/organizers/${organizerId}/verification`, adminToken, {
       method: "PATCH",
-      body: JSON.stringify({ verified_status: verifiedStatus, admin_note: adminNote }),
+      body: JSON.stringify({ verified_status: verifiedStatus }),
+    });
+  },
+  deleteOrganizerRequest(adminToken, organizerId) {
+    return adminFetch(`/organizers/${organizerId}/request`, adminToken, {
+      method: "DELETE",
+      body: JSON.stringify({}),
     });
   },
   getReports(adminToken) {
     return adminFetch("/reports", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
-  updateReportStatus(adminToken, reportId, status, adminNote = null) {
+  updateReportStatus(adminToken, reportId, status) {
     return adminFetch(`/reports/${reportId}/status`, adminToken, {
       method: "PATCH",
-      body: JSON.stringify({ status, admin_note: adminNote }),
+      body: JSON.stringify({ status }),
     });
   },
   getSponsors(adminToken) {
     return adminFetch("/sponsors", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
-  updateSponsorStatus(adminToken, sponsorId, status, adminNote = null) {
+  updateSponsorStatus(adminToken, sponsorId, status) {
     return adminFetch(`/sponsors/${sponsorId}/status`, adminToken, {
       method: "PATCH",
-      body: JSON.stringify({ status, admin_note: adminNote }),
+      body: JSON.stringify({ status }),
     });
   },
   deleteSponsor(adminToken, sponsorId) {

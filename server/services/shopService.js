@@ -1,10 +1,11 @@
 const { query } = require("../utils/dbHelpers");
+const { sendApprovalDecisionEmail } = require("../utils/mailer");
 
 async function getShops() {
   return query(
     `SELECT ts.shop_id, ts.user_id, u.email, ts.shop_name, ts.description, ts.contact_info, ts.phone, ts.address,
             ts.opening_hours,
-            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status, ts.admin_note
+            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status
      FROM tea_shop ts
      LEFT JOIN users u ON u.user_id = ts.user_id
      ORDER BY shop_id DESC`
@@ -15,7 +16,7 @@ async function getShopById(id) {
   const rows = await query(
     `SELECT ts.shop_id, ts.user_id, u.email, ts.shop_name, ts.description, ts.contact_info, ts.phone, ts.address,
             ts.opening_hours,
-            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status, ts.admin_note
+            ts.province, ts.district, ts.subdistrict, ts.national_id, ts.verified_status
      FROM tea_shop ts
      LEFT JOIN users u ON u.user_id = ts.user_id
      WHERE ts.shop_id = ?`,
@@ -210,25 +211,93 @@ async function updateShopByAdmin(shopId, payload) {
   return getShopById(shopId);
 }
 
-async function updateShopVerification(shopId, verifiedStatus, adminNote) {
+async function updateShopVerification(shopId, verifiedStatus) {
   const normalizedVerifiedStatus =
     Number(verifiedStatus) === 1 ? 1 : Number(verifiedStatus) === 2 ? 2 : 0;
 
-  const result = await query(
-    `UPDATE tea_shop
-     SET verified_status = ?, admin_note = ?
-     WHERE shop_id = ?`,
-    [normalizedVerifiedStatus, adminNote ?? null, shopId]
+  const rows = await query(
+    `SELECT ts.shop_id, ts.user_id, ts.shop_name, u.email, u.username
+     FROM tea_shop ts
+     LEFT JOIN users u ON u.user_id = ts.user_id
+     WHERE ts.shop_id = ?
+     LIMIT 1`,
+    [shopId]
   );
 
-  if (result.affectedRows === 0) {
+  if (rows.length === 0) {
     const error = new Error("Shop not found");
     error.statusCode = 404;
     throw error;
   }
 
+  const userId = rows[0].user_id;
+
+  const result = await query(
+    `UPDATE tea_shop
+     SET verified_status = ?
+     WHERE shop_id = ?`,
+    [normalizedVerifiedStatus, shopId]
+  );
+
+  if (normalizedVerifiedStatus === 1) {
+    await query(
+      `UPDATE users
+       SET role = 'shop'
+       WHERE user_id = ? AND role <> 'admin'`,
+      [userId]
+    );
+
+    await sendApprovalDecisionEmail({
+      to: rows[0].email,
+      username: rows[0].username,
+      subjectType: "shop request",
+      subjectName: rows[0].shop_name || `Shop ${shopId}`,
+      approved: true,
+    });
+  }
+
   return {
     message: "Shop verification updated"
+  };
+}
+
+async function deleteShopRequest(shopId) {
+  const rows = await query(
+    `SELECT ts.shop_id, ts.user_id, ts.shop_name, u.email, u.username
+     FROM tea_shop ts
+     LEFT JOIN users u ON u.user_id = ts.user_id
+     WHERE ts.shop_id = ?
+     LIMIT 1`,
+    [shopId]
+  );
+
+  if (rows.length === 0) {
+    const error = new Error("Shop not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const userId = rows[0].user_id;
+
+  await query("DELETE FROM shop_images WHERE shop_id = ?", [shopId]);
+  await query("DELETE FROM tea_shop WHERE shop_id = ?", [shopId]);
+  await query(
+    `UPDATE users
+     SET role = 'user'
+     WHERE user_id = ? AND role = 'shop'`,
+    [userId]
+  );
+
+  await sendApprovalDecisionEmail({
+    to: rows[0].email,
+    username: rows[0].username,
+    subjectType: "shop request",
+    subjectName: rows[0].shop_name || `Shop ${shopId}`,
+    approved: false,
+  });
+
+  return {
+    message: "Shop request removed"
   };
 }
 
@@ -238,5 +307,6 @@ module.exports = {
   createShop,
   updateShopByOwner,
   updateShopByAdmin,
-  updateShopVerification
+  updateShopVerification,
+  deleteShopRequest
 };

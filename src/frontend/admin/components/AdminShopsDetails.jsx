@@ -23,8 +23,6 @@ export function ShopDetailModal({
   handleUpdateShop,
   shopSaving,
   setConfirmAction,
-  notesByShopId,
-  setNotesByShopId,
   selectedImages,
   paginatedShopImages,
   setShopImagesPage,
@@ -78,10 +76,6 @@ export function ShopDetailModal({
           </div>
           <AdminField label="Description" className="mt-4"><textarea value={shopForm.description} onChange={(event) => handleShopFieldChange("description", event.target.value)} className="admin-input min-h-28" /></AdminField>
         </div>
-        <label className="mt-6 block">
-          <span className="mb-2 block text-sm font-medium text-[#4b5541]">Admin Note</span>
-          <textarea value={notesByShopId[selectedShop.shop_id] ?? selectedShop.admin_note ?? ""} onChange={(event) => setNotesByShopId((current) => ({ ...current, [selectedShop.shop_id]: event.target.value }))} className="admin-input min-h-28" placeholder="Add approval note or hold reason..." />
-        </label>
         <div className="mt-6">
           <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Shop Images</p>
           {!selectedImages.length ? <div className="mt-3 rounded-2xl bg-[#f8f4eb] px-4 py-6 text-sm text-[#7a8368]">No shop images yet.</div> : (

@@ -11,5 +11,6 @@ router.post("/", shopController.createShop);
 router.patch("/:id", authMiddleware, shopController.updateShopByOwner);
 router.patch("/:id/admin", adminMiddleware, shopController.updateShopByAdmin);
 router.patch("/:id/verification", adminMiddleware, shopController.updateShopVerification);
+router.delete("/:id/request", adminMiddleware, shopController.deleteShopRequest);
 
 module.exports = router;

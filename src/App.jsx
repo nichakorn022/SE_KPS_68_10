@@ -25,12 +25,22 @@ const CheckoutAddressFormPage = lazy(() => import("./frontend/Shop/CheckoutAddre
 const OrderSuccessPage = lazy(() => import("./frontend/Shop/OrderSuccessPage.jsx"));
 const UserProfile = lazy(() => import("./frontend/Profile/userProfile.jsx"));
 const AdminRoute = lazy(() => import("./frontend/admin/AdminRoute.jsx"));
+<<<<<<< Updated upstream
 const AdminDashboard = lazy(() => import("./frontend/admin/AdminDashboard.jsx"));
 const AdminInboxPage = lazy(() => import("./frontend/admin/AdminInboxPage.jsx"));
 const AdminShopsPage = lazy(() => import("./frontend/admin/AdminShopsPage.jsx"));
 const AdminEventsPage = lazy(() => import("./frontend/admin/AdminEventsPage.jsx"));
 const AdminOrdersPage = lazy(() => import("./frontend/admin/AdminOrdersPage.jsx"));
 const AdminUsersPage = lazy(() => import("./frontend/admin/AdminUsersPage.jsx"));
+=======
+const AdminDashboard = lazy(() => import("./frontend/admin/pages/AdminDashboard.jsx"));
+const AdminInboxPage = lazy(() => import("./frontend/admin/pages/AdminInboxPage.jsx"));
+const AdminShopsPage = lazy(() => import("./frontend/admin/pages/AdminShopsPage.jsx"));
+const AdminEventsPage = lazy(() => import("./frontend/admin/pages/AdminEventsPage.jsx"));
+const AdminOrdersPage = lazy(() => import("./frontend/admin/pages/AdminOrdersPage.jsx"));
+const AdminUsersPage = lazy(() => import("./frontend/admin/pages/AdminUsersPage.jsx"));
+const AdminCommentsPage = lazy(() => import("./frontend/admin/pages/AdminCommentsPage.jsx"));
+>>>>>>> Stashed changes
 
 export const AuthModalContext = createContext(null);
 export const useAuthModal = () => useContext(AuthModalContext);

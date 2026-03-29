@@ -4,6 +4,13 @@ import { apiUrl } from "../../lib/api";
 import { useAuthModal } from "../../App";
 import SiteNavbar from "../components/SiteNavbar";
 
+function toDateTimeLocalValue(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
 export default function EditEventPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -18,7 +25,8 @@ export default function EditEventPage() {
     event_date: "",
     location: "",
     max_participant: "",
-    price: ""
+    price: "",
+    status: "draft"
   });
 
   const [error, setError] = useState(null);
@@ -29,6 +37,7 @@ export default function EditEventPage() {
   const [existingImages, setExistingImages] = useState([]);
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [minEventDate, setMinEventDate] = useState(() => toDateTimeLocalValue(new Date()));
 
   // Check organizer status
   useEffect(() => {
@@ -48,14 +57,18 @@ export default function EditEventPage() {
       });
   }, [token]);
 
+  useEffect(() => {
+    const syncMinDate = () => setMinEventDate(toDateTimeLocalValue(new Date()));
+    const timer = setInterval(syncMinDate, 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Load event data
   useEffect(() => {
     fetch(apiUrl(`/events/${id}`))
       .then(res => res.json())
       .then(data => {
-        // Format datetime-local input
-        const eventDate = new Date(data.event_date);
-        const formattedDate = eventDate.toISOString().slice(0, 16);
+        const formattedDate = toDateTimeLocalValue(data.event_date);
 
         setFormData({
           title: data.title || "",
@@ -63,7 +76,8 @@ export default function EditEventPage() {
           event_date: formattedDate || "",
           location: data.location || "",
           max_participant: data.max_participant || "",
-          price: data.price || ""
+          price: data.price || "",
+          status: data.status || "draft"
         });
         setLoadingEvent(false);
       })
@@ -131,6 +145,13 @@ export default function EditEventPage() {
       return;
     }
 
+    const selectedEventDate = new Date(formData.event_date);
+    if (Number.isNaN(selectedEventDate.getTime()) || selectedEventDate <= new Date()) {
+      setError("Event date must be later than the current time");
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch(apiUrl(`/events/${id}`), {
         method: "PUT",
@@ -141,7 +162,8 @@ export default function EditEventPage() {
         body: JSON.stringify({
           ...formData,
           max_participant: parseInt(formData.max_participant),
-          price: parseFloat(formData.price)
+          price: parseFloat(formData.price),
+          status: formData.status || "draft"
         })
       });
 
@@ -299,6 +321,7 @@ export default function EditEventPage() {
                 name="event_date"
                 value={formData.event_date}
                 onChange={handleChange}
+                min={minEventDate}
                 className="w-full border border-[#DFE6D6] rounded-[1rem] px-4 py-3 text-sm text-[#253621] bg-white focus:outline-none focus:ring-2 focus:ring-[#6f8b5d]/30"
               />
             </div>

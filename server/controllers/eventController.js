@@ -95,7 +95,7 @@ exports.updateEvent = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    if (event.organizer_id !== org.organizer_id) {
+    if (Number(event.organizer_id) !== Number(org.organizer_id)) {
       return res.status(403).json({ 
         message: "You can only update your own events" 
       });
@@ -110,6 +110,15 @@ exports.updateEvent = async (req, res) => {
       });
     }
 
+    if (req.body.event_date) {
+      const nextEventDate = new Date(req.body.event_date);
+      if (Number.isNaN(nextEventDate.getTime()) || nextEventDate <= new Date()) {
+        return res.status(400).json({
+          message: "Event date must be later than the current time"
+        });
+      }
+    }
+
     // Ensure organizer_id remains set
     req.body.organizer_id = org.organizer_id;
 
@@ -117,7 +126,7 @@ exports.updateEvent = async (req, res) => {
     res.json({ message: "updated" });
   } catch (err) {
     res.status(err.statusCode || 500).json({ 
-      message: "update failed", 
+      message: err.message || "update failed", 
       error: err.message 
     });
   }
@@ -145,7 +154,7 @@ exports.deleteEvent = async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    if (event.organizer_id !== org.organizer_id) {
+    if (Number(event.organizer_id) !== Number(org.organizer_id)) {
       return res.status(403).json({ 
         message: "You can only delete your own events" 
       });

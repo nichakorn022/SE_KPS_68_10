@@ -12,7 +12,7 @@ router.get("/check", authMiddleware, async (req, res) => {
   const { shop_id, event_id } = req.query;
 
   const rows = await query(
-    "SELECT status FROM sponsor WHERE shop_id = ? AND event_id = ?",
+    "SELECT sponsor_id, status FROM sponsor WHERE shop_id = ? AND event_id = ?",
     [shop_id, event_id]
   );
 
@@ -22,17 +22,20 @@ router.get("/check", authMiddleware, async (req, res) => {
 
   res.json({
     exists: true,
+    sponsor_id: rows[0].sponsor_id || null,
     status: rows[0].status,
   });
 });
 
+router.patch("/:id/cancel", authMiddleware, SponsorController.cancelSponsorRequestByOrganizer);
+
 router.put("/:id/approve", authMiddleware, (req, res) => {
-  req.body.status = "approved";
+  req.body = { ...(req.body || {}), status: "approved" };
   return SponsorController.updateSponsorStatusByShop(req, res);
 });
 
 router.put("/:id/reject", authMiddleware, (req, res) => {
-  req.body.status = "rejected";
+  req.body = { ...(req.body || {}), status: "rejected" };
   return SponsorController.updateSponsorStatusByShop(req, res);
 });
 
@@ -43,7 +46,7 @@ router.delete("/:id", adminMiddleware, SponsorController.deleteSponsorRequest);
 // Backward-compatible admin aliases.
 router.get("/requests", adminMiddleware, SponsorController.getSponsorRequests);
 router.put("/approve/:id", adminMiddleware, (req, res) => {
-  req.body.status = "approved";
+  req.body = { ...(req.body || {}), status: "approved" };
   return SponsorController.updateSponsorStatus(req, res);
 });
 

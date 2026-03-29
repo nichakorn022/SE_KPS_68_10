@@ -81,6 +81,20 @@ class SponsorController {
         .json({ message: error.message || "Failed to update sponsor request" });
     }
   }
+
+  static async cancelSponsorRequestByOrganizer(req, res) {
+    try {
+      const result = await sponsorService.cancelSponsorRequestByOrganizer(
+        req.params.id,
+        req.user.user_id
+      );
+      res.json(result);
+    } catch (error) {
+      res
+        .status(error.statusCode || 500)
+        .json({ message: error.message || "Failed to cancel sponsor request" });
+    }
+  }
 }
 
 module.exports = SponsorController;

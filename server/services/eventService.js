@@ -66,6 +66,7 @@ async function createEvent(data){
 
 // ---------------- UPDATE EVENT ----------------
 async function updateEvent(id,data){
+  const existing = await getEventById(id);
 
   const {
     organizer_id,
@@ -90,14 +91,14 @@ async function updateEvent(id,data){
         status=?
     WHERE event_id=?
   `,[
-    organizer_id,
-    title,
-    description,
-    event_date,
-    location,
-    price,
-    max_participant,
-    status,
+    organizer_id ?? existing.organizer_id,
+    title ?? existing.title,
+    description ?? existing.description,
+    event_date ?? existing.event_date,
+    location ?? existing.location,
+    price ?? existing.price,
+    max_participant ?? existing.max_participant,
+    status ?? existing.status ?? "draft",
     id
   ]);
 

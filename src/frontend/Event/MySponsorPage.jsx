@@ -1,14 +1,35 @@
 import { useEffect, useState } from "react";
-import { apiUrl } from "../../lib/api";
-import { useAuthModal } from "../../App";
 import { Link, useNavigate } from "react-router-dom";
+import { apiUrl, assetUrl } from "../../lib/api";
+import { useAuthModal } from "../../App";
 import SiteNavbar from "../components/SiteNavbar";
 
-export default function MySponsorPage() {
+function getStatusTextClass(status) {
+  if (status === "approved") return "text-green-600";
+  if (status === "rejected") return "text-red-500";
+  if (status === "cancelled") return "text-gray-500";
+  return "text-yellow-500";
+}
 
+function getSourceLabel(requestBy) {
+  return String(requestBy || "").toLowerCase() === "organizer"
+    ? "Organizer sent request to your shop"
+    : "Your shop sent sponsor request";
+}
+
+function formatPrice(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  const amount = Number(value);
+  if (Number.isNaN(amount)) return "-";
+  return `THB ${amount.toLocaleString("th-TH", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+export default function MySponsorPage() {
   const { token } = useAuthModal();
   const navigate = useNavigate();
-
   const [events, setEvents] = useState([]);
 
   useEffect(() => {
@@ -16,99 +37,103 @@ export default function MySponsorPage() {
 
     fetch(apiUrl("/sponsors/my"), {
       headers: {
-        Authorization: `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     })
-      .then(res => res.json())
-      .then(data => {
-        console.log("SPONSOR DATA:", data);
+      .then((res) => res.json())
+      .then((data) => {
         setEvents(Array.isArray(data) ? data : []);
       })
       .catch(console.error);
-
   }, [token]);
 
   return (
     <div className="bg-[#e7e3d8] min-h-screen">
-
       <SiteNavbar />
 
-      {/* HERO */}
       <div
-        className="relative py-24 text-center bg-cover bg-center"
+        className="relative bg-cover bg-center py-24 text-center"
         style={{ backgroundImage: "url('/Pictrue/Activity.png')" }}
       >
-        <div className="absolute inset-0 bg-black/40"></div>
+        <div className="absolute inset-0 bg-black/40" />
 
         <div className="relative text-white">
-          <h1 className="text-3xl md:text-4xl font-serif font-bold">
-            My Sponsor Events
-          </h1>
-          <p>กิจกรรมที่คุณกำลังสนับสนุน</p>
+          <h1 className="text-3xl font-serif font-bold md:text-4xl">My Sponsor Events</h1>
+          <p>Events that your shop is involved in as a sponsor</p>
         </div>
       </div>
 
-      <div className="max-w-[1100px] mx-auto mt-10 px-5">
-
-        {/* 🔥 BACK BUTTON */}
+      <div className="mx-auto mt-10 max-w-[1100px] px-5 pb-12">
         <button
           onClick={() => navigate(-1)}
-          className="mb-6 px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+          className="mb-6 rounded bg-gray-300 px-4 py-2 hover:bg-gray-400"
         >
-          ← Back
+          Back
         </button>
 
-        {/* GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {events.length === 0 ? (
-            <p className="text-center col-span-full text-gray-500">
-              No sponsor events
-            </p>
+            <p className="col-span-full text-center text-gray-500">No sponsor events</p>
           ) : (
-            events.map((e) => (
+            events.map((event) => {
+              const imageSrc = event.event_image_path
+                ? assetUrl(event.event_image_path)
+                : "/Pictrue/Activity.png";
 
-              <Link
-                key={e.sponsor_id}
-                to={`/events/${e.event_id}`}
-                className="bg-white rounded-xl shadow-md overflow-hidden hover:shadow-lg transition"
-              >
+              return (
+                <Link
+                  key={event.sponsor_id}
+                  to={`/events/${event.event_id}`}
+                  className="overflow-hidden rounded-xl bg-white shadow-md transition hover:shadow-lg"
+                >
+                  <img
+                    src={imageSrc}
+                    alt={event.event_title}
+                    className="h-[170px] w-full object-cover"
+                  />
 
-                <img
-                  src="/Pictrue/Activity.png"
-                  alt="event"
-                  className="w-full h-[170px] object-cover"
-                />
+                  <div className="p-4">
+                    <p className="text-xs uppercase tracking-[0.16em] text-[#8d9577]">Sponsor Event</p>
 
-                <div className="p-4">
+                    <h3 className="mt-2 text-lg font-semibold">{event.event_title}</h3>
 
-                  <h3 className="font-semibold text-lg">
-                    {e.event_title}
-                  </h3>
+                    <p className="mt-2 text-sm text-[#5f5a52]">{getSourceLabel(event.request_by)}</p>
 
-                  {/* STATUS */}
-                  <p className="mt-2">
-                    Status:
-                    <span className={`ml-2 font-semibold
-                      ${e.status === "pending" && "text-yellow-500"}
-                      ${e.status === "approved" && "text-green-500"}
-                      ${e.status === "rejected" && "text-red-500"}
-                    `}>
-                      {e.status}
-                    </span>
-                  </p>
+                    <p className="mt-3 text-sm text-[#5f5a52] line-clamp-2">
+                      {event.event_description || "No description"}
+                    </p>
 
-                </div>
+                    <div className="mt-4 flex flex-wrap gap-2 text-sm">
+                      {event.event_price !== null &&
+                        event.event_price !== undefined &&
+                        event.event_price !== "" && (
+                          <span className="rounded-full bg-[#f3efe6] px-3 py-1 text-[#4f4a43]">
+                            {formatPrice(event.event_price)}
+                          </span>
+                        )}
 
-              </Link>
+                      {event.event_capacity !== null &&
+                        event.event_capacity !== undefined &&
+                        event.event_capacity !== "" && (
+                          <span className="rounded-full bg-[#f3efe6] px-3 py-1 text-[#4f4a43]">
+                            {event.event_capacity} people
+                          </span>
+                        )}
+                    </div>
 
-            ))
+                    <p className="mt-4 text-sm">
+                      Status:
+                      <span className={`ml-2 font-semibold capitalize ${getStatusTextClass(event.status)}`}>
+                        {event.status}
+                      </span>
+                    </p>
+                  </div>
+                </Link>
+              );
+            })
           )}
-
         </div>
-
       </div>
-
     </div>
   );
 }

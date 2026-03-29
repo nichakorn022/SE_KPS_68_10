@@ -32,7 +32,7 @@ const inputClassName =
 async function getErrorMessage(response, fallbackMessage) {
   const data = await response.json().catch(() => ({}));
   if (response.status === 401) {
-    return "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่";
+    return "Session expired. Please log in again.";
   }
   return data.error || data.message || fallbackMessage;
 }
@@ -51,7 +51,7 @@ export default function CheckoutAddressFormPage() {
     event.preventDefault();
 
     if (!getStoredToken()) {
-      setError("กรุณาเข้าสู่ระบบก่อนเพิ่มที่อยู่");
+      setError("Please log in before adding an address.");
       return;
     }
 
@@ -66,12 +66,12 @@ export default function CheckoutAddressFormPage() {
       });
 
       if (!response.ok) {
-        throw new Error(await getErrorMessage(response, "บันทึกที่อยู่ไม่สำเร็จ"));
+        throw new Error(await getErrorMessage(response, "Failed to save address"));
       }
 
       navigate("/checkout/address");
     } catch (submitError) {
-      setError(submitError.message || "บันทึกที่อยู่ไม่สำเร็จ");
+      setError(submitError.message || "Failed to save address");
     } finally {
       setSaving(false);
     }
@@ -89,14 +89,14 @@ export default function CheckoutAddressFormPage() {
             ←
           </button>
           <div className="text-center">
-            <p className="text-[1.7rem] font-semibold sm:text-[2.2rem]">เพิ่มที่อยู่ใหม่</p>
-            <p className="mt-1 text-sm text-[#8f8478]">กรอกข้อมูลสำหรับการจัดส่งสินค้า</p>
+            <p className="text-[1.7rem] font-semibold sm:text-[2.2rem]">Add new address</p>
+            <p className="mt-1 text-sm text-[#8f8478]">Enter delivery details for your order</p>
           </div>
           <Link
             to="/checkout/address"
             className="hidden rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-medium text-[#7a7064] sm:inline-flex"
           >
-            กลับไปเลือกที่อยู่
+            Back to addresses
           </Link>
         </div>
       </header>
@@ -104,16 +104,16 @@ export default function CheckoutAddressFormPage() {
       <main className="px-4 pt-6 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-[960px] rounded-[30px] border border-[#ece5da] bg-white p-6 shadow-[0_18px_55px_rgba(195,170,128,0.10)] sm:p-8">
           <form className="space-y-5" onSubmit={handleSubmit}>
-            <Field label="ชื่อผู้รับ" required>
+            <Field label="Recipient name" required>
               <input
                 value={form.recipient_name}
                 onChange={(event) => updateField("recipient_name", event.target.value)}
                 className={inputClassName}
-                placeholder="ชื่อผู้รับสินค้า"
+                placeholder="Full name"
               />
             </Field>
 
-            <Field label="เบอร์โทร" required>
+            <Field label="Phone number" required>
               <input
                 value={form.phone}
                 onChange={(event) => updateField("phone", event.target.value)}
@@ -122,44 +122,44 @@ export default function CheckoutAddressFormPage() {
               />
             </Field>
 
-            <Field label="ที่อยู่" required>
+            <Field label="Address" required>
               <input
                 value={form.address_line}
                 onChange={(event) => updateField("address_line", event.target.value)}
                 className={inputClassName}
-                placeholder="บ้านเลขที่ หมู่ ซอย ถนน"
+                placeholder="House no., village, soi, road"
               />
             </Field>
 
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="ตำบล / แขวง">
+              <Field label="Subdistrict">
                 <input
                   value={form.subdistrict}
                   onChange={(event) => updateField("subdistrict", event.target.value)}
                   className={inputClassName}
-                  placeholder="ตำบล / แขวง"
+                  placeholder="Subdistrict"
                 />
               </Field>
-              <Field label="อำเภอ / เขต">
+              <Field label="District">
                 <input
                   value={form.district}
                   onChange={(event) => updateField("district", event.target.value)}
                   className={inputClassName}
-                  placeholder="อำเภอ / เขต"
+                  placeholder="District"
                 />
               </Field>
             </div>
 
             <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_220px]">
-              <Field label="จังหวัด">
+              <Field label="Province">
                 <input
                   value={form.province}
                   onChange={(event) => updateField("province", event.target.value)}
                   className={inputClassName}
-                  placeholder="จังหวัด"
+                  placeholder="Province"
                 />
               </Field>
-              <Field label="รหัสไปรษณีย์">
+              <Field label="Postal code">
                 <input
                   value={form.postal_code}
                   onChange={(event) => updateField("postal_code", event.target.value)}
@@ -169,12 +169,12 @@ export default function CheckoutAddressFormPage() {
               </Field>
             </div>
 
-            <Field label="หมายเหตุถึงร้านค้า">
+            <Field label="Delivery note">
               <textarea
                 value={form.note}
                 onChange={(event) => updateField("note", event.target.value)}
                 className={`${inputClassName} min-h-[140px] resize-none`}
-                placeholder="เช่น โทรก่อนจัดส่ง หรือจุดสังเกตเพิ่มเติม"
+                placeholder="e.g. Call before delivery or extra directions"
               />
             </Field>
 
@@ -185,7 +185,7 @@ export default function CheckoutAddressFormPage() {
                 onChange={(event) => updateField("is_default", event.target.checked)}
                 className="h-4 w-4 rounded border-[#b7c6a8] text-[#7B9A67] focus:ring-[#7B9A67]"
               />
-              ตั้งเป็นที่อยู่เริ่มต้น
+              Set as default address
             </label>
 
             {error ? <p className="text-sm font-medium text-[#577049]">{error}</p> : null}
@@ -195,14 +195,14 @@ export default function CheckoutAddressFormPage() {
                 to="/checkout/address"
                 className="rounded-[18px] border border-[#d8cebf] bg-white px-5 py-3 text-sm font-semibold text-[#72685c]"
               >
-                ยกเลิก
+                Cancel
               </Link>
               <button
                 type="submit"
                 disabled={saving}
                 className="rounded-[18px] bg-[#7B9A67] px-6 py-3 text-sm font-semibold text-white shadow-[0_18px_36px_rgba(123,154,103,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {saving ? "กำลังบันทึก..." : "บันทึกที่อยู่"}
+                {saving ? "Saving..." : "Save address"}
               </button>
             </div>
           </form>
@@ -211,3 +211,4 @@ export default function CheckoutAddressFormPage() {
     </div>
   );
 }
+

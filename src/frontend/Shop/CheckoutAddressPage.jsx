@@ -70,16 +70,16 @@ function AddressRow({ address, selected, onSelect }) {
               <div className="mt-4 flex flex-wrap gap-2">
                 {address.is_default ? (
                   <span className="rounded-md border border-[#EA6B4E] px-3 py-1 text-sm font-medium text-[#EA6B4E]">
-                    ค่าเริ่มต้น
+                    Default
                   </span>
                 ) : null}
                 <span className="rounded-md border border-[#c9c1b4] px-3 py-1 text-sm font-medium text-[#8f867b]">
-                  ที่อยู่ในการรับสินค้า
+                  Shipping address
                 </span>
               </div>
             </div>
 
-            <span className="shrink-0 pt-1 text-base text-[#8f867b]">แก้ไข</span>
+            <span className="shrink-0 pt-1 text-base text-[#8f867b]">Edit</span>
           </div>
         </div>
       </div>
@@ -108,7 +108,7 @@ export default function CheckoutAddressPage() {
       .then(async (response) => {
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
-          throw new Error(data.error || data.message || "โหลดที่อยู่ไม่สำเร็จ");
+          throw new Error(data.error || data.message || "Failed to load addresses");
         }
         return response.json();
       })
@@ -119,9 +119,9 @@ export default function CheckoutAddressPage() {
         setSelectedAddressId(selected?.address_id ?? null);
         setError("");
       })
-      .catch(() => {
+      .catch((fetchError) => {
         setAddresses([]);
-        setError("คุณยังไม่ได้กำหนดที่อยู่");
+        setError(fetchError.message || "Failed to load addresses");
       })
       .finally(() => setLoading(false));
   }, []);
@@ -138,12 +138,12 @@ export default function CheckoutAddressPage() {
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || data.message || "บันทึกที่อยู่ไม่สำเร็จ");
+        throw new Error(data.error || data.message || "Failed to save address");
       }
 
       navigate("/checkout");
-    } catch {
-      setError("บันทึกที่อยู่ไม่สำเร็จ");
+    } catch (saveError) {
+      setError(saveError.message || "Failed to save address");
     } finally {
       setSaving(false);
     }
@@ -163,13 +163,13 @@ export default function CheckoutAddressPage() {
             ←
           </button>
           <div className="text-center">
-            <p className="text-[1.7rem] font-semibold sm:text-[2.2rem]">{isEmpty ? "ที่อยู่ของฉัน" : "เลือกที่อยู่"}</p>
+            <p className="text-[1.7rem] font-semibold sm:text-[2.2rem]">{isEmpty ? "My addresses" : "Select address"}</p>
           </div>
           <Link
             to="/checkout"
             className="hidden rounded-full border border-[#eadfce] bg-white px-4 py-2 text-sm font-medium text-[#7a7064] sm:inline-flex"
           >
-            กลับไปชำระเงิน
+            Back to checkout
           </Link>
         </div>
       </header>
@@ -178,13 +178,13 @@ export default function CheckoutAddressPage() {
         <div className="mx-auto max-w-[1220px]">
           {isEmpty ? (
             <div className="min-h-[560px] rounded-none bg-[#f4f4f2] sm:rounded-[28px]">
-              <EmptyState message={error || "คุณยังไม่ได้กำหนดที่อยู่"} />
+              <EmptyState message={error || "You haven't added an address yet"} />
             </div>
           ) : (
             <div className="overflow-hidden border-y border-[#ece5da] bg-white shadow-[0_18px_55px_rgba(195,170,128,0.10)] sm:rounded-[28px] sm:border">
-              <div className="bg-[#f3f2ef] px-4 py-4 text-[15px] font-medium text-[#9b958c] sm:px-6">ที่อยู่</div>
+              <div className="bg-[#f3f2ef] px-4 py-4 text-[15px] font-medium text-[#9b958c] sm:px-6">Addresses</div>
 
-              {loading ? <div className="px-6 py-10 text-sm text-[#8b8176]">กำลังโหลดที่อยู่...</div> : null}
+              {loading ? <div className="px-6 py-10 text-sm text-[#8b8176]">Loading addresses...</div> : null}
               {!loading && error && addresses.length > 0 ? (
                 <div className="px-6 py-10 text-sm text-[#577049]">{error}</div>
               ) : null}
@@ -212,7 +212,7 @@ export default function CheckoutAddressPage() {
             onClick={() => navigate("/checkout/address/new")}
             className="flex-1 rounded-[22px] border-2 border-[#7B9A67] bg-white px-6 py-4 text-[1.05rem] font-semibold text-[#577049]"
           >
-            + เพิ่มที่อยู่ใหม่
+            + Add new address
           </button>
           {!isEmpty ? (
             <button
@@ -221,7 +221,7 @@ export default function CheckoutAddressPage() {
               disabled={saving || !selectedAddressId}
               className="rounded-[22px] bg-[#B7C7A3] px-8 py-4 text-[1.05rem] font-semibold text-white shadow-[0_18px_36px_rgba(123,154,103,0.18)] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? "กำลังบันทึก..." : "ใช้ที่อยู่นี้"}
+              {saving ? "Saving..." : "Use this address"}
             </button>
           ) : null}
         </div>
@@ -229,3 +229,4 @@ export default function CheckoutAddressPage() {
     </div>
   );
 }
+

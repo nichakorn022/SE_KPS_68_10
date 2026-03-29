@@ -39,25 +39,25 @@ const HERO_SLIDES = [
     image:
       "https://i.pinimg.com/originals/f7/38/89/f7388986e1bd9f2d4fd063f2dda835f8.jpg",
     eyebrow: "Tea collection",
-    title: "ชาแก้วดีสำหรับวันธรรมดาที่อยากให้พิเศษขึ้น",
-    description: "คัดเมนูจากร้านชาและคาเฟ่โทนอุ่นที่เน้นกลิ่นชัด วัตถุดิบดี และภาพรวมที่ดูละเมียด",
+    title: "Good glass tea for ordinary days that you want to make special",
+    description: "Selected menus from warm-toned tea shops and cafes that emphasize clear aroma, good ingredients, and an overall delicate look",
   },
   {
     image: "https://files.idyllic.app/files/static/4461046",
     eyebrow: "Fresh picks",
-    title: "เลือกจากร้านที่มีเอกลักษณ์ ไม่ใช่แค่ลิสต์สินค้าทั่วไป",
-    description: "สลับดูร้านและสินค้าได้ในหน้าเดียว พร้อมตัวกรองที่ใช้งานง่ายทั้งบนมือถือและเดสก์ท็อป",
+    title: "Choose from unique shops, not just general product lists",
+    description: "Switch between shops and products on one page, with easy-to-use filters on both mobile and desktop",
   },
   {
     image:
       "https://cplusdesign.lk/wp-content/uploads/2023/12/Small-Tea-Shop-Design-Ideas-1-450x450.jpg",
     eyebrow: "Curated shops",
-    title: "เริ่มจากเมนูที่ใช่ หรือเริ่มจากร้านที่ชอบก็ได้",
-    description: "หน้า shop นี้ถูกจัดให้ค้นหา กรอง และหยิบเข้าตะกร้าได้เร็วขึ้นโดยยังคงบรรยากาศร้านชาแบบอบอุ่น",
+    title: "Start with the right menu, or start with your favorite shop",
+    description: "This shop page is arranged to search, filter, and add to cart faster while maintaining a warm tea shop atmosphere",
   },
 ];
 
-const TABS = ["ทั้งหมด", "เมนูใหม่", "ยอดฮิต", "แนะนำ"];
+const TABS = ["All", "New Menu", "Popular", "Recommended"];
 const CATEGORIES = ["Green Tea", "Black Tea", "Oolong Tea", "White Tea", "Herbal Tea"];
 
 function toAssetUrl(imagePath) {
@@ -129,14 +129,14 @@ function scoreRecommendedProduct(product) {
 }
 
 function getTabFilteredProducts(products, activeTab) {
-  if (activeTab === "เมนูใหม่") {
+  if (activeTab === "New Menu") {
     return [...products]
       .filter((product) => !product.soldOut)
       .sort((a, b) => Number(b.id ?? 0) - Number(a.id ?? 0))
       .slice(0, 8);
   }
 
-  if (activeTab === "ยอดฮิต") {
+  if (activeTab === "Popular") {
     return [...products].sort((a, b) => {
       const salesDiff = Number(b.weeklySales ?? 0) - Number(a.weeklySales ?? 0);
       if (salesDiff !== 0) return salesDiff;
@@ -144,7 +144,7 @@ function getTabFilteredProducts(products, activeTab) {
     });
   }
 
-  if (activeTab === "แนะนำ") {
+  if (activeTab === "Recommended") {
     return [...products]
       .filter((product) => !product.soldOut)
       .sort((a, b) => {
@@ -195,23 +195,22 @@ function filterProducts(products, { search, activeTab, activeCategory }) {
 }
 
 function getSectionTitle(search, activeTab, activeCategory) {
-  if (search.trim()) return `ผลการค้นหา “${search.trim()}”`;
+  if (search.trim()) return `Search results for "${search.trim()}"`;
   if (activeCategory) return activeCategory;
-  if (activeTab !== "ทั้งหมด") return activeTab;
-  return "เมนูชาที่น่าลองวันนี้";
+  if (activeTab !== "All") return activeTab;
+  return "Tea menus worth trying today";
 }
 
 function getSectionDescription(search, activeTab, activeCategory) {
   if (search.trim()) {
-    return "คัดผลลัพธ์ที่ตรงกับคำค้นจากชื่อเมนู ร้าน และประเภทชา";
+    return "Filtered results that match the search from menu names, shops, and tea types";
   }
   if (activeCategory) {
-    return "แสดงสินค้าในหมวดที่เลือกพร้อมสถานะสต็อกและร้านที่เกี่ยวข้อง";
+    return "Display products in the selected category along with stock status and related shops";
   }
-  if (activeTab === "เมนูใหม่") return "เมนูที่สต็อกยังสดและเหมาะกับการสำรวจร้านใหม่ๆ";
-  if (activeTab === "ยอดฮิต") return "จัดอันดับจากจำนวนชิ้นที่ขายได้จริงในช่วง 7 วันล่าสุด แล้วเรียงจากมากไปน้อย";
-  if (activeTab === "แนะนำ") return "เครื่องดื่มที่ราคาสูงขึ้นนิด แต่ภาพรวมดูพรีเมียมและเหมาะเป็นตัวเด่น";
-  return "หน้าเดียวสำหรับค้นหาเมนู ดูร้าน และหยิบสินค้าลงตะกร้าแบบไม่รู้สึกโล่งหรือแข็งเกินไป";
+  if (activeTab === "New Menu") return "Menus with fresh stock and suitable for exploring new shops";
+  if (activeTab === "Popular") return "Ranked by the actual number of items sold in the last 7 days, sorted from high to low";
+  if (activeTab === "Recommended") return "Drinks that are slightly more expensive, but overall look premium and suitable as highlights";
 }
 
 function SearchBar({ value, onChange }) {
@@ -227,7 +226,7 @@ function SearchBar({ value, onChange }) {
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder="ค้นหาเมนูชา ร้าน หรือประเภทที่อยากลอง"
+        placeholder="Search for tea menus, shops, or types you want to try"
         className="w-full rounded-[1.75rem] border border-[#D9E2CF] bg-white/92 px-12 py-4 text-[15px] text-[#30412D] shadow-[0_20px_60px_rgba(91,117,72,0.08)] outline-none transition-all duration-300 placeholder:text-[#90A085] focus:border-[#738A5E] focus:shadow-[0_24px_80px_rgba(72,91,59,0.16)]"
       />
     </label>
@@ -238,8 +237,8 @@ function ViewToggle({ activeView, onChange }) {
   return (
     <div className="inline-flex rounded-full border border-[#D4DEC8] bg-[#F8FBF4] p-1 shadow-[0_12px_30px_rgba(85,108,68,0.08)]">
       {[
-        { id: "products", label: "สินค้า" },
-        { id: "shops", label: "ร้านค้า" },
+        { id: "products", label: "Products" },
+        { id: "shops", label: "Shops" },
       ].map((item) => (
         <button
           key={item.id}
@@ -312,7 +311,7 @@ function CategoryBar({ categories, active, onSelect }) {
 }
 
 function ProductCard({ product, onAddToCart, cartQty = 0 }) {
-  const metaLabel = `ขายได้ ${formatCompactSalesCount(product.weeklySales)} ชิ้น`;
+  const metaLabel = `Sold ${formatCompactSalesCount(product.weeklySales)} pieces`;
   const hasReviews = Number(product.reviewCount ?? 0) > 0;
   const ratingLabel = hasReviews
     ? `${Number(product.avgRating ?? 0).toFixed(1)} (${Number(product.reviewCount ?? 0)})`
@@ -340,21 +339,21 @@ function ProductCard({ product, onAddToCart, cartQty = 0 }) {
           <div className="absolute left-4 top-4 flex flex-wrap gap-2">
             {product.soldOut ? (
               <span className="rounded-full bg-[#3A4335] px-3 py-1 text-[11px] font-semibold text-white">
-                หมดชั่วคราว
+                Temporarily out of stock
               </span>
             ) : product.lowStock ? (
               <span className="rounded-full bg-[#FFF1D8] px-3 py-1 text-[11px] font-semibold text-[#8A5B13]">
-                เหลือ {product.stock} ชิ้น
+                Only {product.stock} left
               </span>
             ) : (
               <span className="rounded-full bg-white/92 px-3 py-1 text-[11px] font-semibold text-[#405336]">
-                พร้อมสั่ง
+                Ready to order
               </span>
             )}
 
             {product.shopVerified && (
               <span className="rounded-full bg-[#D7E5CA]/90 px-3 py-1 text-[11px] font-semibold text-[#36502E]">
-                ร้านยืนยันแล้ว
+                Verified shop
               </span>
             )}
           </div>
@@ -381,13 +380,13 @@ function ProductCard({ product, onAddToCart, cartQty = 0 }) {
           </Link>
 
           <p className="min-h-[3.5rem] line-clamp-2 text-sm leading-6.5 text-[#627059]">
-            {product.description || "เมนูชาที่คัดจากร้านบรรยากาศอบอุ่น พร้อมรายละเอียดที่เหมาะกับการตัดสินใจเร็วขึ้น"}
+            {product.description || "Tea menu selected from warm atmosphere shops, with details suitable for quick decision making"}
           </p>
         </div>
 
         <div className="mt-auto flex items-end justify-between gap-4 pt-4">
           <div className="min-w-0 space-y-1.5">
-            <p className="text-[13px] text-[#859479]">เริ่มต้น</p>
+            <p className="text-[13px] text-[#859479]">Starting from</p>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <p className="text-[20px] font-semibold text-[#253621]">{formatPrice(product.price)}</p>
               <div className="flex min-w-0 items-center gap-1.5 overflow-hidden text-[11px] text-[#3C4636]">
@@ -415,7 +414,7 @@ function ProductCard({ product, onAddToCart, cartQty = 0 }) {
                 : "bg-[#485B3B] text-white shadow-[0_14px_28px_rgba(72,91,59,0.22)] hover:-translate-y-0.5 hover:bg-[#394A31] active:scale-[0.98]"
             }`}
           >
-            {product.isOwnProduct ? "สินค้าร้านคุณ" : product.soldOut ? "ของหมด" : cartFull ? "ครบจำนวนแล้ว" : "เพิ่มลงตะกร้า"}
+            {product.isOwnProduct ? "Your shop's product" : product.soldOut ? "Out of stock" : cartFull ? "Full quantity" : "Add to cart"}
           </button>
         </div>
       </div>
@@ -451,7 +450,7 @@ function ShopCard({ shop }) {
           </div>
 
           <p className="line-clamp-2 text-sm leading-6 text-[#627059]">
-            {shop.description || "ร้านชาที่เน้นภาพรวมอบอุ่น เรียบดี และเลือกเมนูได้ง่ายจากหน้าเดียว"}
+            {shop.description || "Tea shop that emphasizes a warm overall atmosphere, neat, and easy to select menus from one page"}
           </p>
 
           <div className="flex flex-wrap gap-3 text-xs text-[#7C8E70]">
@@ -462,12 +461,12 @@ function ShopCard({ shop }) {
       </div>
 
       <div className="mt-5 flex items-center justify-between gap-3 border-t border-[#EBF0E5] pt-4">
-        <p className="text-sm text-[#7A8A6F]">กดเข้าไปเพื่อดูสินค้า รายละเอียด และเมนูของร้านนี้</p>
+        <p className="text-sm text-[#7A8A6F]">Click to view products, details, and menus of this shop</p>
         <Link
           to={`/shop/${shop.id}`}
           className="rounded-full border border-[#485B3B] px-4 py-2 text-sm font-semibold text-[#485B3B] transition-all duration-300 hover:bg-[#485B3B] hover:text-white"
         >
-          ดูร้าน
+          View shop
         </Link>
       </div>
     </article>
@@ -480,11 +479,11 @@ function EmptyProductsState({ search, onClearSearch, onClearFilters }) {
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#E3ECD7] text-3xl text-[#516548]">
         🍵
       </div>
-      <h3 className="mt-5 text-[24px] font-semibold text-[#283824]">ยังไม่เจอเมนูที่ตรงกับตอนนี้</h3>
+      <h3 className="mt-5 text-[24px] font-semibold text-[#283824]">No menus matching at the moment</h3>
       <p className="mx-auto mt-3 max-w-2xl text-[15px] leading-7 text-[#66755D]">
         {search.trim()
-          ? `คำค้น “${search.trim()}” อาจยังไม่ตรงกับชื่อเมนูหรือร้าน ลองใช้คำที่สั้นลง หรือสลับหมวดเพื่อดูเมนูที่ใกล้เคียง`
-          : "ตัวกรองตอนนี้ค่อนข้างแคบ ลองล้างหมวดหรือแท็บที่เลือกไว้เพื่อกลับไปดูสินค้าทั้งหมด"}
+          ? `The search term "${search.trim()}" may not match menu names or shops yet. Try using shorter words, or switch categories to see similar menus`
+          : "The current filters are quite narrow. Try clearing the selected category or tab to go back to viewing all products"}
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         {search.trim() && (
@@ -493,7 +492,7 @@ function EmptyProductsState({ search, onClearSearch, onClearFilters }) {
             onClick={onClearSearch}
             className="rounded-full bg-[#485B3B] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(72,91,59,0.2)] transition-all duration-300 hover:bg-[#394A31]"
           >
-            ล้างคำค้น
+            Clear search
           </button>
         )}
         <button
@@ -501,7 +500,7 @@ function EmptyProductsState({ search, onClearSearch, onClearFilters }) {
           onClick={onClearFilters}
           className="rounded-full border border-[#485B3B] px-5 py-2.5 text-sm font-semibold text-[#485B3B] transition-all duration-300 hover:bg-[#485B3B] hover:text-white"
         >
-          ดูสินค้าทั้งหมด
+          View all products
         </button>
       </div>
     </div>
@@ -514,9 +513,9 @@ function EmptyShopsState() {
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#E3ECD7] text-3xl text-[#516548]">
         🏪
       </div>
-      <h3 className="mt-5 text-[24px] font-semibold text-[#283824]">ยังไม่มีร้านค้าที่ตรงกับคำค้น</h3>
+      <h3 className="mt-5 text-[24px] font-semibold text-[#283824]">No shops matching the search</h3>
       <p className="mt-3 text-[15px] leading-7 text-[#66755D]">
-        ลองค้นหาด้วยชื่อร้านแบบสั้นลง หรือกลับไปดูรายการร้านทั้งหมดก่อน
+        Try searching with a shorter shop name, or go back to view all shops first
       </p>
     </div>
   );
@@ -528,9 +527,9 @@ function ErrorState({ message, onRetry }) {
       <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#FDE4DB] text-3xl text-[#9A5B44]">
         !
       </div>
-      <h3 className="mt-5 text-[24px] font-semibold text-[#4D2D20]">โหลดข้อมูลร้านค้าไม่สำเร็จ</h3>
+      <h3 className="mt-5 text-[24px] font-semibold text-[#4D2D20]">Failed to load shop data</h3>
       <p className="mx-auto mt-3 max-w-2xl text-[15px] leading-7 text-[#7A574C]">
-        ระบบยังดึงรายการสินค้าและร้านค้าไม่ได้ในรอบนี้ คุณสามารถลองใหม่อีกครั้งได้ทันที
+        The system could not retrieve the product and shop list this time. You can try again immediately
         {message ? ` (${message})` : ""}
       </p>
       <button
@@ -538,7 +537,7 @@ function ErrorState({ message, onRetry }) {
         onClick={onRetry}
         className="mt-6 rounded-full bg-[#6A4A3C] px-5 py-2.5 text-sm font-semibold text-white transition-all duration-300 hover:bg-[#553A2F]"
       >
-        ลองใหม่
+        Try again
       </button>
     </div>
   );
@@ -562,8 +561,8 @@ function CartDrawer({ cart, onClose, onUpdateQty, onCheckout }) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-xs uppercase tracking-[0.18em] text-[#8BA07A]">Cart drawer</p>
-              <h2 className="mt-1 text-[24px] font-semibold text-[#24321F]">ตะกร้าสินค้า</h2>
-              <p className="mt-1 text-sm text-[#6A785F]">{itemCount} รายการที่พร้อมไปต่อยังขั้นตอนชำระเงิน</p>
+              <h2 className="mt-1 text-[24px] font-semibold text-[#24321F]">Shopping cart</h2>
+              <p className="mt-1 text-sm text-[#6A785F]">{itemCount} items ready to proceed to checkout</p>
             </div>
             <button
               type="button"
@@ -583,9 +582,9 @@ function CartDrawer({ cart, onClose, onUpdateQty, onCheckout }) {
               <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#E3ECD7] text-3xl text-[#516548]">
                 🛒
               </div>
-              <h3 className="mt-5 text-[22px] font-semibold text-[#2A3826]">ตะกร้ายังว่าง</h3>
+              <h3 className="mt-5 text-[22px] font-semibold text-[#2A3826]">Cart is empty</h3>
               <p className="mt-3 text-sm leading-7 text-[#6A785F]">
-                ลองเริ่มจากเมนูที่สะดุดตาหรือกดหมวดที่สนใจ แล้วระบบจะเก็บไว้ให้ตรงนี้ทันที
+                Try starting with an eye-catching menu or click on an interesting category, and the system will save it here immediately
               </p>
             </div>
           ) : (
@@ -636,7 +635,7 @@ function CartDrawer({ cart, onClose, onUpdateQty, onCheckout }) {
                         onClick={() => onUpdateQty(item.id, 0)}
                         className="text-sm font-medium text-[#8A675A] transition-colors duration-300 hover:text-[#6A4A3C]"
                       >
-                        ลบออก
+                        Remove
                       </button>
                     </div>
                   </div>
@@ -648,15 +647,15 @@ function CartDrawer({ cart, onClose, onUpdateQty, onCheckout }) {
 
         <div className="border-t border-[#D9E2CF] bg-white/86 px-6 py-5">
           <div className="mb-4 flex items-center justify-between text-sm text-[#6C7B61]">
-            <span>รวมรายการ</span>
-            <span>{itemCount} ชิ้น</span>
+            <span>Total items</span>
+            <span>{itemCount} pieces</span>
           </div>
           <div className="mb-5 flex items-end justify-between">
             <div>
-              <p className="text-sm text-[#7A8A6F]">ยอดรวมโดยประมาณ</p>
+              <p className="text-sm text-[#7A8A6F]">Estimated total</p>
               <p className="text-[28px] font-semibold text-[#23311F]">{formatPrice(total)}</p>
             </div>
-            <p className="max-w-[10rem] text-right text-xs leading-5 text-[#7A8A6F]">ยังไม่รวมค่าจัดส่งหรือค่าธรรมเนียมที่อาจเกิดขึ้น</p>
+            <p className="max-w-[10rem] text-right text-xs leading-5 text-[#7A8A6F]">Does not include shipping costs or possible fees</p>
           </div>
 
           <button
@@ -669,7 +668,7 @@ function CartDrawer({ cart, onClose, onUpdateQty, onCheckout }) {
                 : "bg-[#485B3B] text-white shadow-[0_16px_36px_rgba(72,91,59,0.22)] hover:bg-[#394A31]"
             }`}
           >
-            ไปหน้าชำระเงิน
+            Go to checkout
           </button>
         </div>
       </aside>
@@ -907,9 +906,9 @@ export default function ShopHome() {
             <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-[#879A78]">Browse modes</p>
-                <h2 className="mt-2 text-[1.55rem] font-semibold text-[#253621]">สลับดูสินค้าและร้านได้โดยไม่เปลี่ยนหน้า</h2>
+                <h2 className="mt-2 text-[1.55rem] font-semibold text-[#253621]">Switch between products and shops without changing pages</h2>
                 <p className="mt-2 max-w-2xl text-sm leading-7 text-[#66755D]">
-                  ใช้ตัวกรองเพื่อไล่จากกว้างไปแคบ และยังคงเห็นภาพรวมของร้านชาในโทนเดียวกัน
+                  Use filters to go from broad to narrow, and still see the overall view of tea shops in the same tone
                 </p>
               </div>
               <ViewToggle activeView={activeView} onChange={setActiveView} />
@@ -946,7 +945,7 @@ export default function ShopHome() {
                   <div className="flex items-center gap-3">
                     {!loading && (
                       <span className="rounded-full bg-white/78 px-4 py-2 text-sm text-[#5F6D55] ring-1 ring-[#D9E2CF]">
-                        {filteredProducts.length} รายการ
+                        {filteredProducts.length} items
                       </span>
                     )}
                     {(search || activeCategory || activeTab !== TABS[0]) && (
@@ -955,7 +954,7 @@ export default function ShopHome() {
                         onClick={clearFilters}
                         className="rounded-full border border-[#485B3B] px-4 py-2 text-sm font-semibold text-[#485B3B] transition-all duration-300 hover:bg-[#485B3B] hover:text-white"
                       >
-                        ล้างตัวกรอง
+                        Clear filters
                       </button>
                     )}
                   </div>
@@ -988,16 +987,16 @@ export default function ShopHome() {
                   <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-[#879A78]">Shops</p>
                     <h2 className="mt-2 text-[1.9rem] font-semibold text-[#253621]">
-                      {search.trim() ? `ร้านค้าที่ตรงกับ “${search.trim()}”` : "ร้านชาทั้งหมด"}
+                      {search.trim() ? `Shops matching "${search.trim()}"` : "All tea shops"}
                     </h2>
                     <p className="mt-2 max-w-3xl text-sm leading-7 text-[#66755D]">
-                      เลือกดูร้านก่อนแล้วค่อยเจาะไปยังเมนูที่เหมาะกับสไตล์ของแต่ละร้าน
+                      Choose to view shops first, then drill down to menus suitable for each shop's style
                     </p>
                   </div>
 
                   {!loading && (
                     <span className="rounded-full bg-white/78 px-4 py-2 text-sm text-[#5F6D55] ring-1 ring-[#D9E2CF]">
-                      {filteredShops.length} ร้าน
+                      {filteredShops.length} shops
                     </span>
                   )}
                 </div>
@@ -1029,10 +1028,10 @@ export default function ShopHome() {
               <div>
                 <p className="text-xs uppercase tracking-[0.24em] text-[#829473]">Open your own shop</p>
                 <h2 className="mt-3 text-[2rem] font-semibold leading-tight text-[#253621]">
-                  ถ้ามีร้านชาอยู่แล้ว ส่วนนี้ควรชวนให้เข้าระบบต่อได้อย่างมั่นใจ
+                  If you already have a tea shop, this section should invite you to join the system confidently
                 </h2>
                 <p className="mt-3 max-w-2xl text-[15px] leading-7 text-[#66755D]">
-                  เราเก็บ section นี้ไว้ แต่จัดให้น้ำหนักเบาลงกว่าเดิม เพื่อไม่แย่งความสนใจจากสินค้าและร้านที่ผู้ใช้กำลังดูอยู่
+                  We keep this section, but arrange it to have less weight than before, so as not to distract attention from the products and shops the user is viewing
                 </p>
               </div>
 
@@ -1041,13 +1040,13 @@ export default function ShopHome() {
                   type="button"
                   className="rounded-full bg-[#485B3B] px-6 py-3 text-sm font-semibold text-white shadow-[0_16px_30px_rgba(72,91,59,0.2)] transition-all duration-300 hover:bg-[#394A31]"
                 >
-                  เปิดร้านเลย
+                  Open shop now
                 </button>
                 <button
                   type="button"
                   className="rounded-full border border-[#485B3B] px-6 py-3 text-sm font-semibold text-[#485B3B] transition-all duration-300 hover:bg-[#485B3B] hover:text-white"
                 >
-                  เรียนรู้เพิ่มเติม
+                  Learn more
                 </button>
               </div>
             </div>

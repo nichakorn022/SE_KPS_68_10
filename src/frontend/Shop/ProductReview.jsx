@@ -289,7 +289,15 @@ export default function ProductReview({ productId }) {
             </div>
           </div>
           <div style={s.featuredGrid}>
-            {reviews.slice(0, 2).map((review) => (
+            {reviews
+              .sort((a, b) => {
+                // First by rating descending
+                if (b.rating !== a.rating) return b.rating - a.rating;
+                // Then by text length descending
+                return b.text.length - a.text.length;
+              })
+              .slice(0, 2)
+              .map((review) => (
               <div key={review.id} style={s.featuredCard}>
                 <div style={s.reviewHeader}>
                   <div style={s.reviewerInfo}>
@@ -317,7 +325,6 @@ export default function ProductReview({ productId }) {
                   </div>
                 </div>
                 <p style={s.reviewText}>{review.text}</p>
-                <p style={s.helpfulText}>{review.helpful || 0} people found this helpful</p>
               </div>
             ))}
           </div>
@@ -419,9 +426,6 @@ export default function ProductReview({ productId }) {
                   </div>
                 </div>
                 <p style={{ ...s.reviewText, color: "#374151", marginTop: 12 }}>{review.text}</p>
-                <p style={{ ...s.helpfulText, color: "#78716c", marginTop: 16 }}>
-                  {review.helpful || 0} people found this helpful
-                </p>
               </div>
             ))}
             {filtered.length === 0 && totalReviews > 0 && (

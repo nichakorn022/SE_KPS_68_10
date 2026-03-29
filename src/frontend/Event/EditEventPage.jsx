@@ -25,6 +25,7 @@ export default function EditEventPage() {
   const [errorCode, setErrorCode] = useState(null);
   const [loading, setLoading] = useState(false);
   const [loadingEvent, setLoadingEvent] = useState(true);
+  const [registrationCount, setRegistrationCount] = useState(0);
 
   // Check organizer status
   useEffect(() => {
@@ -67,7 +68,15 @@ export default function EditEventPage() {
         setError("Failed to load event");
         setLoadingEvent(false);
       });
-  }, [id]);
+
+    // Load registration count
+    fetch(apiUrl(`/events/${id}/registrations/count`), {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => setRegistrationCount(data.registration_count || 0))
+      .catch(console.error);
+  }, [id, token]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -151,6 +160,16 @@ export default function EditEventPage() {
           </div>
         )}
 
+        {/* Warning - Cannot edit with active registrations */}
+        {registrationCount > 0 && (
+          <div className="mb-6 p-4 rounded-[1.5rem] border border-red-200 bg-red-50">
+            <p className="text-sm font-semibold text-red-800 mb-2">🔒 Cannot edit this event</p>
+            <p className="text-xs text-red-700">
+              There are {registrationCount} active registration{registrationCount > 1 ? 's' : ''}. You cannot edit or delete an event with active participants.
+            </p>
+          </div>
+        )}
+
         <div className="bg-white rounded-[2rem] border border-[#DFE6D6] shadow-[0_24px_64px_rgba(72,91,59,0.10)] p-8">
 
           {/* Header */}
@@ -174,7 +193,7 @@ export default function EditEventPage() {
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5" style={{opacity: organizerStatus?.verified_status === 1 ? 1 : 0.6, pointerEvents: organizerStatus?.verified_status === 1 ? 'auto' : 'none'}}>
+          <form onSubmit={handleSubmit} className="space-y-5" style={{opacity: (organizerStatus?.verified_status === 1 && registrationCount === 0) ? 1 : 0.6, pointerEvents: (organizerStatus?.verified_status === 1 && registrationCount === 0) ? 'auto' : 'none'}}>
 
             {/* Title */}
             <div>

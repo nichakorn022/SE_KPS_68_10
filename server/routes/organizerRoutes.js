@@ -43,7 +43,7 @@ router.post("/register", authMiddleware, async (req, res) => {
     await query(`
       INSERT INTO organizer
       (user_id, first_name, last_name, birth_date, phone, address, province, district, subdistrict, national_id, organization_name, description, verified_status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
     `, [
   userId,
   first_name || null,
@@ -59,7 +59,7 @@ router.post("/register", authMiddleware, async (req, res) => {
   description || null
     ]);
 
-    res.json({ message: "สมัครสำเร็จ รอ admin อนุมัติ" });
+    res.json({ message: "สมัครสำเร็จ! คุณสามารถสร้าง event ได้เลย" });
 
   } catch (err) {
     console.error(err);

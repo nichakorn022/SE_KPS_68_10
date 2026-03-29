@@ -25,9 +25,26 @@ function sanitizeText(value) {
   return trimmed ? trimmed : null;
 }
 
-function buildAuthPayload(user) {
+async function buildAuthPayload(user) {
   const adminUser = isAdminUser(user);
   const role = adminUser ? "admin" : String(user.role || "user").toLowerCase();
+
+  // Fetch organizer_id if user is an organizer
+  let organizer_id = null;
+  if (role === "user" || role !== "admin") {
+    try {
+      const orgResult = await query(
+        "SELECT organizer_id FROM organizer WHERE user_id = ? LIMIT 1",
+        [user.user_id]
+      );
+      if (orgResult.length > 0) {
+        organizer_id = orgResult[0].organizer_id;
+      }
+    } catch (err) {
+      // Silently ignore if organizer lookup fails
+      console.warn(`Could not fetch organizer_id for user ${user.user_id}:`, err.message);
+    }
+  }
 
   return {
     tokenPayload: {
@@ -37,6 +54,7 @@ function buildAuthPayload(user) {
       username: user.username,
       name: user.username,
       avatar: user.avatar || null,
+      organizer_id,
     },
     responseUser: {
       user_id: user.user_id,
@@ -44,6 +62,7 @@ function buildAuthPayload(user) {
       email: user.email,
       role,
       avatar: user.avatar || null,
+      organizer_id,
     },
     isAdmin: adminUser,
   };
@@ -183,7 +202,7 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Wrong password" });
     }
 
-    const { tokenPayload, responseUser } = buildAuthPayload(user);
+    const { tokenPayload, responseUser } = await buildAuthPayload(user);
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: "1d" });
 
     res.json({

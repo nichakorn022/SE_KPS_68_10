@@ -283,7 +283,7 @@ export default function Eventdetails() {
 
   // ---------------- REGISTER ----------------
   const toggleRegister = async () => {
-    if (!token) { alert("Please login first"); return; }
+    if (!token) { alert("Please login first"); return false; }
     try {
       const method =
         registrationStatus === "pending" || registrationStatus === "confirmed"
@@ -300,7 +300,11 @@ export default function Eventdetails() {
         setRegistrationStatus("cancelled");
         setRegistrationId(null);
       }
-    } catch (err) { alert(err.message); }
+      return true;
+    } catch (err) {
+      alert(err.message);
+      return false;
+    }
   };
 
   // ---------------- SPONSOR ----------------
@@ -330,7 +334,11 @@ export default function Eventdetails() {
     }
 
     if (registrationStatus !== "pending") {
-      await toggleRegister();
+      const didRegister = await toggleRegister();
+      if (!didRegister) {
+        // Failed to register (e.g. owner cannot register) -> do not show PromptPay
+        return;
+      }
     }
 
     setShowPromptPay(true);
@@ -525,6 +533,10 @@ export default function Eventdetails() {
                 >
                   {sBtn.label}
                 </button>
+              ) : user && event && user.organizer_id && event.organizer_id === user.organizer_id ? (
+                <div className="rounded-full px-6 py-2.5 text-sm font-semibold text-[#879A78] bg-[#F5F3E9] border border-[#DFE6D6]">
+                  👨‍💼 You are the organizer
+                </div>
               ) : (
                 <>
                   <button

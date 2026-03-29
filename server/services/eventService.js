@@ -298,6 +298,16 @@ async function getVerifiedOrganizer(userId) {
   return rows.length > 0 ? rows[0] : null;
 }
 
+// =========== GET EVENT REGISTRATION COUNT ===========
+async function getEventRegistrationCount(eventId) {
+  const rows = await query(
+    `SELECT COUNT(*) as count FROM event_registration 
+     WHERE event_id = ? AND registration_status != 'cancelled'`,
+    [eventId]
+  );
+  return rows[0].count;
+}
+
 module.exports = {
   getEvents,
   getEventById,
@@ -312,5 +322,6 @@ module.exports = {
   registerEvent,
   cancelRegistration,
   checkRegistration,
-  getVerifiedOrganizer
+  getVerifiedOrganizer,
+  getEventRegistrationCount
 };

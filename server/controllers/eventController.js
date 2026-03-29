@@ -99,6 +99,15 @@ exports.updateEvent = async (req, res) => {
       });
     }
 
+    // Check if there are active registrations
+    const registrations = await eventService.getEventRegistrationCount(id);
+    
+    if (registrations > 0) {
+      return res.status(409).json({
+        message: `Cannot edit event with ${registrations} active registration(s). Please cancel their registrations first.`
+      });
+    }
+
     await eventService.updateEvent(id, req.body);
     res.json({ message: "updated" });
   } catch (err) {
@@ -211,13 +220,29 @@ exports.registerEvent = async (req, res) => {
   const eventId = req.params.id;
 
   try {
+    // Check if user is the organizer of this event
+    const event = await eventService.getEventById(eventId);
+    
+    if (!event) {
+      return res.status(404).json({ message: "Event not found" });
+    }
+
+    const org = await eventService.getVerifiedOrganizer(userId);
+    
+    if (org && event.organizer_id === org.organizer_id) {
+      return res.status(403).json({ 
+        message: "You cannot register for your own event",
+        code: "CANNOT_REGISTER_OWN_EVENT"
+      });
+    }
+
     const registrationId = await eventService.registerEvent(userId, eventId);
     res.json({
       message: "Registration created. Waiting for payment.",
       registration_id: registrationId
     });
   } catch (error) {
-    res.status(500).json({
+    res.status(error.statusCode || 500).json({
       message: "Failed to register event",
       error: error.message
     });

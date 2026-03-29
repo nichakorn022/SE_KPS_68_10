@@ -100,8 +100,8 @@ export default function MyEventsPage() {
 
                 {/* warning ถ้ามีคนสมัคร */}
                 {(e.registration_count || 0) > 0 && (
-                  <div className="bg-orange-50 border border-orange-200 rounded p-2 mb-3 text-xs text-orange-700">
-                    ⚠ Cannot delete: {e.registration_count} person{e.registration_count > 1 ? 's' : ''} registered
+                  <div className="bg-red-50 border border-red-200 rounded p-2 mb-3 text-xs text-red-700">
+                    🔒 Cannot edit or delete: {e.registration_count} person{e.registration_count > 1 ? 's' : ''} registered
                   </div>
                 )}
 
@@ -115,7 +115,12 @@ export default function MyEventsPage() {
 
                   <button
                     onClick={() => navigate(`/edit-event/${e.event_id}`)}
-                    className="px-3 py-1 bg-yellow-400 rounded text-sm hover:bg-yellow-500"
+                    disabled={(e.registration_count || 0) > 0}
+                    className={`px-3 py-1 rounded text-sm ${
+                      (e.registration_count || 0) > 0
+                        ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                        : "bg-yellow-400 hover:bg-yellow-500"
+                    }`}
                   >
                     Edit
                   </button>

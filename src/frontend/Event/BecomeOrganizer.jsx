@@ -46,8 +46,8 @@ export default function BecomeOrganizer() {
 
       if (!res.ok) throw new Error(data.message);
 
-      alert("สมัครสำเร็จ รอ admin approve");
-      navigate("/events");
+      alert("✅ Registration successful! You can now create events immediately.");
+      navigate("/my-events");
 
     } catch (err) {
       alert(err.message);

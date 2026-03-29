@@ -26,8 +26,53 @@ router.get("/", getAllEvents);
 router.get("/search", searchEvents);
 
 router.get("/interested/me", authMiddleware, getUserInterested);
+router.get("/my-events", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.user_id;
+
+    const org = await query(
+      "SELECT organizer_id FROM organizer WHERE user_id = ? AND verified_status = 1",
+      [userId]
+    );
+
+    if (org.length === 0) {
+      return res.json([]);
+    }
+
+    const events = await query(
+      `SELECT e.*, 
+              COALESCE(COUNT(er.registration_id), 0) as registration_count
+       FROM event e
+       LEFT JOIN event_registration er ON e.event_id = er.event_id AND er.registration_status != 'cancelled'
+       WHERE e.organizer_id = ? 
+       GROUP BY e.event_id
+       ORDER BY e.event_id DESC`,
+      [org[0].organizer_id]
+    );
+
+    res.json(events);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Error" });
+  }
+});
 
 router.get("/:id", getEventById);
+
+router.get("/:id/registrations/count", authMiddleware, async (req, res) => {
+  try {
+    const { query } = require("../utils/dbHelpers");
+    const rows = await query(
+      `SELECT COUNT(*) as count FROM event_registration 
+       WHERE event_id = ? AND registration_status != 'cancelled'`,
+      [req.params.id]
+    );
+    res.json({ registration_count: rows[0].count });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 router.post("/", authMiddleware, createEvent);
 router.put("/:id", authMiddleware, updateEvent);
@@ -130,41 +175,5 @@ router.get("/shop/available", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Error fetching events" });
   }
 });
-
-
-// 🔥 GET MY EVENTS (organizer)
-router.get("/my-events", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.user_id;
-
-    const org = await query(
-      "SELECT organizer_id FROM organizer WHERE user_id = ? AND verified_status = 1",
-      [userId]
-    );
-
-    if (org.length === 0) {
-      return res.json([]);
-    }
-
-    const events = await query(
-      `SELECT e.*, 
-              COALESCE(COUNT(er.registration_id), 0) as registration_count
-       FROM event e
-       LEFT JOIN event_registration er ON e.event_id = er.event_id AND er.registration_status != 'cancelled'
-       WHERE e.organizer_id = ? 
-       GROUP BY e.event_id
-       ORDER BY e.event_id DESC`,
-      [org[0].organizer_id]
-    );
-
-    res.json(events);
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error" });
-  }
-});
-
-
 
 module.exports = router;

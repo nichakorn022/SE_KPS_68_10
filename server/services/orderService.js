@@ -211,13 +211,35 @@ async function getOrders({ status, user_id }) {
 }
 
 async function getOrdersByUser(userId) {
-  return query(
+  const orderRows = await query(
     `${orderSelectFields}
      FROM orders
      WHERE user_id = ?
      ORDER BY order_date DESC`,
     [userId]
   );
+
+  if (orderRows.length === 0) return [];
+
+  const orderIds = orderRows.map((o) => o.order_id);
+  const detailRows = await query(
+    `SELECT od.order_id, od.order_detail_id, od.product_id, tp.tea_name, od.quantity, od.unit_price, od.subtotal
+     FROM order_details od
+     JOIN tea_product tp ON tp.product_id = od.product_id
+     WHERE od.order_id IN (${orderIds.map(() => "?").join(",")})`,
+    orderIds
+  );
+
+  const itemsByOrder = new Map();
+  for (const row of detailRows) {
+    if (!itemsByOrder.has(row.order_id)) itemsByOrder.set(row.order_id, []);
+    itemsByOrder.get(row.order_id).push(row);
+  }
+
+  return orderRows.map((order) => ({
+    ...order,
+    items: itemsByOrder.get(order.order_id) || [],
+  }));
 }
 
 async function getSellerRevenueTrend(userId, days = 7) {

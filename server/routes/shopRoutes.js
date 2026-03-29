@@ -9,6 +9,7 @@ router.get("/", shopController.getShops);
 router.get("/:id", shopController.getShopById);
 router.post("/", shopController.createShop);
 router.patch("/:id", authMiddleware, shopController.updateShopByOwner);
+router.patch("/:id/admin", adminMiddleware, shopController.updateShopByAdmin);
 router.patch("/:id/verification", adminMiddleware, shopController.updateShopVerification);
 
 module.exports = router;

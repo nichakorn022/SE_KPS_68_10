@@ -38,11 +38,22 @@ exports.updateShopByOwner = (req, res) => {
     );
 };
 
+exports.updateShopByAdmin = (req, res) => {
+  const { id } = req.params;
+
+  shopService
+    .updateShopByAdmin(id, req.body)
+    .then((result) => res.json(result))
+    .catch((error) =>
+      res.status(error.statusCode || 500).json({ message: error.message || "Failed to update shop" })
+    );
+};
+
 exports.updateShopVerification = (req, res) => {
   const { id } = req.params;
 
   shopService
-    .updateShopVerification(id, req.body.verified_status, req.body.admin_note)
+    .updateShopVerification(id, req.body.verified_status, req.body.admin_note, req.body.review_status)
     .then((result) => res.json(result))
     .catch((error) =>
       res

@@ -121,6 +121,43 @@ const { query } = require("./utils/dbHelpers");
   }
 })();
 
+(async function ensureReviewStatusColumns() {
+  const targets = [
+    { table: "tea_shop", verifiedColumn: "verified_status" },
+    { table: "organizer", verifiedColumn: "verified_status" },
+  ];
+
+  for (const target of targets) {
+    try {
+      const rows = await query(
+        `SELECT COLUMN_NAME
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = ?
+           AND COLUMN_NAME = 'review_status'
+         LIMIT 1`,
+        [target.table]
+      );
+
+      if (rows.length === 0) {
+        await query(
+          `ALTER TABLE ${target.table}
+           ADD COLUMN review_status VARCHAR(20) NOT NULL DEFAULT 'pending'`
+        );
+        await query(
+          `UPDATE ${target.table}
+           SET review_status = CASE
+             WHEN ${target.verifiedColumn} = 1 THEN 'approved'
+             ELSE 'pending'
+           END`
+        );
+      }
+    } catch (err) {
+      console.warn(`Could not ensure ${target.table}.review_status column:`, err.message);
+    }
+  }
+})();
+
 (async function ensureShopImagesIdentity() {
   try {
     const imageIdRows = await query(

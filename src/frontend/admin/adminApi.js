@@ -136,6 +136,45 @@ export const adminApi = {
   getShops(adminToken) {
     return adminFetch("/shops", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
+  getUsers(adminToken) {
+    return adminFetch("/users", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
+  },
+  updateUser(adminToken, userId, payload) {
+    return adminFetch(`/users/${userId}`, adminToken, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+  deleteUser(adminToken, userId) {
+    return adminFetch(`/users/${userId}`, adminToken, {
+      method: "DELETE",
+      body: JSON.stringify({}),
+    });
+  },
+  getUserOrders(adminToken, userId) {
+    return adminFetch(`/orders/user/${userId}`, adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
+  },
+  deleteOrder(adminToken, orderId) {
+    return adminFetch(`/orders/${orderId}`, adminToken, {
+      method: "DELETE",
+      body: JSON.stringify({}),
+    });
+  },
+  getUserRegistrations(adminToken, userId) {
+    return adminFetch(`/registrations/user/${userId}`, adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
+  },
+  updateRegistrationStatus(adminToken, registrationId, status) {
+    return adminFetch(`/registrations/${registrationId}/status`, adminToken, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
+  },
+  deleteRegistration(adminToken, registrationId) {
+    return adminFetch(`/registrations/${registrationId}/hard-delete`, adminToken, {
+      method: "DELETE",
+      body: JSON.stringify({}),
+    });
+  },
   getShopImages(adminToken) {
     return adminFetch("/shop-images", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
@@ -156,19 +195,25 @@ export const adminApi = {
       body: JSON.stringify({}),
     });
   },
-  updateShopVerification(adminToken, shopId, verifiedStatus, adminNote = null) {
+  updateShopVerification(adminToken, shopId, verifiedStatus, adminNote = null, reviewStatus = null) {
     return adminFetch(`/shops/${shopId}/verification`, adminToken, {
       method: "PATCH",
-      body: JSON.stringify({ verified_status: verifiedStatus, admin_note: adminNote }),
+      body: JSON.stringify({ verified_status: verifiedStatus, admin_note: adminNote, review_status: reviewStatus }),
+    });
+  },
+  updateShop(adminToken, shopId, payload) {
+    return adminFetch(`/shops/${shopId}/admin`, adminToken, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
     });
   },
   getOrganizers(adminToken) {
     return adminFetch("/organizers", adminToken, { method: "GET", headers: { Authorization: `Bearer ${adminToken}` } });
   },
-  updateOrganizerVerification(adminToken, organizerId, verifiedStatus, adminNote = null) {
+  updateOrganizerVerification(adminToken, organizerId, verifiedStatus, adminNote = null, reviewStatus = null) {
     return adminFetch(`/organizers/${organizerId}/verification`, adminToken, {
       method: "PATCH",
-      body: JSON.stringify({ verified_status: verifiedStatus, admin_note: adminNote }),
+      body: JSON.stringify({ verified_status: verifiedStatus, admin_note: adminNote, review_status: reviewStatus }),
     });
   },
   getReports(adminToken) {

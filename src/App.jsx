@@ -22,9 +22,10 @@ const UserProfile = lazy(() => import("./frontend/Profile/userProfile.jsx"));
 const AdminRoute = lazy(() => import("./frontend/admin/AdminRoute.jsx"));
 const AdminDashboard = lazy(() => import("./frontend/admin/AdminDashboard.jsx"));
 const AdminInboxPage = lazy(() => import("./frontend/admin/AdminInboxPage.jsx"));
-const AdminProductsPage = lazy(() => import("./frontend/admin/AdminProductsPage.jsx"));
+const AdminShopsPage = lazy(() => import("./frontend/admin/AdminShopsPage.jsx"));
 const AdminEventsPage = lazy(() => import("./frontend/admin/AdminEventsPage.jsx"));
 const AdminOrdersPage = lazy(() => import("./frontend/admin/AdminOrdersPage.jsx"));
+const AdminUsersPage = lazy(() => import("./frontend/admin/AdminUsersPage.jsx"));
 
 export const AuthModalContext = createContext(null);
 export const useAuthModal = () => useContext(AuthModalContext);
@@ -130,9 +131,10 @@ function App() {
               <Route index element={<AdminDashboard />} />
               <Route path="approvals" element={<AdminInboxPage />} />
               <Route path="requests-reports" element={<AdminInboxPage />} />
-              <Route path="products" element={<AdminProductsPage />} />
+              <Route path="shops" element={<AdminShopsPage />} />
               <Route path="events" element={<AdminEventsPage />} />
               <Route path="orders" element={<AdminOrdersPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />

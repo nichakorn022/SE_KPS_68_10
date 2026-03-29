@@ -209,7 +209,12 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
           <Link to="/" className={itemClass(active === "home")}>Home</Link>
           <Link to="/shop" className={itemClass(active === "shop")}>Shop</Link>
           <Link to="/events" className={itemClass(active === "events")}>Event</Link>
-          {userRole === "shop" ? <Link to="/seller" className={itemClass(active === "seller")}>Seller Hub</Link> : null}
+          {userRole === "shop" ? (
+            <>
+              <Link to="/seller" className={itemClass(active === "seller")}>Seller Hub</Link>
+              <Link to="/seller/dashboard" className={itemClass(active === "seller-dashboard")}>Dashboard</Link>
+            </>
+          ) : null}
 
           <div className="h-8 w-px bg-black/20" />
 

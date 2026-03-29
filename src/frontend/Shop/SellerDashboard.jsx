@@ -1,51 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import SiteNavbar from "../components/SiteNavbar";
-import { apiUrl, assetUrl } from "../../lib/api";
-import { getStoredToken, getUserIdFromToken, getUserRoleFromToken } from "./authClient";
-
-const api = {
-  getShops: () =>
-    fetch(apiUrl("/shops")).then((response) => {
-      if (!response.ok) throw new Error(`Shops ${response.status}`);
-      return response.json();
-    }),
-  getProducts: () =>
-    fetch(apiUrl("/products")).then((response) => {
-      if (!response.ok) throw new Error(`Products ${response.status}`);
-      return response.json();
-    }),
-  getProductImages: () =>
-    fetch(apiUrl("/product-images")).then((response) => {
-      if (!response.ok) throw new Error(`Product images ${response.status}`);
-      return response.json();
-    }),
-  getShopImages: () =>
-    fetch(apiUrl("/shop-images")).then((response) => {
-      if (!response.ok) throw new Error(`Shop images ${response.status}`);
-      return response.json();
-    }),
-};
-
-function getLocation(shop) {
-  return [shop?.subdistrict, shop?.district, shop?.province].filter(Boolean).join(", ");
-}
+import useSellerWorkspace from "../hooks/useSellerWorkspace";
 
 function formatStock(value) {
   return `${Number(value || 0).toLocaleString("th-TH")} units`;
 }
 
-function createProductImageMap(rows) {
-  const map = new Map();
-
-  for (const image of Array.isArray(rows) ? rows : []) {
-    const productId = Number(image.product_id);
-    if (!map.has(productId) && image.image_path) {
-      map.set(productId, assetUrl(image.image_path));
-    }
-  }
-
-  return map;
+function formatCurrency(value) {
+  return `฿${Number(value || 0).toLocaleString("th-TH")}`;
 }
 
 function StatCard({ label, value, tone = "olive", hint }) {
@@ -53,6 +16,7 @@ function StatCard({ label, value, tone = "olive", hint }) {
     olive: "from-[#F4F7EF] to-[#E9F0E1] text-[#284026]",
     cream: "from-[#FBF5EA] to-[#F3E8D3] text-[#4A3A24]",
     white: "from-white to-[#F7F8F3] text-[#2B3428]",
+    moss: "from-[#EFF4EA] to-[#E1EBD6] text-[#30412A]",
   };
 
   return (
@@ -64,20 +28,31 @@ function StatCard({ label, value, tone = "olive", hint }) {
   );
 }
 
-function WorkspaceAction({ title, text, to, tone = "olive" }) {
+function WorkspaceAction({ eyebrow, title, text, to, tone = "olive" }) {
   const styles = {
     olive: "bg-[#EEF5E6] text-[#2E4328] border-[#D5E2C6]",
     cream: "bg-[#FBF2E3] text-[#5A4427] border-[#E8D6B8]",
+    white: "bg-white text-[#2E3A29] border-[#D9E2CF]",
   };
 
   return (
     <Link
       to={to}
-      className={`rounded-[26px] border p-5 transition-all hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(72,91,59,0.12)] ${styles[tone]}`}
+      className={`rounded-[28px] border p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_16px_36px_rgba(72,91,59,0.12)] ${styles[tone]}`}
     >
-      <p className="text-[1.15rem] font-semibold">{title}</p>
+      <p className="text-[11px] uppercase tracking-[0.22em] opacity-65">{eyebrow}</p>
+      <p className="mt-3 text-[1.15rem] font-semibold">{title}</p>
       <p className="mt-2 text-sm leading-7 opacity-80">{text}</p>
     </Link>
+  );
+}
+
+function FocusNote({ title, text }) {
+  return (
+    <div className="rounded-[24px] border border-[#E3E9D9] bg-white/82 p-5">
+      <p className="text-sm font-semibold text-[#2C3D28]">{title}</p>
+      <p className="mt-3 text-sm leading-7 text-[#677361]">{text}</p>
+    </div>
   );
 }
 
@@ -89,10 +64,14 @@ function ProductRow({ product }) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[1.02rem] font-semibold text-[#283724]">{product.name}</p>
-        <p className="mt-1 text-sm text-[#75816F]">{product.type || "Tea"}</p>
+        <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-[#75816F]">
+          <span>{product.type || "Tea"}</span>
+          <span className="h-1 w-1 rounded-full bg-[#B5C4A7]" />
+          <span>{product.sales7d.toLocaleString("th-TH")} sold in 7d</span>
+        </div>
       </div>
       <div className="text-right">
-        <p className="font-semibold text-[#4E6B3E]">฿{Number(product.price || 0).toLocaleString("th-TH")}</p>
+        <p className="font-semibold text-[#4E6B3E]">{formatCurrency(product.price)}</p>
         <p className={`mt-1 text-sm ${product.stock <= 5 ? "text-[#B25B44]" : "text-[#6C7768]"}`}>{formatStock(product.stock)}</p>
       </div>
     </div>
@@ -100,91 +79,28 @@ function ProductRow({ product }) {
 }
 
 export default function SellerDashboard() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [shop, setShop] = useState(null);
-  const [products, setProducts] = useState([]);
+  const { loading, error, shop, products } = useSellerWorkspace();
 
-  const userId = getUserIdFromToken();
-  const role = getUserRoleFromToken();
-
-  useEffect(() => {
-    let ignore = false;
-
-    if (!getStoredToken()) {
-      setError("Please log in before opening Seller Hub");
-      setLoading(false);
-      return () => {
-        ignore = true;
-      };
-    }
-
-    if (role !== "shop") {
-      setError("This workspace is available only for shop accounts");
-      setLoading(false);
-      return () => {
-        ignore = true;
-      };
-    }
-
-    Promise.all([api.getShops(), api.getProducts(), api.getProductImages().catch(() => []), api.getShopImages().catch(() => [])])
-      .then(([shopRows, productRows, productImageRows, imageRows]) => {
-        if (ignore) return;
-
-        const productImageMap = createProductImageMap(productImageRows);
-
-        const ownedShop = (Array.isArray(shopRows) ? shopRows : []).find(
-          (item) => Number(item.user_id) === Number(userId)
-        );
-
-        if (!ownedShop) {
-          setError("No shop profile found for this account");
-          setLoading(false);
-          return;
-        }
-
-        const coverImage =
-          (Array.isArray(imageRows) ? imageRows : []).find((item) => Number(item.shop_id) === Number(ownedShop.shop_id))
-            ?.image_path || null;
-
-        const ownProducts = (Array.isArray(productRows) ? productRows : [])
-          .filter((item) => Number(item.shop_id) === Number(ownedShop.shop_id))
-          .map((item) => ({
-            id: item.product_id,
-            name: item.tea_name,
-            type: item.tea_type,
-            price: Number(item.price || 0),
-            stock: Number(item.stock || 0),
-            img: productImageMap.get(Number(item.product_id)) || null,
-          }));
-
-        setShop({
-          id: ownedShop.shop_id,
-          name: ownedShop.shop_name,
-          description: ownedShop.description || "",
-          phone: ownedShop.phone || "-",
-          contactInfo: ownedShop.contact_info || "",
-          location: getLocation(ownedShop),
-          address: ownedShop.address || "-",
-          verified: Number(ownedShop.verified_status) === 1,
-          image: coverImage ? assetUrl(coverImage) : null,
-        });
-        setProducts(ownProducts);
-      })
-      .catch((fetchError) => {
-        if (!ignore) setError(fetchError.message || "Failed to load seller workspace");
-      })
-      .finally(() => {
-        if (!ignore) setLoading(false);
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [role, userId]);
-
-  const lowStockCount = useMemo(() => products.filter((item) => item.stock <= 5).length, [products]);
-  const totalStock = useMemo(() => products.reduce((sum, item) => sum + item.stock, 0), [products]);
+  const lowStockCount = useMemo(
+    () => products.filter((item) => item.stock <= 5).length,
+    [products]
+  );
+  const totalStock = useMemo(
+    () => products.reduce((sum, item) => sum + item.stock, 0),
+    [products]
+  );
+  const weeklyRevenue = useMemo(
+    () => products.reduce((sum, item) => sum + item.price * item.sales7d, 0),
+    [products]
+  );
+  const weeklyUnits = useMemo(
+    () => products.reduce((sum, item) => sum + item.sales7d, 0),
+    [products]
+  );
+  const topProducts = useMemo(
+    () => [...products].sort((a, b) => b.sales7d - a.sales7d || b.stock - a.stock).slice(0, 5),
+    [products]
+  );
 
   if (loading) {
     return (
@@ -230,24 +146,29 @@ export default function SellerDashboard() {
 
         <div className="mx-auto flex w-full max-w-[1540px] flex-col gap-8">
           <section className="overflow-hidden rounded-[36px] border border-[#DFE5D6] bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(241,246,234,0.92))] shadow-[0_28px_80px_rgba(72,91,59,0.12)]">
-            <div className="grid gap-0 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="grid gap-0 lg:grid-cols-[1.08fr_0.92fr]">
               <div className="p-7 sm:p-9 lg:p-11">
-                <p className="text-xs uppercase tracking-[0.24em] text-[#839678]">Shop Workspace</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-[#839678]">Seller Hub</p>
                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <h1 className="font-serif text-[2.5rem] leading-none tracking-[-0.05em] text-[#253622] sm:text-[3.4rem]">{shop.name}</h1>
+                  <h1 className="font-serif text-[2.5rem] leading-none tracking-[-0.05em] text-[#253622] sm:text-[3.4rem]">
+                    {shop.name}
+                  </h1>
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold ${shop.verified ? "bg-[#E6F1DA] text-[#4A6B34]" : "bg-[#F6E7D9] text-[#A15E3C]"}`}>
                     {shop.verified ? "Verified shop" : "Pending review"}
                   </span>
                 </div>
                 <p className="mt-4 max-w-2xl text-[1rem] leading-8 text-[#61705C]">
-                  {shop.description || `${shop.name} is ready for a calmer seller workflow with clear priorities, product overview, and quick access to customer-facing pages.`}
+                  {shop.description || `${shop.name} is set up as a calmer seller workspace: quick actions here, deeper analytics in a dedicated dashboard, and direct paths to the storefront your buyers actually see.`}
                 </p>
 
                 <div className="mt-8 flex flex-wrap gap-3">
-                  <Link to="/seller/products" className="rounded-full bg-[#485B3B] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(72,91,59,0.2)]">
+                  <Link to="/seller/dashboard" className="rounded-full bg-[#485B3B] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(72,91,59,0.2)]">
+                    Open dashboard
+                  </Link>
+                  <Link to="/seller/products" className="rounded-full bg-[#556A46] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(72,91,59,0.18)]">
                     Manage products
                   </Link>
-                  <Link to={`/shop/${shop.id}`} className="rounded-full bg-[#556A46] px-5 py-3 text-sm font-semibold text-white shadow-[0_14px_28px_rgba(72,91,59,0.18)]">
+                  <Link to={`/shop/${shop.id}`} className="rounded-full border border-[#D4DDC9] bg-white/88 px-5 py-3 text-sm font-semibold text-[#51684A]">
                     View public shop
                   </Link>
                   <Link to={`/shop/${shop.id}/chat`} className="rounded-full border border-[#D4DDC9] bg-white/88 px-5 py-3 text-sm font-semibold text-[#51684A]">
@@ -255,10 +176,11 @@ export default function SellerDashboard() {
                   </Link>
                 </div>
 
-                <div className="mt-9 grid gap-4 sm:grid-cols-3">
+                <div className="mt-9 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <StatCard label="Products" value={products.length} hint="Active catalog items" />
-                  <StatCard label="Total Stock" value={totalStock} tone="cream" hint="Across all products" />
-                  <StatCard label="Low Stock" value={lowStockCount} tone="white" hint="Items at 5 units or lower" />
+                  <StatCard label="Revenue 7d" value={formatCurrency(weeklyRevenue)} tone="cream" hint={`${weeklyUnits.toLocaleString("th-TH")} units sold in the last 7 days`} />
+                  <StatCard label="Total Stock" value={totalStock.toLocaleString("th-TH")} tone="white" hint="Across all current listings" />
+                  <StatCard label="Low Stock" value={lowStockCount.toLocaleString("th-TH")} tone="moss" hint="Items at 5 units or lower" />
                 </div>
               </div>
 
@@ -268,15 +190,23 @@ export default function SellerDashboard() {
                 ) : (
                   <div className="flex h-full items-end bg-[radial-gradient(circle_at_top,#f5f8f0_0%,#deead0_55%,#d1debf_100%)] p-8">
                     <div className="w-full rounded-[30px] border border-white/70 bg-white/70 p-6 backdrop-blur">
-                      <p className="text-xs uppercase tracking-[0.24em] text-[#829473]">At a glance</p>
+                      <p className="text-xs uppercase tracking-[0.24em] text-[#829473]">Storefront readiness</p>
                       <div className="mt-4 space-y-3 text-sm leading-7 text-[#5D6958]">
                         <p>{shop.location || "Location can be added later in shop settings"}</p>
                         <p>{shop.phone}</p>
-                        <p>{shop.contactInfo || "Add Line, Facebook, or direct contact for faster customer reach"}</p>
+                        <p>{shop.contactInfo || "Add Line, Facebook, or direct contact for faster buyer reach"}</p>
                       </div>
                     </div>
                   </div>
                 )}
+
+                <div className="absolute bottom-5 left-5 right-5 rounded-[28px] border border-white/70 bg-[rgba(249,251,245,0.86)] p-5 backdrop-blur-md shadow-[0_18px_40px_rgba(72,91,59,0.1)]">
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-[#829473]">Workspace split</p>
+                  <p className="mt-3 text-[1.2rem] font-semibold text-[#253622]">Seller Hub for actions, Dashboard for decisions</p>
+                  <p className="mt-2 text-sm leading-7 text-[#61705C]">
+                    Keep day-to-day tasks here, then jump into the dashboard when you need sales signals, category movement, and product recommendations.
+                  </p>
+                </div>
               </div>
             </div>
           </section>
@@ -285,36 +215,28 @@ export default function SellerDashboard() {
             <div className="rounded-[32px] border border-[#DFE5D6] bg-white/84 p-6 shadow-[0_18px_48px_rgba(72,91,59,0.08)]">
               <p className="text-xs uppercase tracking-[0.22em] text-[#839678]">Quick Actions</p>
               <div className="mt-5 grid gap-4 md:grid-cols-2">
-                <WorkspaceAction title="Refresh shop profile" text="Tighten your storefront copy, contact info, and trust signals before new traffic arrives." to={`/shop/${shop.id}`} />
-                <WorkspaceAction title="Review incoming chats" text="Stay close to buyer intent and answer product questions from one place." to={`/shop/${shop.id}/chat`} tone="cream" />
-                <WorkspaceAction title="Manage product catalog" text="Add new tea listings, adjust pricing, and keep your storefront inventory current." to="/seller/products" />
-                <WorkspaceAction title="Check buyer view" text="Open your public storefront and review what customers actually see." to={`/shop/${shop.id}`} tone="cream" />
+                <WorkspaceAction eyebrow="Insights" title="Open sales dashboard" text="See what is selling, what is slowing down, and where the next growth move should come from." to="/seller/dashboard" />
+                <WorkspaceAction eyebrow="Catalog" title="Manage product catalog" text="Add new tea listings, adjust pricing, and keep storefront inventory current." to="/seller/products" tone="cream" />
+                <WorkspaceAction eyebrow="Storefront" title="Review buyer view" text="Open the public shop and audit how your products, copy, and trust signals appear to customers." to={`/shop/${shop.id}`} tone="white" />
+                <WorkspaceAction eyebrow="Inbox" title="Respond in shop chat" text="Stay close to buyer intent and answer product questions while they are still warm." to={`/shop/${shop.id}/chat`} tone="cream" />
               </div>
             </div>
 
             <div className="rounded-[32px] border border-[#DFE5D6] bg-[linear-gradient(135deg,rgba(247,250,243,0.94),rgba(255,255,255,0.84))] p-6 shadow-[0_18px_48px_rgba(72,91,59,0.08)]">
-              <p className="text-xs uppercase tracking-[0.22em] text-[#839678]">Shop Snapshot</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-[#839678]">Workspace Priorities</p>
               <div className="mt-5 space-y-4">
-                <div className="rounded-[26px] border border-[#E3E9D9] bg-white/82 p-5">
-                  <p className="text-sm font-semibold text-[#2C3D28]">Profile completeness</p>
-                  <div className="mt-3 h-3 overflow-hidden rounded-full bg-[#E7EDDE]">
-                    <div className="h-full rounded-full bg-[linear-gradient(90deg,#6E8A58_0%,#8EAA74_100%)]" style={{ width: shop.description || shop.contactInfo || shop.location ? "78%" : "46%" }} />
-                  </div>
-                  <p className="mt-3 text-sm leading-7 text-[#677361]">
-                    {shop.description || shop.contactInfo || shop.location
-                      ? "Your shop already has enough basics to feel credible. A tighter story and richer product mix would strengthen conversion."
-                      : "Add location, description, and contact touchpoints to make the shop feel more complete for first-time visitors."}
-                  </p>
-                </div>
-
-                <div className="rounded-[26px] border border-[#E3E9D9] bg-white/82 p-5">
-                  <p className="text-sm font-semibold text-[#2C3D28]">Immediate focus</p>
-                  <ul className="mt-3 space-y-3 text-sm leading-7 text-[#677361]">
-                    <li>{lowStockCount > 0 ? `${lowStockCount} item(s) are approaching low stock and need attention.` : "Inventory levels look healthy right now."}</li>
-                    <li>{shop.verified ? "Verification is already in place, so the next gains come from product quality and response speed." : "Verification is still pending, so trust indicators should stay visible in your storefront copy."}</li>
-                    <li>{products.length > 0 ? "Your current catalog is ready for refinement and merchandising." : "Start by adding at least one product to make the storefront usable."}</li>
-                  </ul>
-                </div>
+                <FocusNote
+                  title="Store story"
+                  text={shop.description ? "Your shop already has a story on the page. Tightening imagery and product mix is now more important than basic setup." : "Add a stronger shop description and contact touchpoints so first-time visitors understand the store faster."}
+                />
+                <FocusNote
+                  title="Inventory pressure"
+                  text={lowStockCount > 0 ? `${lowStockCount} product(s) are already in the low-stock zone. Use the dashboard to decide which ones deserve reorder priority.` : "No immediate stock pressure right now. The dashboard can help identify what should be pushed before inventory gets stale."}
+                />
+                <FocusNote
+                  title="Merchandising"
+                  text={products.length > 3 ? "You have enough catalog depth to start comparing winners, weak items, and category gaps." : "Your catalog is still compact. Add a few more strategic products before expecting richer sales patterns."}
+                />
               </div>
             </div>
           </section>
@@ -322,19 +244,24 @@ export default function SellerDashboard() {
           <section className="rounded-[32px] border border-[#DFE5D6] bg-white/84 p-6 shadow-[0_18px_48px_rgba(72,91,59,0.08)]">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.22em] text-[#839678]">Inventory Snapshot</p>
-                <h2 className="mt-2 text-[1.8rem] font-semibold tracking-[-0.04em] text-[#253621]">Products that define your storefront</h2>
+                <p className="text-xs uppercase tracking-[0.22em] text-[#839678]">Catalog Snapshot</p>
+                <h2 className="mt-2 text-[1.8rem] font-semibold tracking-[-0.04em] text-[#253621]">Products carrying the storefront right now</h2>
               </div>
-              <span className="rounded-full bg-[#F2F6EC] px-4 py-2 text-sm text-[#5D6D56]">{products.length} item(s)</span>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full bg-[#F2F6EC] px-4 py-2 text-sm text-[#5D6D56]">{products.length} item(s)</span>
+                <Link to="/seller/dashboard" className="rounded-full border border-[#D4DDC9] bg-white px-4 py-2 text-sm font-semibold text-[#4F6646] transition-all hover:bg-[#F3F7ED]">
+                  View full dashboard
+                </Link>
+              </div>
             </div>
 
-            {products.length === 0 ? (
+            {topProducts.length === 0 ? (
               <div className="mt-6 rounded-[26px] border border-dashed border-[#D8E0CE] bg-[#F8FBF4] p-8 text-center text-[#687564]">
                 No products found yet. Create a first listing to turn this workspace into an active seller hub.
               </div>
             ) : (
               <div className="mt-6 grid gap-4">
-                {products.slice(0, 5).map((product) => (
+                {topProducts.map((product) => (
                   <ProductRow key={product.id} product={product} />
                 ))}
               </div>
@@ -345,3 +272,4 @@ export default function SellerDashboard() {
     </div>
   );
 }
+

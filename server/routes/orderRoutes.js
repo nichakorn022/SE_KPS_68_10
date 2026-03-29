@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const router = express.Router();
 
 const orderController = require("../controllers/orderController");
@@ -7,6 +7,7 @@ const adminMiddleware = require("../middleware/adminMiddleware");
 
 router.post("/", orderController.createOrder);
 router.get("/", adminMiddleware, orderController.getOrders);
+router.get("/seller/trend", authMiddleware, orderController.getSellerRevenueTrend);
 router.get("/user/:userId", authMiddleware, orderController.getOrdersByUser);
 router.get("/:id", authMiddleware, orderController.getOrderById);
 router.patch("/:id/mock-pay", authMiddleware, orderController.mockMarkOrderPaid);

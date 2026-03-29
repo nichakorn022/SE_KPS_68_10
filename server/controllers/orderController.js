@@ -1,4 +1,4 @@
-const orderService = require("../services/orderService");
+﻿const orderService = require("../services/orderService");
 
 exports.createOrder = async (req, res) => {
   try {
@@ -7,7 +7,7 @@ exports.createOrder = async (req, res) => {
   } catch (error) {
     return res.status(error.statusCode || 400).json({
       message: "Failed to create order",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -19,14 +19,14 @@ exports.getOrderById = async (req, res) => {
     const result = await orderService.getOrderById(id);
     if (req.user?.role !== "admin" && Number(result.user_id) !== Number(req.user?.user_id)) {
       return res.status(403).json({
-        message: "You do not have access to this order"
+        message: "You do not have access to this order",
       });
     }
     return res.json(result);
   } catch (error) {
     return res.status(error.statusCode || 500).json({
       message: "Failed to fetch order",
-      error
+      error,
     });
   }
 };
@@ -46,13 +46,32 @@ exports.getOrdersByUser = async (req, res) => {
   try {
     if (req.user?.role !== "admin" && Number(userId) !== Number(req.user?.user_id)) {
       return res.status(403).json({
-        message: "You do not have access to these orders"
+        message: "You do not have access to these orders",
       });
     }
     const rows = await orderService.getOrdersByUser(userId);
     return res.json(rows);
   } catch (error) {
     return res.status(500).json({ message: "Failed to fetch user orders", error });
+  }
+};
+
+exports.getSellerRevenueTrend = async (req, res) => {
+  try {
+    if (req.user?.role !== "shop") {
+      return res.status(403).json({
+        message: "This dashboard is available only for shop accounts",
+      });
+    }
+
+    const days = Number(req.query.days || 7);
+    const result = await orderService.getSellerRevenueTrend(req.user.user_id, days);
+    return res.json(result);
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: "Failed to fetch seller revenue trend",
+      error: error.message,
+    });
   }
 };
 
@@ -65,7 +84,7 @@ exports.updateOrderStatus = async (req, res) => {
   } catch (error) {
     return res.status(error.statusCode || 500).json({
       message: "Failed to update order status",
-      error
+      error,
     });
   }
 };
@@ -83,7 +102,7 @@ exports.mockMarkOrderPaid = async (req, res) => {
     return res.json(result);
   } catch (error) {
     return res.status(error.statusCode || 500).json({
-      message: error.message || "Failed to mark order as paid"
+      message: error.message || "Failed to mark order as paid",
     });
   }
 };

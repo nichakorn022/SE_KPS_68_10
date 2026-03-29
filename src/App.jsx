@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState, createContext, useContext } from "react";
+﻿import { Suspense, lazy, useEffect, useState, createContext, useContext } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./frontend/Login.jsx";
 import Register from "./frontend/Regist.jsx";
@@ -12,6 +12,7 @@ const EventReview = lazy(() => import("./frontend/Event/EventReview.jsx"));
 const ShopProfile = lazy(() => import("./frontend/Shop/ShopProfile.jsx"));
 const ShopChatPage = lazy(() => import("./frontend/Shop/ShopChatPage.jsx"));
 const SellerDashboard = lazy(() => import("./frontend/Shop/SellerDashboard.jsx"));
+const SellerAnalyticsDashboard = lazy(() => import("./frontend/Shop/SellerAnalyticsDashboard.jsx"));
 const SellerProductsPage = lazy(() => import("./frontend/Shop/SellerProductsPage.jsx"));
 const ProductDetail = lazy(() => import("./frontend/Shop/ProductDetail.jsx"));
 const CheckoutPage = lazy(() => import("./frontend/Shop/CheckoutPage.jsx"));
@@ -104,6 +105,7 @@ function App() {
               <Route path="/shop/:id" element={<ShopProfile />} />
               <Route path="/shop/:id/chat" element={<ShopChatPage />} />
               <Route path="/seller" element={<SellerDashboard />} />
+              <Route path="/seller/dashboard" element={<SellerAnalyticsDashboard />} />
               <Route path="/seller/products" element={<SellerProductsPage />} />
               <Route path="/events" element={<Events />} />
               <Route path="/events/:id" element={<EventDetails />} />
@@ -160,3 +162,4 @@ function RouteFallback() {
 }
 
 export default App;
+

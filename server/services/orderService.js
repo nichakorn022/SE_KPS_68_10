@@ -1,4 +1,4 @@
-const { beginTransaction, commit, rollback, query } = require("../utils/dbHelpers");
+﻿const { beginTransaction, commit, rollback, query } = require("../utils/dbHelpers");
 
 const allowedStatuses = new Set(["pending", "paid", "cancelled"]);
 const orderSelectFields = `
@@ -7,6 +7,53 @@ const orderSelectFields = `
          NULL AS shipping_address, NULL AS subdistrict, NULL AS district,
          NULL AS province, NULL AS postal_code, NULL AS address_note
 `;
+
+function formatSqlDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function buildDailySeries(rows, startDate, endDate) {
+  const byDay = new Map(
+    (Array.isArray(rows) ? rows : []).map((row) => [
+      row.order_day,
+      {
+        revenue: Number(row.revenue || 0),
+        units: Number(row.units || 0),
+      },
+    ])
+  );
+
+  const points = [];
+  const cursor = new Date(startDate);
+
+  while (cursor <= endDate) {
+    const key = formatSqlDate(cursor);
+    const entry = byDay.get(key) || { revenue: 0, units: 0 };
+    points.push({
+      date: key,
+      revenue: entry.revenue,
+      units: entry.units,
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return points;
+}
+
+async function ensureShopByOwner(userId) {
+  const rows = await query("SELECT shop_id FROM tea_shop WHERE user_id = ? LIMIT 1", [userId]);
+
+  if (rows.length === 0) {
+    const error = new Error("Shop profile not found for this account");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return rows[0];
+}
 
 async function createOrder({
   user_id,
@@ -72,7 +119,7 @@ async function createOrder({
         product_id: product.product_id,
         quantity: qty,
         unit_price: unitPrice,
-        subtotal
+        subtotal,
       });
     }
 
@@ -102,7 +149,7 @@ async function createOrder({
     return {
       message: "Order created",
       order_id: orderId,
-      total_amount: totalAmount
+      total_amount: totalAmount,
     };
   } catch (error) {
     await rollback();
@@ -134,7 +181,7 @@ async function getOrderById(id) {
 
   return {
     ...orderRows[0],
-    items: detailRows
+    items: detailRows,
   };
 }
 
@@ -171,6 +218,57 @@ async function getOrdersByUser(userId) {
      ORDER BY order_date DESC`,
     [userId]
   );
+}
+
+async function getSellerRevenueTrend(userId, days = 7) {
+  const safeDays = Number(days);
+
+  if (!Number.isInteger(safeDays) || safeDays <= 0 || safeDays > 365) {
+    const error = new Error("days must be an integer between 1 and 365");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await ensureShopByOwner(userId);
+
+  const endDate = new Date();
+  endDate.setHours(0, 0, 0, 0);
+
+  const startDate = new Date(endDate);
+  startDate.setDate(endDate.getDate() - safeDays + 1);
+
+  const startKey = formatSqlDate(startDate);
+  const endKey = formatSqlDate(endDate);
+
+  const rows = await query(
+    `SELECT
+        DATE_FORMAT(o.order_date, '%Y-%m-%d') AS order_day,
+        COALESCE(SUM(od.subtotal), 0) AS revenue,
+        COALESCE(SUM(od.quantity), 0) AS units
+     FROM tea_shop ts
+     JOIN tea_product tp ON tp.shop_id = ts.shop_id
+     JOIN order_details od ON od.product_id = tp.product_id
+     JOIN orders o ON o.order_id = od.order_id
+     WHERE ts.user_id = ?
+       AND o.status = 'paid'
+       AND DATE(o.order_date) BETWEEN ? AND ?
+     GROUP BY DATE_FORMAT(o.order_date, '%Y-%m-%d')
+     ORDER BY order_day ASC`,
+    [userId, startKey, endKey]
+  );
+
+  const points = buildDailySeries(rows, startDate, endDate);
+  const totalRevenue = points.reduce((sum, point) => sum + Number(point.revenue || 0), 0);
+  const totalUnits = points.reduce((sum, point) => sum + Number(point.units || 0), 0);
+
+  return {
+    days: safeDays,
+    start_date: startKey,
+    end_date: endKey,
+    total_revenue: totalRevenue,
+    total_units: totalUnits,
+    points,
+  };
 }
 
 async function updateOrderStatus(id, status) {
@@ -277,11 +375,14 @@ async function markOrderPaid(id) {
     throw error;
   }
 }
+
 module.exports = {
   createOrder,
   getOrderById,
   getOrders,
   getOrdersByUser,
+  getSellerRevenueTrend,
   updateOrderStatus,
-  markOrderPaid
+  markOrderPaid,
 };
+

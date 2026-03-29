@@ -359,6 +359,7 @@ export default function SellerProductsPage() {
               <div className="flex flex-wrap gap-3">
                 <span className="rounded-full bg-white/88 px-4 py-2 text-sm text-[#596957] ring-1 ring-[#D9E2CF]">{products.length} product(s)</span>
                 <span className="rounded-full bg-[#FBEFE6] px-4 py-2 text-sm text-[#9B5A3C] ring-1 ring-[#F0D6C8]">{lowStockCount} low stock</span>
+                <Link to="/seller/dashboard" className="rounded-full border border-[#D4DDC9] bg-white/88 px-5 py-2.5 text-sm font-semibold text-[#51684A]">View dashboard</Link>
                 <Link to="/seller" className="rounded-full border border-[#D4DDC9] bg-white/88 px-5 py-2.5 text-sm font-semibold text-[#51684A]">Back to hub</Link>
               </div>
             </div>
@@ -488,3 +489,5 @@ export default function SellerProductsPage() {
     </div>
   );
 }
+
+

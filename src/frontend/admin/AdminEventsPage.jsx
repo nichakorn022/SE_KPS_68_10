@@ -30,6 +30,9 @@ export default function AdminEventsPage() {
   const [events, setEvents] = useState([]);
   const [eventImages, setEventImages] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [organizerFilter, setOrganizerFilter] = useState("");
   const [page, setPage] = useState(1);
   const [form, setForm] = useState(initialForm);
   const [editingId, setEditingId] = useState(null);
@@ -37,6 +40,7 @@ export default function AdminEventsPage() {
   const [status, setStatus] = useState({ type: "", message: "" });
   const [loading, setLoading] = useState(true);
   const [imageStatus, setImageStatus] = useState("");
+  const [confirmAction, setConfirmAction] = useState(null);
 
   async function loadEvents() {
     setLoading(true);
@@ -77,10 +81,28 @@ export default function AdminEventsPage() {
   );
 
   const filteredEvents = useMemo(() => {
-    if (!searchTerm.trim()) return events;
+    const now = Date.now();
 
-    const keyword = searchTerm.trim().toLowerCase();
     return events.filter((eventItem) => {
+      if (statusFilter !== "all" && eventItem.status !== statusFilter) return false;
+
+      if (dateFilter !== "all") {
+        const eventTime = eventItem.event_date ? new Date(eventItem.event_date).getTime() : 0;
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+
+        if (dateFilter === "upcoming" && eventTime < startOfToday.getTime()) return false;
+        if (dateFilter === "past" && eventTime >= startOfToday.getTime()) return false;
+        if (dateFilter === "30d" && (!eventTime || eventTime < now || eventTime > now + 30 * 24 * 60 * 60 * 1000)) {
+          return false;
+        }
+      }
+
+      if (organizerFilter.trim() && String(eventItem.organizer_id) !== organizerFilter.trim()) return false;
+
+      if (!searchTerm.trim()) return true;
+
+      const keyword = searchTerm.trim().toLowerCase();
       const haystack = [
         eventItem.title,
         eventItem.location,
@@ -94,13 +116,15 @@ export default function AdminEventsPage() {
         .toLowerCase();
       return haystack.includes(keyword);
     });
-  }, [events, searchTerm]);
+  }, [dateFilter, events, organizerFilter, searchTerm, statusFilter]);
 
   useEffect(() => {
     setPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, statusFilter, dateFilter, organizerFilter]);
 
   const paginatedEvents = useMemo(() => paginate(filteredEvents, page), [filteredEvents, page]);
+  const hasActiveFilters =
+    Boolean(searchTerm.trim()) || statusFilter !== "all" || dateFilter !== "all" || Boolean(organizerFilter.trim());
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -128,9 +152,7 @@ export default function AdminEventsPage() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
+  const handleSubmit = async () => {
     const payload = {
       organizer_id: Number(form.organizer_id),
       title: form.title.trim(),
@@ -152,7 +174,7 @@ export default function AdminEventsPage() {
       }
 
       resetForm();
-      loadEvents();
+      await loadEvents();
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     }
@@ -164,8 +186,9 @@ export default function AdminEventsPage() {
       if (editingId === eventId) {
         resetForm();
       }
+      setIsModalOpen(false);
       setStatus({ type: "success", message: "Event deleted" });
-      loadEvents();
+      await loadEvents();
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     }
@@ -191,11 +214,19 @@ export default function AdminEventsPage() {
   const handleImageDelete = async (imageId) => {
     try {
       await adminApi.deleteEventImage(adminToken, imageId);
+      resetForm();
       setStatus({ type: "success", message: "Event image deleted" });
-      loadEvents();
+      await loadEvents();
     } catch (error) {
       setStatus({ type: "error", message: error.message });
     }
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setStatusFilter("all");
+    setDateFilter("all");
+    setOrganizerFilter("");
   };
 
   return (
@@ -244,67 +275,129 @@ export default function AdminEventsPage() {
           className="admin-input mb-6"
         />
 
-        <table className="min-w-full text-left text-sm">
-          <thead className="text-[#8d9577]">
-            <tr>
-              <th className="pb-3">Title</th>
-              <th className="pb-3">Date</th>
-              <th className="pb-3">Location</th>
-              <th className="pb-3">Price</th>
-              <th className="pb-3">Status</th>
-              <th className="pb-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginatedEvents.items.map((eventItem) => (
-              <tr
-                key={eventItem.event_id}
-                onClick={() => handleEdit(eventItem)}
-                className={`cursor-pointer border-t border-[#efe8d8] transition hover:bg-[#fcfbf7] ${
-                  editingId === eventItem.event_id && isModalOpen ? "bg-[#f8f4eb]" : ""
-                }`}
-              >
-                <td className="py-4">
-                  <p className="font-semibold text-[#2f3529]">{eventItem.title}</p>
-                  <p className="mt-1 text-xs text-[#7a8368]">Organizer #{eventItem.organizer_id}</p>
-                  <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#8d9577]">Click to review</p>
-                </td>
-                <td className="py-4">{String(eventItem.event_date).slice(0, 10)}</td>
-                <td className="py-4">{eventItem.location || "-"}</td>
-                <td className="py-4">{formatMoney(eventItem.price)}</td>
-                <td className="py-4">
-                  <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${eventStatusStyles[eventItem.status || "draft"] || eventStatusStyles.draft}`}>
-                    {eventItem.status || "draft"}
-                  </span>
-                </td>
-                <td className="py-4 text-right">
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleEdit(eventItem);
-                      }}
-                      className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b]"
-                    >
-                      Open
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleDelete(eventItem.event_id);
-                      }}
-                      className="rounded-full bg-[#fff0ed] px-4 py-2 text-xs font-medium text-[#b33a24]"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
+        <div className="mb-6 grid gap-3 md:grid-cols-3">
+          <label className="block">
+            <span className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#8d9577]">Status</span>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="admin-input">
+              <option value="all">All statuses</option>
+              <option value="draft">Draft</option>
+              <option value="open">Open</option>
+              <option value="closed">Closed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#8d9577]">Date</span>
+            <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} className="admin-input">
+              <option value="all">All dates</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="past">Past</option>
+              <option value="30d">Next 30 days</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#8d9577]">Organizer ID</span>
+            <input
+              value={organizerFilter}
+              onChange={(event) => setOrganizerFilter(event.target.value)}
+              placeholder="Filter by organizer id..."
+              className="admin-input"
+            />
+          </label>
+        </div>
+
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[24px] bg-[#fcfbf7] px-4 py-4 ring-1 ring-[#efe8d8]">
+          <div>
+            <p className="text-sm font-medium text-[#2f3529]">
+              Showing {filteredEvents.length} event{filteredEvents.length === 1 ? "" : "s"}
+            </p>
+            <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#8d9577]">
+              {hasActiveFilters ? "Filtered event queue" : "All event records"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={clearFilters}
+            disabled={!hasActiveFilters}
+            className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Clear filters
+          </button>
+        </div>
+
+        {filteredEvents.length === 0 ? (
+          <div className="rounded-2xl bg-[#f8f4eb] px-4 py-10 text-sm text-[#7a8368]">
+            No matching events found. Try changing the search or filters.
+          </div>
+        ) : (
+          <table className="min-w-full text-left text-sm">
+            <thead className="text-[#8d9577]">
+              <tr>
+                <th className="pb-3">Title</th>
+                <th className="pb-3">Date</th>
+                <th className="pb-3">Location</th>
+                <th className="pb-3">Price</th>
+                <th className="pb-3">Status</th>
+                <th className="pb-3 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {paginatedEvents.items.map((eventItem) => (
+                <tr
+                  key={eventItem.event_id}
+                  onClick={() => handleEdit(eventItem)}
+                  className={`cursor-pointer border-t border-[#efe8d8] transition hover:bg-[#fcfbf7] ${
+                    editingId === eventItem.event_id && isModalOpen ? "bg-[#f8f4eb]" : ""
+                  }`}
+                >
+                  <td className="py-4">
+                    <p className="font-semibold text-[#2f3529]">{eventItem.title}</p>
+                    <p className="mt-1 text-xs text-[#7a8368]">Organizer #{eventItem.organizer_id}</p>
+                    <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#8d9577]">Click to review</p>
+                  </td>
+                  <td className="py-4">{String(eventItem.event_date).slice(0, 10)}</td>
+                  <td className="py-4">{eventItem.location || "-"}</td>
+                  <td className="py-4">{formatMoney(eventItem.price)}</td>
+                  <td className="py-4">
+                    <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${eventStatusStyles[eventItem.status || "draft"] || eventStatusStyles.draft}`}>
+                      {eventItem.status || "draft"}
+                    </span>
+                  </td>
+                  <td className="py-4 text-right">
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleEdit(eventItem);
+                        }}
+                        className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b]"
+                      >
+                        Open
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setConfirmAction({
+                            title: "Delete Event",
+                            message: `Delete event #${eventItem.event_id}?`,
+                            confirmLabel: "Delete Event",
+                            tone: "danger",
+                            onConfirm: () => handleDelete(eventItem.event_id),
+                          });
+                        }}
+                        className="rounded-full bg-[#fff0ed] px-4 py-2 text-xs font-medium text-[#b33a24]"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
         <Pagination currentPage={paginatedEvents.page} totalPages={paginatedEvents.totalPages} onPageChange={setPage} />
       </DataPanel>
 
@@ -328,7 +421,19 @@ export default function AdminEventsPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                setConfirmAction({
+                  title: editingId ? "Update Event" : "Create Event",
+                  message: editingId ? `Save changes for event #${editingId}?` : "Create this event?",
+                  confirmLabel: editingId ? "Update Event" : "Create Event",
+                  tone: "primary",
+                  onConfirm: handleSubmit,
+                });
+              }}
+              className="mt-6 space-y-4"
+            >
               <Field label="Organizer ID">
                 <input name="organizer_id" type="number" value={form.organizer_id} onChange={handleChange} className="admin-input" required />
               </Field>
@@ -383,7 +488,15 @@ export default function AdminEventsPage() {
                             <p className="text-xs text-[#7a8368]">Image #{image.image_id}</p>
                             <button
                               type="button"
-                              onClick={() => handleImageDelete(image.image_id)}
+                              onClick={() =>
+                                setConfirmAction({
+                                  title: "Delete Event Image",
+                                  message: `Delete image #${image.image_id}?`,
+                                  confirmLabel: "Delete Image",
+                                  tone: "danger",
+                                  onConfirm: () => handleImageDelete(image.image_id),
+                                })
+                              }
                               className="rounded-full bg-[#fff0ed] px-3 py-2 text-xs font-medium text-[#b33a24]"
                             >
                               Delete
@@ -411,7 +524,44 @@ export default function AdminEventsPage() {
           {status.message}
         </div>
       )}
+      {confirmAction ? (
+        <ConfirmActionModal
+          {...confirmAction}
+          onClose={() => setConfirmAction(null)}
+          onConfirm={async () => {
+            await confirmAction.onConfirm();
+            setConfirmAction(null);
+          }}
+        />
+      ) : null}
     </section>
+  );
+}
+
+function ConfirmActionModal({ title, message, confirmLabel, tone = "primary", onClose, onConfirm }) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4 py-6" onClick={onClose}>
+      <div
+        className="w-full max-w-md rounded-[28px] bg-white p-6 shadow-2xl ring-1 ring-[#e6ddc9]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <p className="text-sm uppercase tracking-[0.3em] text-[#8d9577]">Confirm Action</p>
+        <h4 className="mt-3 text-2xl font-semibold text-[#2f3529]">{title}</h4>
+        <p className="mt-3 text-sm leading-6 text-[#4b5541]">{message}</p>
+        <div className="mt-6 flex justify-end gap-3">
+          <button type="button" onClick={onClose} className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b]">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className={`rounded-full px-4 py-2 text-xs font-medium text-white ${tone === "danger" ? "bg-[#b33a24]" : "bg-[#485b3b]"}`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

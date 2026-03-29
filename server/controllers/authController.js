@@ -1,6 +1,7 @@
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { query, beginTransaction, commit, rollback } = require("../utils/dbHelpers");
+const { sendWelcomeEmail } = require("../utils/mailer");
 
 function getAdminEmails() {
   return (process.env.ADMIN_EMAILS || "")
@@ -89,6 +90,10 @@ exports.registerUser = async (req, res) => {
     ]);
 
     res.json({ message: "Register success" });
+
+    sendWelcomeEmail({ to: email, username }).catch((err) =>
+      console.error("Welcome email failed:", err.message)
+    );
   } catch (error) {
     res.status(error.statusCode || 500).json({ message: error.message || "Registration failed" });
   }
@@ -146,6 +151,10 @@ exports.registerMerchant = async (req, res) => {
 
     await commit();
     res.json({ message: "Merchant register success" });
+
+    sendWelcomeEmail({ to: email, username }).catch((err) =>
+      console.error("Welcome email failed:", err.message)
+    );
   } catch (error) {
     await rollback();
     res.status(error.statusCode || 500).json({ message: error.message || "Merchant registration failed" });

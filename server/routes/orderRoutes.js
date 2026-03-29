@@ -12,5 +12,6 @@ router.get("/user/:userId", authMiddleware, orderController.getOrdersByUser);
 router.get("/:id", authMiddleware, orderController.getOrderById);
 router.patch("/:id/mock-pay", authMiddleware, orderController.mockMarkOrderPaid);
 router.patch("/:id/status", adminMiddleware, orderController.updateOrderStatus);
+router.delete("/:id", adminMiddleware, orderController.deleteOrder);
 
 module.exports = router;

@@ -376,6 +376,45 @@ async function markOrderPaid(id) {
   }
 }
 
+async function deleteOrder(id) {
+  try {
+    await beginTransaction();
+
+    const orderRows = await query(
+      "SELECT order_id, status FROM orders WHERE order_id = ? FOR UPDATE",
+      [id]
+    );
+
+    if (orderRows.length === 0) {
+      const error = new Error("Order not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const details = await query(
+      "SELECT product_id, quantity FROM order_details WHERE order_id = ?",
+      [id]
+    );
+
+    if (String(orderRows[0].status).toLowerCase() !== "cancelled") {
+      for (const item of details) {
+        await query(
+          "UPDATE tea_product SET stock = stock + ? WHERE product_id = ?",
+          [item.quantity, item.product_id]
+        );
+      }
+    }
+
+    await query("DELETE FROM order_details WHERE order_id = ?", [id]);
+    await query("DELETE FROM orders WHERE order_id = ?", [id]);
+
+    await commit();
+    return { message: "Order deleted" };
+  } catch (error) {
+    await rollback();
+    throw error;
+  }
+}
 module.exports = {
   createOrder,
   getOrderById,
@@ -384,5 +423,7 @@ module.exports = {
   getSellerRevenueTrend,
   updateOrderStatus,
   markOrderPaid,
+  deleteOrder
 };
+
 

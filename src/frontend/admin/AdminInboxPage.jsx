@@ -31,6 +31,51 @@ function formatDateTime(value) {
   return new Date(value).toLocaleString();
 }
 
+function getTypeContext(type) {
+  switch (type) {
+    case "shop":
+      return {
+        label: "Shop requests",
+        searchPlaceholder: "Search by shop name, owner email, phone, or shop id...",
+        resultLabel: "shop request",
+        queueLabel: "Filtered shop approval queue",
+        emptyLabel: "No matching shop requests.",
+      };
+    case "organizer":
+      return {
+        label: "Organizer requests",
+        searchPlaceholder: "Search by organizer name, organization, email, or organizer id...",
+        resultLabel: "organizer request",
+        queueLabel: "Filtered organizer approval queue",
+        emptyLabel: "No matching organizer requests.",
+      };
+    case "sponsor":
+      return {
+        label: "Sponsor requests",
+        searchPlaceholder: "Search by event, shop, product, or sponsor request details...",
+        resultLabel: "sponsor request",
+        queueLabel: "Filtered sponsor review queue",
+        emptyLabel: "No matching sponsor requests.",
+      };
+    case "report":
+      return {
+        label: "Event reports",
+        searchPlaceholder: "Search by event title, report type, reporter, or report details...",
+        resultLabel: "report",
+        queueLabel: "Filtered report moderation queue",
+        emptyLabel: "No matching reports.",
+      };
+    default:
+      return {
+        label: "All moderation items",
+        searchPlaceholder: "Search by shop, organizer, event, product, email...",
+        resultLabel: "moderation item",
+        queueLabel: "Filtered review queue",
+        emptyLabel: "No matching items.",
+      };
+  }
+}
+
 export default function AdminInboxPage() {
   const { adminToken } = useOutletContext();
   const location = useLocation();
@@ -49,7 +94,13 @@ export default function AdminInboxPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [createdFilter, setCreatedFilter] = useState("all");
+  const [eventStatusFilter, setEventStatusFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
   const [page, setPage] = useState(1);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [confirmAction, setConfirmAction] = useState(null);
 
   const isRequestsReportsPage = location.pathname.includes("/requests-reports");
   const initialFilter = isRequestsReportsPage ? "all" : "all";
@@ -93,6 +144,8 @@ export default function AdminInboxPage() {
     const queryFilter = searchParams.get("view");
     const queryType = searchParams.get("type");
     const queryStatus = searchParams.get("status");
+    const queryCreated = searchParams.get("created");
+    const queryEventStatus = searchParams.get("eventStatus");
 
     if (["all", "pending", "approvals", "reports"].includes(queryFilter || "")) {
       setFilter(queryFilter);
@@ -111,13 +164,25 @@ export default function AdminInboxPage() {
     } else {
       setStatusFilter("all");
     }
+
+    if (["all", "7d", "30d", "older"].includes(queryCreated || "")) {
+      setCreatedFilter(queryCreated);
+    } else {
+      setCreatedFilter("all");
+    }
+
+    if (["all", "draft", "open", "closed", "cancelled"].includes(queryEventStatus || "")) {
+      setEventStatusFilter(queryEventStatus);
+    } else {
+      setEventStatusFilter("all");
+    }
   }, [initialFilter, searchParams]);
 
   const items = useMemo(() => {
     const shopItems = shops.map((shop) => ({
       id: `shop-${shop.shop_id}`,
       type: "shop",
-      status: Number(shop.verified_status) ? "approved" : "pending",
+      status: String(shop.review_status || (Number(shop.verified_status) ? "approved" : "pending")).toLowerCase(),
       title: shop.shop_name || `Shop #${shop.shop_id}`,
       subtitle: shop.email || `User #${shop.user_id}`,
       createdAt: shop.created_at || null,
@@ -127,7 +192,7 @@ export default function AdminInboxPage() {
     const organizerItems = organizers.map((organizer) => ({
       id: `organizer-${organizer.organizer_id}`,
       type: "organizer",
-      status: Number(organizer.verified_status) ? "approved" : "pending",
+      status: String(organizer.review_status || (Number(organizer.verified_status) ? "approved" : "pending")).toLowerCase(),
       title:
         [organizer.first_name, organizer.last_name].filter(Boolean).join(" ") ||
         organizer.organization_name ||
@@ -158,16 +223,35 @@ export default function AdminInboxPage() {
       raw: sponsor,
     }));
 
-    const merged = [...shopItems, ...organizerItems, ...reportItems, ...sponsorItems].sort(
-      (a, b) => getItemTimestamp(b) - getItemTimestamp(a)
-    );
+    const merged = [...shopItems, ...organizerItems, ...reportItems, ...sponsorItems];
 
-    return merged.filter((item) => {
+    const filtered = merged.filter((item) => {
+      const now = Date.now();
+
       if (filter === "reports" && item.type !== "report") return false;
       if (filter === "approvals" && !["shop", "organizer", "sponsor"].includes(item.type)) return false;
       if (filter === "pending" && item.status !== "pending") return false;
       if (typeFilter !== "all" && item.type !== typeFilter) return false;
       if (statusFilter !== "all" && String(item.status).toLowerCase() !== statusFilter) return false;
+
+      if (createdFilter !== "all") {
+        const createdAt = item.createdAt ? new Date(item.createdAt).getTime() : 0;
+        if (createdFilter === "7d" && (!createdAt || now - createdAt > 7 * 24 * 60 * 60 * 1000)) return false;
+        if (createdFilter === "30d" && (!createdAt || now - createdAt > 30 * 24 * 60 * 60 * 1000)) return false;
+        if (createdFilter === "older" && (!createdAt || now - createdAt <= 30 * 24 * 60 * 60 * 1000)) return false;
+      }
+
+      if (eventStatusFilter !== "all") {
+        const relatedEventStatus =
+          item.type === "report"
+            ? String(item.raw?.event_status || "draft").toLowerCase()
+            : item.type === "sponsor"
+              ? String(events.find((eventItem) => String(eventItem.event_id) === String(item.raw?.event_id))?.status || "")
+                  .toLowerCase()
+              : "all";
+
+        if (!relatedEventStatus || relatedEventStatus !== eventStatusFilter) return false;
+      }
 
       if (!searchTerm.trim()) return true;
 
@@ -190,11 +274,24 @@ export default function AdminInboxPage() {
 
       return haystack.includes(searchTerm.trim().toLowerCase());
     });
-  }, [filter, organizers, reports, searchTerm, shops, sponsors, statusFilter, typeFilter]);
+    return filtered.sort((left, right) => {
+      if (sortBy === "oldest") {
+        return getItemTimestamp(left) - getItemTimestamp(right);
+      }
+
+      if (sortBy === "pending") {
+        const leftPending = String(left.status).toLowerCase() === "pending" ? 0 : 1;
+        const rightPending = String(right.status).toLowerCase() === "pending" ? 0 : 1;
+        if (leftPending !== rightPending) return leftPending - rightPending;
+      }
+
+      return getItemTimestamp(right) - getItemTimestamp(left);
+    });
+  }, [createdFilter, eventStatusFilter, events, filter, organizers, reports, searchTerm, shops, sortBy, sponsors, statusFilter, typeFilter]);
 
   useEffect(() => {
     setPage(1);
-  }, [filter, searchTerm, statusFilter, typeFilter]);
+  }, [filter, searchTerm, statusFilter, typeFilter, createdFilter, eventStatusFilter, sortBy]);
 
   useEffect(() => {
     if (!items.length) {
@@ -208,17 +305,21 @@ export default function AdminInboxPage() {
     }
   }, [items, selectedId]);
 
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((itemId) => items.some((item) => item.id === itemId)));
+  }, [items]);
+
   const selectedItem = items.find((item) => item.id === selectedId) || null;
   const summaryCards = useMemo(
     () => [
       {
         label: "Pending Shops",
-        value: shops.filter((shop) => !Number(shop.verified_status)).length,
+        value: shops.filter((shop) => String(shop.review_status || (Number(shop.verified_status) ? "approved" : "pending")).toLowerCase() === "pending").length,
         tone: "shop",
       },
       {
         label: "Pending Organizers",
-        value: organizers.filter((organizer) => !Number(organizer.verified_status)).length,
+        value: organizers.filter((organizer) => String(organizer.review_status || (Number(organizer.verified_status) ? "approved" : "pending")).toLowerCase() === "pending").length,
         tone: "organizer",
       },
       {
@@ -235,6 +336,100 @@ export default function AdminInboxPage() {
     [organizers, reports, shops, sponsors]
   );
   const paginatedItems = useMemo(() => paginate(items, page), [items, page]);
+  const hasActiveFilters =
+    filter !== "all" ||
+    Boolean(searchTerm.trim()) ||
+    typeFilter !== "all" ||
+    statusFilter !== "all" ||
+    createdFilter !== "all" ||
+    eventStatusFilter !== "all";
+  const statusOptions = useMemo(() => {
+    if (typeFilter === "shop" || typeFilter === "organizer") {
+      return [
+        { value: "all", label: "All statuses" },
+        { value: "pending", label: "Pending" },
+        { value: "approved", label: "Approved" },
+        { value: "rejected", label: "Rejected" },
+      ];
+    }
+
+    if (typeFilter === "sponsor") {
+      return [
+        { value: "all", label: "All statuses" },
+        { value: "pending", label: "Pending" },
+        { value: "approved", label: "Approved" },
+        { value: "rejected", label: "Rejected" },
+      ];
+    }
+
+    if (typeFilter === "report") {
+      return [
+        { value: "all", label: "All statuses" },
+        { value: "pending", label: "Pending" },
+        { value: "reviewed", label: "Reviewed" },
+        { value: "resolved", label: "Resolved" },
+        { value: "dismissed", label: "Dismissed" },
+      ];
+    }
+
+    return [
+      { value: "all", label: "All statuses" },
+      { value: "pending", label: "Pending" },
+      { value: "approved", label: "Approved" },
+      { value: "reviewed", label: "Reviewed" },
+      { value: "resolved", label: "Resolved" },
+      { value: "dismissed", label: "Dismissed" },
+      { value: "rejected", label: "Rejected" },
+    ];
+  }, [typeFilter]);
+  const showEventStatusFilter = typeFilter === "all" || typeFilter === "report" || typeFilter === "sponsor";
+  const typeContext = useMemo(() => getTypeContext(typeFilter), [typeFilter]);
+  const selectedItems = useMemo(
+    () => items.filter((item) => selectedIds.includes(item.id)),
+    [items, selectedIds]
+  );
+  const allPageSelected =
+    paginatedItems.items.length > 0 && paginatedItems.items.every((item) => selectedIds.includes(item.id));
+  const selectableBulkType = typeFilter === "all" ? null : typeFilter;
+  const bulkActions = useMemo(() => {
+    if (selectableBulkType === "shop" || selectableBulkType === "organizer") {
+      return [
+        { key: "approve", label: "Approve selected" },
+        { key: "reject", label: "Reject selected" },
+      ];
+    }
+
+    if (selectableBulkType === "sponsor") {
+      return [
+        { key: "approve", label: "Approve selected" },
+        { key: "reject", label: "Reject selected" },
+        { key: "pending", label: "Keep pending" },
+      ];
+    }
+
+    if (selectableBulkType === "report") {
+      return [
+        { key: "reviewed", label: "Mark reviewed" },
+        { key: "resolved", label: "Mark resolved" },
+        { key: "dismissed", label: "Dismiss selected" },
+      ];
+    }
+
+    return [];
+  }, [selectableBulkType]);
+
+  useEffect(() => {
+    const allowedStatuses = new Set(statusOptions.map((option) => option.value));
+    if (!allowedStatuses.has(statusFilter)) {
+      setStatusFilter("all");
+    }
+  }, [statusFilter, statusOptions]);
+
+  useEffect(() => {
+    if (!showEventStatusFilter && eventStatusFilter !== "all") {
+      setEventStatusFilter("all");
+    }
+  }, [eventStatusFilter, showEventStatusFilter]);
 
   const openDetail = (itemId) => {
     setSelectedId(itemId);
@@ -245,9 +440,34 @@ export default function AdminInboxPage() {
     setIsDetailModalOpen(false);
   };
 
-  const handleShopVerification = async (shopId, nextValue) => {
+  const requestConfirmation = ({ title, message, confirmLabel, tone = "neutral", action }) => {
+    setConfirmAction({ title, message, confirmLabel, tone, action });
+  };
+
+  const closeConfirmation = () => {
+    setConfirmAction(null);
+  };
+
+  const executeConfirmedAction = async () => {
+    if (!confirmAction?.action) return;
+
     try {
-      await adminApi.updateShopVerification(adminToken, shopId, nextValue, notesById[`shop-${shopId}`] || null);
+      await confirmAction.action();
+      closeConfirmation();
+    } catch {
+      // action handlers already set status message
+    }
+  };
+
+  const handleShopVerification = async (shopId, nextValue, reviewStatus) => {
+    try {
+      await adminApi.updateShopVerification(
+        adminToken,
+        shopId,
+        nextValue,
+        notesById[`shop-${shopId}`] || null,
+        reviewStatus
+      );
       setStatus({ type: "success", message: `Shop #${shopId} updated` });
       loadData();
     } catch (error) {
@@ -255,9 +475,15 @@ export default function AdminInboxPage() {
     }
   };
 
-  const handleOrganizerVerification = async (organizerId, nextValue) => {
+  const handleOrganizerVerification = async (organizerId, nextValue, reviewStatus) => {
     try {
-      await adminApi.updateOrganizerVerification(adminToken, organizerId, nextValue, notesById[`organizer-${organizerId}`] || null);
+      await adminApi.updateOrganizerVerification(
+        adminToken,
+        organizerId,
+        nextValue,
+        notesById[`organizer-${organizerId}`] || null,
+        reviewStatus
+      );
       setStatus({ type: "success", message: `Organizer #${organizerId} updated` });
       loadData();
     } catch (error) {
@@ -331,6 +557,94 @@ export default function AdminInboxPage() {
     }
   };
 
+  const toggleSelected = (itemId) => {
+    setSelectedIds((current) =>
+      current.includes(itemId) ? current.filter((value) => value !== itemId) : [...current, itemId]
+    );
+  };
+
+  const toggleSelectAllOnPage = () => {
+    const pageIds = paginatedItems.items.map((item) => item.id);
+    setSelectedIds((current) => {
+      if (pageIds.every((itemId) => current.includes(itemId))) {
+        return current.filter((itemId) => !pageIds.includes(itemId));
+      }
+
+      return Array.from(new Set([...current, ...pageIds]));
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedIds([]);
+  };
+
+  const runBulkAction = async (actionKey) => {
+    if (!selectedItems.length || !selectableBulkType) return;
+
+    try {
+      setBulkRunning(true);
+
+      if (selectableBulkType === "shop") {
+        await Promise.all(
+          selectedItems.map((item) =>
+            adminApi.updateShopVerification(
+              adminToken,
+              item.raw.shop_id,
+              actionKey === "approve" ? 1 : 0,
+              notesById[item.id] || null,
+              actionKey === "approve" ? "approved" : "rejected"
+            )
+          )
+        );
+      } else if (selectableBulkType === "organizer") {
+        await Promise.all(
+          selectedItems.map((item) =>
+            adminApi.updateOrganizerVerification(
+              adminToken,
+              item.raw.organizer_id,
+              actionKey === "approve" ? 1 : 0,
+              notesById[item.id] || null,
+              actionKey === "approve" ? "approved" : "rejected"
+            )
+          )
+        );
+      } else if (selectableBulkType === "sponsor") {
+        const nextStatus =
+          actionKey === "approve" ? "approved" : actionKey === "reject" ? "rejected" : "pending";
+        await Promise.all(
+          selectedItems.map((item) =>
+            adminApi.updateSponsorStatus(adminToken, item.raw.sponsor_id, nextStatus, notesById[item.id] || null)
+          )
+        );
+      } else if (selectableBulkType === "report") {
+        await Promise.all(
+          selectedItems.map((item) =>
+            adminApi.updateReportStatus(adminToken, item.raw.report_id, actionKey, notesById[item.id] || null)
+          )
+        );
+      }
+
+      setStatus({ type: "success", message: `${selectedItems.length} ${typeContext.resultLabel}${selectedItems.length === 1 ? "" : "s"} updated` });
+      setSelectedIds([]);
+      await loadData();
+      closeConfirmation();
+    } catch (error) {
+      setStatus({ type: "error", message: error.message });
+    } finally {
+      setBulkRunning(false);
+    }
+  };
+
+  const clearFilters = () => {
+    setFilter("all");
+    setSearchTerm("");
+    setTypeFilter("all");
+    setStatusFilter("all");
+    setCreatedFilter("all");
+    setEventStatusFilter("all");
+    setSortBy("newest");
+  };
+
   return (
     <section className="space-y-6">
       {status.message && (
@@ -350,29 +664,7 @@ export default function AdminInboxPage() {
             </span>
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-2">
-            {[
-              { value: "all", label: "All" },
-              { value: "pending", label: "Pending" },
-              { value: "approvals", label: "Requests" },
-              { value: "reports", label: "Reports" },
-            ].map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setFilter(option.value)}
-                className={`rounded-full px-4 py-2 text-xs font-medium transition ${
-                  filter === option.value
-                    ? "bg-[#485b3b] text-white"
-                    : "bg-[#f3ede0] text-[#5f684f] hover:bg-[#e6ddc9]"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-5 space-y-3">
+          <div className="mt-6 space-y-3">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {summaryCards.map((card) => (
                 <div key={card.label} className="rounded-[24px] bg-[#f8f4eb] px-4 py-4">
@@ -390,11 +682,11 @@ export default function AdminInboxPage() {
             <input
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search by shop, organizer, event, product, email..."
+              placeholder={typeContext.searchPlaceholder}
               className="admin-input"
             />
 
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className={`grid gap-3 md:grid-cols-2 ${showEventStatusFilter ? "xl:grid-cols-4" : "xl:grid-cols-3"}`}>
               <label className="block">
                 <span className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#8d9577]">Type</span>
                 <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} className="admin-input">
@@ -409,15 +701,117 @@ export default function AdminInboxPage() {
               <label className="block">
                 <span className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#8d9577]">Status</span>
                 <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="admin-input">
-                  <option value="all">All statuses</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="reviewed">Reviewed</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="dismissed">Dismissed</option>
-                  <option value="rejected">Rejected</option>
+                  {statusOptions.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
                 </select>
               </label>
+
+              <label className="block">
+                <span className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#8d9577]">Created</span>
+                <select value={createdFilter} onChange={(event) => setCreatedFilter(event.target.value)} className="admin-input">
+                  <option value="all">All time</option>
+                  <option value="7d">Last 7 days</option>
+                  <option value="30d">Last 30 days</option>
+                  <option value="older">Older than 30 days</option>
+                </select>
+              </label>
+
+              {showEventStatusFilter ? (
+                <label className="block">
+                  <span className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#8d9577]">Related Event</span>
+                  <select value={eventStatusFilter} onChange={(event) => setEventStatusFilter(event.target.value)} className="admin-input">
+                    <option value="all">All event statuses</option>
+                    <option value="draft">Draft</option>
+                    <option value="open">Open</option>
+                    <option value="closed">Closed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </label>
+              ) : null}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <label className="block">
+                <span className="mb-2 block text-xs uppercase tracking-[0.2em] text-[#8d9577]">Sort</span>
+                <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="admin-input">
+                  <option value="newest">Newest first</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="pending">Pending first</option>
+                </select>
+              </label>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] bg-[#fcfbf7] px-4 py-4 ring-1 ring-[#efe8d8]">
+              <div>
+                <p className="text-sm font-medium text-[#2f3529]">
+                  Showing {items.length} {typeContext.resultLabel}
+                  {items.length === 1 ? "" : "s"}
+                </p>
+                <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#8d9577]">
+                  {hasActiveFilters ? typeContext.queueLabel : typeContext.label}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={clearFilters}
+                disabled={!hasActiveFilters}
+                className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Clear filters
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] bg-[#f8f4eb] px-4 py-4 ring-1 ring-[#efe8d8]">
+              <div>
+                <p className="text-sm font-medium text-[#2f3529]">
+                  {selectedIds.length} selected
+                </p>
+                <p className="mt-1 text-xs uppercase tracking-[0.18em] text-[#8d9577]">
+                  {selectableBulkType
+                    ? `Bulk actions for ${typeContext.label.toLowerCase()}`
+                    : "Choose a specific type to enable bulk actions"}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={toggleSelectAllOnPage}
+                  disabled={!paginatedItems.items.length}
+                  className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {allPageSelected ? "Unselect page" : "Select page"}
+                </button>
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  disabled={!selectedIds.length}
+                  className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Clear selection
+                </button>
+                {bulkActions.map((action) => (
+                  <button
+                    key={action.key}
+                    type="button"
+                    onClick={() =>
+                      requestConfirmation({
+                        title: action.label,
+                        message: `Apply this action to ${selectedIds.length} selected item${selectedIds.length === 1 ? "" : "s"}?`,
+                        confirmLabel: action.label,
+                        tone: action.key === "approve" || action.key === "resolved" || action.key === "reviewed" ? "positive" : "danger",
+                        action: () => runBulkAction(action.key),
+                      })
+                    }
+                    disabled={!selectedIds.length || bulkRunning}
+                    className="rounded-full bg-[#485b3b] px-4 py-2 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {action.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -425,7 +819,7 @@ export default function AdminInboxPage() {
             {loading ? (
               <div className="rounded-2xl bg-[#f8f4eb] px-4 py-10 text-sm text-[#7a8368]">Loading requests...</div>
             ) : items.length === 0 ? (
-              <div className="rounded-2xl bg-[#f8f4eb] px-4 py-10 text-sm text-[#7a8368]">No matching items.</div>
+              <div className="rounded-2xl bg-[#f8f4eb] px-4 py-10 text-sm text-[#7a8368]">{typeContext.emptyLabel}</div>
             ) : (
               <div className="space-y-4">
                 {paginatedItems.items.map((item) => (
@@ -441,6 +835,18 @@ export default function AdminInboxPage() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex flex-wrap items-center gap-2">
+                        <label
+                          className="flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-[#485b3b]"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(item.id)}
+                            onChange={() => toggleSelected(item.id)}
+                            className="h-3.5 w-3.5 rounded border-[#cbbf9d]"
+                          />
+                          Select
+                        </label>
                         <span className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${typeStyles[item.type] || "bg-white text-[#8d9577]"}`}>
                           {item.type}
                         </span>
@@ -488,35 +894,113 @@ export default function AdminInboxPage() {
                 note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
                 onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
                 onUploadImage={handleShopImageUpload}
-                onDeleteImage={handleShopImageDelete}
-                onAction={handleShopVerification}
+                onDeleteImage={(imageId) =>
+                  requestConfirmation({
+                    title: "Delete shop image",
+                    message: `Delete image #${imageId}?`,
+                    confirmLabel: "Delete image",
+                    tone: "danger",
+                    action: async () => {
+                      await handleShopImageDelete(imageId);
+                      closeDetail();
+                    },
+                  })
+                }
+                onAction={(shopId, nextValue, reviewStatus) =>
+                  requestConfirmation({
+                    title: nextValue ? "Approve shop" : "Reject shop",
+                    message: `Confirm this action for shop #${shopId}?`,
+                    confirmLabel: nextValue ? "Approve shop" : "Reject shop",
+                    tone: nextValue ? "positive" : "danger",
+                    action: async () => {
+                      await handleShopVerification(shopId, nextValue, reviewStatus);
+                      closeDetail();
+                    },
+                  })
+                }
               />
             ) : selectedItem.type === "organizer" ? (
               <OrganizerDetail
                 item={selectedItem.raw}
                 note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
                 onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
-                onAction={handleOrganizerVerification}
+                onAction={(organizerId, nextValue, reviewStatus) =>
+                  requestConfirmation({
+                    title: nextValue ? "Approve organizer" : "Reject organizer",
+                    message: `Confirm this action for organizer #${organizerId}?`,
+                    confirmLabel: nextValue ? "Approve organizer" : "Reject organizer",
+                    tone: nextValue ? "positive" : "danger",
+                    action: async () => {
+                      await handleOrganizerVerification(organizerId, nextValue, reviewStatus);
+                      closeDetail();
+                    },
+                  })
+                }
               />
             ) : selectedItem.type === "sponsor" ? (
               <SponsorDetail
                 item={selectedItem.raw}
                 note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
                 onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
-                onStatusChange={handleSponsorStatusChange}
+                onStatusChange={(sponsorId, nextStatus) =>
+                  requestConfirmation({
+                    title: `Update sponsor to ${nextStatus}`,
+                    message: `Confirm this sponsor status change for request #${sponsorId}?`,
+                    confirmLabel: "Confirm status",
+                    tone: nextStatus === "approved" ? "positive" : "danger",
+                    action: async () => {
+                      await handleSponsorStatusChange(sponsorId, nextStatus);
+                      closeDetail();
+                    },
+                  })
+                }
               />
             ) : (
               <ReportDetail
                 item={selectedItem.raw}
                 note={notesById[selectedItem.id] ?? selectedItem.raw.admin_note ?? ""}
                 onNoteChange={(value) => handleNoteChange(selectedItem.id, value)}
-                onReportStatusChange={handleReportStatusChange}
-                onEventStatusChange={handleEventStatusChange}
+                onReportStatusChange={(reportId, nextStatus) =>
+                  requestConfirmation({
+                    title: `Update report to ${nextStatus}`,
+                    message: `Confirm this report status change for report #${reportId}?`,
+                    confirmLabel: "Confirm status",
+                    tone: nextStatus === "resolved" || nextStatus === "reviewed" ? "positive" : "danger",
+                    action: async () => {
+                      await handleReportStatusChange(reportId, nextStatus);
+                      closeDetail();
+                    },
+                  })
+                }
+                onEventStatusChange={(eventId, nextStatus) =>
+                  requestConfirmation({
+                    title: `Update event to ${nextStatus}`,
+                    message: `Confirm this event moderation change for event #${eventId}?`,
+                    confirmLabel: "Confirm event status",
+                    tone: nextStatus === "open" ? "positive" : "danger",
+                    action: async () => {
+                      await handleEventStatusChange(eventId, nextStatus);
+                      closeDetail();
+                    },
+                  })
+                }
               />
             )}
           </div>
         </div>
       )}
+
+      {confirmAction ? (
+        <ConfirmationModal
+          title={confirmAction.title}
+          message={confirmAction.message}
+          confirmLabel={confirmAction.confirmLabel}
+          tone={confirmAction.tone}
+          busy={bulkRunning}
+          onCancel={closeConfirmation}
+          onConfirm={executeConfirmedAction}
+        />
+      ) : null}
     </section>
   );
 }
@@ -576,7 +1060,7 @@ function ShopDetail({ item, images, note, onNoteChange, onUploadImage, onDeleteI
           { label: "Phone", value: item.phone || "-" },
           { label: "Contact", value: item.contact_info || "-" },
           { label: "National ID", value: item.national_id || "-" },
-          { label: "Status", value: Number(item.verified_status) ? "Approved" : "Pending" },
+          { label: "Status", value: item.review_status || (Number(item.verified_status) ? "Approved" : "Pending") },
         ]}
       />
       <div className="rounded-[24px] bg-[#fcfbf7] p-5">
@@ -627,10 +1111,51 @@ function ShopDetail({ item, images, note, onNoteChange, onUploadImage, onDeleteI
       </div>
       <NoteField value={note} onChange={onNoteChange} placeholder="Add approval note or rejection reason..." />
       <div className="flex gap-3">
-        <ActionButton tone="positive" onClick={() => onAction(item.shop_id, 1)}>Approve Shop</ActionButton>
-        <ActionButton tone="danger" onClick={() => onAction(item.shop_id, 0)}>Hold Request</ActionButton>
+        <ActionButton tone="positive" onClick={() => onAction(item.shop_id, 1, "approved")}>Approve Shop</ActionButton>
+        <ActionButton tone="danger" onClick={() => onAction(item.shop_id, 0, "rejected")}>Reject Shop</ActionButton>
       </div>
     </DetailShell>
+  );
+}
+
+function ConfirmationModal({ title, message, confirmLabel, tone = "neutral", busy = false, onCancel, onConfirm }) {
+  const confirmClass =
+    tone === "positive"
+      ? "bg-[#386132] text-white"
+      : tone === "danger"
+        ? "bg-[#b33a24] text-white"
+        : "bg-[#485b3b] text-white";
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/45 px-4 py-6" onClick={onCancel}>
+      <div
+        className="w-full max-w-md rounded-[32px] bg-white p-7 shadow-2xl ring-1 ring-[#e6ddc9]"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <p className="text-sm uppercase tracking-[0.35em] text-[#8d9577]">Confirm Action</p>
+        <h3 className="mt-3 text-2xl font-semibold text-[#2f3529]">{title}</h3>
+        <p className="mt-4 text-sm leading-7 text-[#5d6550]">{message}</p>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={busy}
+            className="rounded-full bg-[#efe8d8] px-4 py-2 text-xs font-medium text-[#485b3b] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy}
+            className={`rounded-full px-4 py-2 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50 ${confirmClass}`}
+          >
+            {busy ? "Processing..." : confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -647,7 +1172,7 @@ function OrganizerDetail({ item, note, onNoteChange, onAction }) {
           { label: "User", value: item.email || `User #${item.user_id}` },
           { label: "Organization", value: item.organization_name || "-" },
           { label: "Phone", value: item.phone || "-" },
-          { label: "Status", value: Number(item.verified_status) ? "Approved" : "Pending" },
+          { label: "Status", value: item.review_status || (Number(item.verified_status) ? "Approved" : "Pending") },
         ]}
       />
       <div className="rounded-[24px] bg-[#fcfbf7] p-5">
@@ -656,8 +1181,8 @@ function OrganizerDetail({ item, note, onNoteChange, onAction }) {
       </div>
       <NoteField value={note} onChange={onNoteChange} placeholder="Add approval note or rejection reason..." />
       <div className="flex gap-3">
-        <ActionButton tone="positive" onClick={() => onAction(item.organizer_id, 1)}>Approve Organizer</ActionButton>
-        <ActionButton tone="danger" onClick={() => onAction(item.organizer_id, 0)}>Hold Request</ActionButton>
+        <ActionButton tone="positive" onClick={() => onAction(item.organizer_id, 1, "approved")}>Approve Organizer</ActionButton>
+        <ActionButton tone="danger" onClick={() => onAction(item.organizer_id, 0, "rejected")}>Reject Organizer</ActionButton>
       </div>
     </DetailShell>
   );

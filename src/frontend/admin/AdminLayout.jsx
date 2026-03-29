@@ -11,9 +11,9 @@ export default function AdminLayout({ adminUser, onLogout, children }) {
   const navItems = [
     { label: "Dashboard", href: "/admin" },
     { label: "Requests & Reports", href: "/admin/requests-reports" },
-    { label: "Products", href: "/admin/products" },
+    { label: "Users", href: "/admin/users" },
+    { label: "Shops", href: "/admin/shops" },
     { label: "Events", href: "/admin/events" },
-    { label: "Orders", href: "/admin/orders" },
   ];
 
   return (

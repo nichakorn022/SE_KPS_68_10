@@ -74,6 +74,38 @@ class RegistrationController {
 
   }
 
+  static async updateRegistrationStatus(req,res){
+
+    try{
+
+      const data = await registrationService.updateRegistrationStatus(req.params.id, req.body.status);
+
+      res.json(data);
+
+    }catch(err){
+
+      res.status(err.statusCode || 500).json({error:err.message});
+
+    }
+
+  }
+
+  static async deleteRegistration(req,res){
+
+    try{
+
+      const data = await registrationService.deleteRegistration(req.params.id);
+
+      res.json(data);
+
+    }catch(err){
+
+      res.status(err.statusCode || 500).json({error:err.message});
+
+    }
+
+  }
+
 }
 
 module.exports = RegistrationController;

@@ -106,3 +106,16 @@ exports.mockMarkOrderPaid = async (req, res) => {
     });
   }
 };
+
+exports.deleteOrder = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const result = await orderService.deleteOrder(id);
+    return res.json(result);
+  } catch (error) {
+    return res.status(error.statusCode || 500).json({
+      message: error.message || "Failed to delete order"
+    });
+  }
+};

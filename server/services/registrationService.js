@@ -31,7 +31,7 @@ async function cancelRegistration(id) {
 
 async function getUserRegistrations(userId) {
   return query(
-    `SELECT e.title, e.event_date, r.registration_id, r.registration_status
+    `SELECT e.title, e.event_date, e.location, r.registration_id, r.event_id, r.registration_status
      FROM event_registration r
      JOIN event e ON e.event_id = r.event_id
      WHERE r.user_id = ?
@@ -40,9 +40,43 @@ async function getUserRegistrations(userId) {
   );
 }
 
+async function updateRegistrationStatus(id, status) {
+  const result = await query(
+    `UPDATE event_registration
+     SET registration_status = ?
+     WHERE registration_id = ?`,
+    [status, id]
+  );
+
+  if (result.affectedRows === 0) {
+    const error = new Error("Registration not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return { message: "Registration status updated" };
+}
+
+async function deleteRegistration(id) {
+  const result = await query(
+    "DELETE FROM event_registration WHERE registration_id = ?",
+    [id]
+  );
+
+  if (result.affectedRows === 0) {
+    const error = new Error("Registration not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return { message: "Registration deleted" };
+}
+
 module.exports = {
   getRegistrations,
   registerEvent,
   cancelRegistration,
   getUserRegistrations,
+  updateRegistrationStatus,
+  deleteRegistration,
 };

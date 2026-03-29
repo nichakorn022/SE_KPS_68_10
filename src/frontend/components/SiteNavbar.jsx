@@ -94,7 +94,7 @@ function ProfileDropdown({ navbarAvatar, profileLink, messages, onLogout }) {
             className="flex w-full items-center gap-3 px-5 py-3 text-left text-[#485B3B] hover:bg-[#485B3B]/10 transition-colors"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-            Edit Profile
+            Profile
           </button>
           <button
             onClick={() => setShowInbox(true)}

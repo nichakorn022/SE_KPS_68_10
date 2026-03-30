@@ -23,17 +23,13 @@ function EventPage() {
       url = "/events/shop/available";
     }
 
-    if (search) {
-      url = `/events/search?q=${search}`;
-    }
-
     fetch(apiUrl(url), {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((res) => res.json())
       .then((data) => setEvents(Array.isArray(data) ? data : []))
       .catch(console.error);
-  }, [search, role, token]);
+  }, [role, token]);
 
   useEffect(() => {
     fetch(apiUrl("/event-images"))
@@ -113,8 +109,19 @@ function EventPage() {
       });
   }, [token]);
 
+  const normalizedSearch = search.trim().toLowerCase();
+
   const filteredEvents = events
     .filter((event) => {
+      const matchesSearch =
+        !normalizedSearch ||
+        String(event.title || "").toLowerCase().includes(normalizedSearch) ||
+        String(event.description || "").toLowerCase().includes(normalizedSearch);
+
+      if (!matchesSearch) {
+        return false;
+      }
+
       if (filter === "interested") {
         return interestedIds.includes(event.event_id);
       }
@@ -123,7 +130,11 @@ function EventPage() {
     })
     .sort((a, b) => {
       if (filter === "popular") {
-        return Number(b.max_participant || 0) - Number(a.max_participant || 0);
+        return (
+          Number(b.registration_count || 0) - Number(a.registration_count || 0) ||
+          Number(b.max_participant || 0) - Number(a.max_participant || 0) ||
+          Number(b.event_id || 0) - Number(a.event_id || 0)
+        );
       }
 
       return 0;

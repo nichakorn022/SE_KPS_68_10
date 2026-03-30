@@ -252,7 +252,7 @@ exports.registerEvent = async (req, res) => {
 
     const registrationId = await eventService.registerEvent(userId, eventId);
 
-    // Send payment reminder email
+    // -----Send reminder mail payment-----
     try {
       const [[user], [event]] = await Promise.all([
         query("SELECT username, email FROM users WHERE user_id = ? LIMIT 1", [userId]),
@@ -299,7 +299,7 @@ exports.cancelRegistration = async (req, res) => {
 
     await eventService.cancelRegistration(userId, eventId);
 
-    // Send cancellation email if user had already paid
+    // -----Send reminder mail cancel registration-----
     if (wasPaid) {
       try {
         const userRows = await query("SELECT username, email FROM users WHERE user_id = ? LIMIT 1", [userId]);

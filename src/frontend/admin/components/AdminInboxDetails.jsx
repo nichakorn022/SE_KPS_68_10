@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { assetUrl } from "../../../lib/api";
 import AdminMetaCard from "./AdminMetaCard";
 import AdminField from "./AdminField";
@@ -142,8 +141,10 @@ export function OrganizerDetail({ item, onAction, getVerificationStatusLabel }) 
 
 export function ReportDetail({
   item,
+  relatedEvent,
   onReportStatusChange,
   onEventStatusChange,
+  onOpenEventManagement,
   reportStatuses,
   eventStatuses,
 }) {
@@ -205,9 +206,109 @@ export function ReportDetail({
           </select>
         </AdminField>
       </div>
-      <Link to="/admin/events" className="inline-flex rounded-full bg-[#efe8d8] px-5 py-3 text-sm font-medium text-[#485b3b]">
+      <button
+        type="button"
+        onClick={() => onOpenEventManagement(item.event_id)}
+        disabled={!relatedEvent}
+        className="inline-flex rounded-full bg-[#efe8d8] px-5 py-3 text-sm font-medium text-[#485b3b] disabled:cursor-not-allowed disabled:opacity-50"
+      >
         Open Event Management
-      </Link>
+      </button>
+      {!relatedEvent ? (
+        <p className="text-sm text-[#b33a24]">Event details are unavailable for this report right now.</p>
+      ) : null}
+    </DetailShell>
+  );
+}
+
+export function EventManagementDetail({ event, images, sponsors }) {
+  return (
+    <DetailShell
+      badge="Event Management"
+      title={event.title || `Event #${event.event_id}`}
+      subtitle="Review the related event details directly from the report workflow."
+    >
+      <MetaGrid
+        rows={[
+          { label: "Event ID", value: `#${event.event_id}` },
+          { label: "Organizer ID", value: event.organizer_id ? `#${event.organizer_id}` : "-" },
+          { label: "Date", value: event.event_date ? String(event.event_date).slice(0, 10) : "-" },
+          { label: "Location", value: event.location || "-" },
+          { label: "Max Participant", value: event.max_participant || "-" },
+          { label: "Price", value: Number(event.price || 0).toFixed(2) },
+          { label: "Status", value: event.status || "draft" },
+          { label: "Created", value: event.created_at ? new Date(event.created_at).toLocaleString() : "-" },
+        ]}
+      />
+      <div className="rounded-[24px] bg-[#fcfbf7] p-5">
+        <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Description</p>
+        <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-[#4b5541]">
+          {event.description || "No description provided."}
+        </p>
+      </div>
+      <div className="space-y-4 rounded-[24px] bg-[#f8f4eb] p-5">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Event Images</p>
+          <p className="mt-2 text-sm text-[#4b5541]">Images attached to this event.</p>
+        </div>
+        {!images.length ? (
+          <div className="rounded-2xl bg-white px-4 py-6 text-sm text-[#7a8368]">No event images yet.</div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {images.map((image) => (
+              <div key={image.image_id} className="overflow-hidden rounded-[24px] bg-white ring-1 ring-[#e6ddc9]">
+                <img src={assetUrl(image.image_path)} alt="" className="h-40 w-full object-cover" />
+                <div className="px-4 py-3">
+                  <p className="text-xs text-[#7a8368]">Image #{image.image_id}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="space-y-4 rounded-[24px] bg-[#fcfbf7] p-5">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-[#8d9577]">Sponsors</p>
+          <p className="mt-2 text-sm text-[#4b5541]">Sponsor requests linked to this event.</p>
+        </div>
+        {!sponsors.length ? (
+          <div className="rounded-2xl bg-white px-4 py-6 text-sm text-[#7a8368]">No sponsor requests linked to this event yet.</div>
+        ) : (
+          <div className="space-y-3">
+            {sponsors.map((sponsor) => (
+              <div key={sponsor.sponsor_id} className="rounded-[24px] bg-white p-4 ring-1 ring-[#e6ddc9]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-[#2f3529]">{sponsor.shop_name || `Shop #${sponsor.shop_id}`}</p>
+                    <p className="mt-1 text-xs text-[#7a8368]">Sponsor #{sponsor.sponsor_id}</p>
+                  </div>
+                  <span
+                    className={`inline-flex rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] ${
+                      sponsor.status === "approved"
+                        ? "bg-[#eef6ea] text-[#386132]"
+                        : sponsor.status === "rejected"
+                          ? "bg-[#fff0ed] text-[#b33a24]"
+                          : "bg-[#fff4e2] text-[#a46317]"
+                    }`}
+                  >
+                    {sponsor.status || "pending"}
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <AdminMetaCard tone="plain" label="Product" value={sponsor.product_name || `Product #${sponsor.product_id}`} />
+                  <AdminMetaCard tone="plain" label="Quantity" value={sponsor.quantity || "-"} />
+                  <AdminMetaCard tone="plain" label="Requested By" value={sponsor.request_by || "-"} />
+                  <AdminMetaCard
+                    tone="plain"
+                    label="Requested At"
+                    value={sponsor.created_at ? new Date(sponsor.created_at).toLocaleString() : "-"}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </DetailShell>
   );
 }

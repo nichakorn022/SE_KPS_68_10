@@ -3,7 +3,7 @@ import { useLocation, useOutletContext, useSearchParams } from "react-router-dom
 import { adminApi } from "./adminApi";
 import AdminPagination, { paginate } from "./components/AdminPagination";
 import AdminConfirmActionModal from "./components/AdminConfirmActionModal";
-import { OrganizerDetail, ReportDetail, ShopDetail } from "./components/AdminInboxDetails";
+import { EventManagementDetail, OrganizerDetail, ReportDetail, ShopDetail } from "./components/AdminInboxDetails";
 
 function getVerificationStatusLabel(value) {
   return Number(value) === 1 ? "approved" : Number(value) === 2 ? "rejected" : "pending";
@@ -90,10 +90,14 @@ export default function AdminInboxPage() {
   const [organizers, setOrganizers] = useState([]);
   const [reports, setReports] = useState([]);
   const [events, setEvents] = useState([]);
+  const [sponsors, setSponsors] = useState([]);
+  const [eventImages, setEventImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState({ type: "", message: "" });
   const [selectedId, setSelectedId] = useState("");
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isEventManagementModalOpen, setIsEventManagementModalOpen] = useState(false);
+  const [managedEventId, setManagedEventId] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -113,18 +117,22 @@ export default function AdminInboxPage() {
     setLoading(true);
 
     try {
-      const [shopRows, shopImageRows, organizerRows, reportRows, eventRows] = await Promise.all([
+      const [shopRows, shopImageRows, organizerRows, reportRows, eventRows, sponsorRows, eventImageRows] = await Promise.all([
         adminApi.getShops(adminToken),
         adminApi.getShopImages(adminToken),
         adminApi.getOrganizers(adminToken),
         adminApi.getReports(adminToken),
         adminApi.getEvents(adminToken),
+        adminApi.getSponsors(adminToken),
+        adminApi.getEventImages(adminToken),
       ]);
       setShops(shopRows);
       setShopImages(shopImageRows);
       setOrganizers(organizerRows);
       setReports(reportRows);
       setEvents(eventRows);
+      setSponsors(sponsorRows);
+      setEventImages(eventImageRows);
       setStatus({ type: "", message: "" });
     } catch (error) {
       setStatus({ type: "error", message: error.message });
@@ -302,6 +310,16 @@ export default function AdminInboxPage() {
   }, [items]);
 
   const selectedItem = items.find((item) => item.id === selectedId) || null;
+  const managedEvent =
+    events.find((eventItem) => String(eventItem.event_id) === String(managedEventId)) || null;
+  const managedEventImages = useMemo(
+    () => eventImages.filter((image) => String(image.event_id) === String(managedEventId)),
+    [eventImages, managedEventId]
+  );
+  const managedEventSponsors = useMemo(
+    () => sponsors.filter((sponsor) => String(sponsor.event_id) === String(managedEventId)),
+    [managedEventId, sponsors]
+  );
   const summaryCards = useMemo(
     () => [
       {
@@ -406,6 +424,15 @@ export default function AdminInboxPage() {
 
   const closeDetail = () => {
     setIsDetailModalOpen(false);
+  };
+
+  const openEventManagement = (eventId) => {
+    setManagedEventId(String(eventId));
+    setIsEventManagementModalOpen(true);
+  };
+
+  const closeEventManagement = () => {
+    setIsEventManagementModalOpen(false);
   };
 
   const requestConfirmation = ({ title, message, confirmLabel, tone = "neutral", action }) => {
@@ -885,6 +912,7 @@ export default function AdminInboxPage() {
             ) : (
               <ReportDetail
                 item={selectedItem.raw}
+                relatedEvent={events.find((eventItem) => String(eventItem.event_id) === String(selectedItem.raw.event_id)) || null}
                 onReportStatusChange={(reportId, nextStatus) =>
                   requestConfirmation({
                     title: `Update report to ${nextStatus}`,
@@ -909,6 +937,7 @@ export default function AdminInboxPage() {
                     },
                   })
                 }
+                onOpenEventManagement={openEventManagement}
                 reportStatuses={reportStatuses}
                 eventStatuses={eventStatuses}
               />
@@ -916,6 +945,26 @@ export default function AdminInboxPage() {
           </div>
         </div>
       )}
+
+      {isEventManagementModalOpen && managedEvent ? (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 px-4 py-6" onClick={closeEventManagement}>
+          <div
+            className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-[32px] bg-white p-7 shadow-2xl ring-1 ring-[#e6ddc9]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="mb-6 flex items-start justify-end gap-4">
+              <button
+                type="button"
+                onClick={closeEventManagement}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-[#efe8d8] text-lg font-medium text-[#485b3b]"
+              >
+                X
+              </button>
+            </div>
+            <EventManagementDetail event={managedEvent} images={managedEventImages} sponsors={managedEventSponsors} />
+          </div>
+        </div>
+      ) : null}
 
       {confirmAction ? (
         <AdminConfirmActionModal

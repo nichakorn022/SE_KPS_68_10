@@ -130,14 +130,14 @@ export default function Home() {
             </p>
             <div className="flex gap-3 flex-wrap mb-10">
               <button
-                onClick={openRegister}
+                onClick={() => token ? navigate('/events') : openRegister()}
                 className="bg-[#485B3B] text-white px-8 py-3 rounded-full font-bold hover:bg-[#3a4a2f] transition-all shadow-lg active:scale-95"
               >
-                Join Us Now
+                {token ? 'Explore Events' : 'Join Us Now'}
               </button>
-              <Link to="/events">
+              <Link to="/shop">
                 <button className="border-2 border-[#485B3B] text-[#485B3B] px-8 py-3 rounded-full font-bold hover:bg-[#485B3B] hover:text-white transition-all">
-                  Explore Events
+                  Explore Shops
                 </button>
               </Link>
             </div>
@@ -247,10 +247,10 @@ export default function Home() {
                     />
                   </div>
                   <button
-                    onClick={() => token ? navigate(`/events/${event.event_id || event.id}`) : openRegister()}
+                    onClick={() => navigate(`/events/${event.event_id || event.id}`)}
                     className="w-full bg-[#485B3B] text-white py-2.5 rounded-full text-sm font-bold hover:bg-[#3a4a2f] transition-all active:scale-95"
                   >
-                    Book Now
+                    View Details
                   </button>
                 </div>
               </div>
@@ -273,10 +273,10 @@ export default function Home() {
             </ul>
             <div className="flex gap-3">
               <button
-                onClick={openRegister}
+                onClick={() => token ? navigate('/events') : openRegister()}
                 className="bg-white text-[#485B3B] px-8 py-3 rounded-full font-bold hover:bg-[#F5F3E9] transition-all shadow-lg active:scale-95"
               >
-                สมัครสมาชิก
+                {token ? 'ดูกิจกรรม' : 'สมัครสมาชิก'}
               </button>
               <Link to="/events">
                 <button className="border-2 border-white text-white px-8 py-3 rounded-full font-bold hover:bg-white hover:text-[#485B3B] transition-all">

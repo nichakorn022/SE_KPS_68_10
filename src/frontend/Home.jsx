@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthModal } from '../App';
 import SiteNavbar from './components/SiteNavbar';
-import { apiUrl } from '../lib/api';
+import { apiUrl, assetUrl } from '../lib/api';
 
 const HOME_EVENT_FALLBACK_IMAGES = [
   "https://images.unsplash.com/photo-1556679343-c7306c1976bc?auto=format&fit=crop&w=900&q=80",
@@ -54,11 +54,29 @@ function mapHomeEvent(event, index) {
 }
 
 export default function Home() {
-  const { openLogin, openRegister } = useAuthModal();
+  const { openLogin, openRegister, token } = useAuthModal();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('all');
 
 
   const [events, setEvents] = useState([]);
+  const [eventImageMap, setEventImageMap] = useState({});
+
+  useEffect(() => {
+    fetch(apiUrl('/event-images'))
+      .then(res => res.json())
+      .then(data => {
+        if (!Array.isArray(data)) return;
+        const imageMap = {};
+        data.forEach(image => {
+          if (!imageMap[image.event_id] && image.image_path) {
+            imageMap[image.event_id] = assetUrl(image.image_path);
+          }
+        });
+        setEventImageMap(imageMap);
+      })
+      .catch(err => console.error('Failed to fetch event images:', err));
+  }, []);
 
   useEffect(() => {
     fetch(apiUrl('/events'))
@@ -204,7 +222,7 @@ export default function Home() {
               className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border border-gray-100 flex flex-col"
             >
               <div className="relative h-48 overflow-hidden">
-                <img src={event.img} alt={event.title} className="w-full h-full object-cover" />
+                <img src={eventImageMap[event.event_id] || event.img} alt={event.title} className="w-full h-full object-cover" />
                 <span className={`absolute top-3 left-3 text-xs font-bold px-3 py-1 rounded-full ${tagColor[event.tag] || 'bg-gray-100 text-gray-600'}`}>
                   {event.tag}
                 </span>
@@ -229,7 +247,7 @@ export default function Home() {
                     />
                   </div>
                   <button
-                    onClick={openRegister}
+                    onClick={() => token ? navigate(`/events/${event.event_id || event.id}`) : openRegister()}
                     className="w-full bg-[#485B3B] text-white py-2.5 rounded-full text-sm font-bold hover:bg-[#3a4a2f] transition-all active:scale-95"
                   >
                     Book Now

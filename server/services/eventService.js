@@ -39,7 +39,13 @@ const eventDetailSelect = `
       JOIN tea_shop ts ON ts.shop_id = s.shop_id
       WHERE s.event_id = e.event_id
         AND LOWER(COALESCE(s.status, '')) = 'approved'
-    ) AS sponsor_shop_names
+    ) AS sponsor_shop_names,
+    (
+      SELECT ROUND(AVG(er.overall_rating), 1)
+      FROM event_review er
+      JOIN event_registration reg ON reg.registration_id = er.registration_id
+      WHERE reg.event_id = e.event_id
+    ) AS event_overall_rating_avg
 `;
 
 // ---------------- GET ALL EVENTS ----------------

@@ -188,6 +188,67 @@ function EventPromptPayModal({ open, orderId, title, amount, processing, onClose
   );
 }
 
+function EventReportModal({ open, title, detail, submitting, onChange, onClose, onSubmit }) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[75] flex items-center justify-center bg-[rgba(28,24,19,0.46)] px-4 backdrop-blur-sm">
+      <div className="w-full max-w-[30rem] rounded-[28px] border border-[#e7dfd2] bg-white p-5 shadow-[0_30px_80px_rgba(37,31,24,0.28)]">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#8b9a79]">Report Event</p>
+            <h3 className="mt-2 text-[1.5rem] font-semibold text-[#22321f]">{title}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-[#f6f2ea] text-lg text-[#6f665b] disabled:opacity-60"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="mt-4 rounded-[22px] border border-[#dfe8d5] bg-[linear-gradient(180deg,#fbfdf7_0%,#f5f8ef_100%)] p-4">
+          <label className="mb-2 block text-xs font-semibold uppercase tracking-[0.16em] text-[#8b9a79]">
+            Report Detail
+          </label>
+          <textarea
+            value={detail}
+            onChange={(event) => onChange(event.target.value)}
+            rows={5}
+            maxLength={1000}
+            placeholder="Tell us why this event should be reviewed by admin"
+            className="w-full rounded-[18px] border border-[#dfe6d6] bg-white px-4 py-3 text-sm text-[#253621] outline-none transition focus:border-[#7B9A67] focus:ring-2 focus:ring-[#7B9A67]/20"
+          />
+          <p className="mt-2 text-xs text-[#8a8072]">
+            This report will be sent to admin with status pending for review.
+          </p>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={submitting || !String(detail || "").trim()}
+            className="flex-1 rounded-[18px] bg-[#B55252] px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {submitting ? "Submitting..." : "Submit Report"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="rounded-[18px] border border-[#e2d9cb] bg-[#fffdf9] px-5 py-3 text-sm font-semibold text-[#6f665b] disabled:opacity-60"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Eventdetails() {
 
   const { id } = useParams();
@@ -195,13 +256,19 @@ export default function Eventdetails() {
   const [event, setEvent] = useState(null);
   const [eventImages, setEventImages] = useState([]);
   const [isInterested, setIsInterested] = useState(false);
-  const { token } = useAuthModal();
+  const { token, openLogin } = useAuthModal();
   const [error, setError] = useState(null);
   const [registrationStatus, setRegistrationStatus] = useState(null);
   const [registrationId, setRegistrationId] = useState(null);
   const [showPromptPay, setShowPromptPay] = useState(false);
   const [confirmingPromptPay, setConfirmingPromptPay] = useState(false);
   const [attendeeCount, setAttendeeCount] = useState(0);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportDetail, setReportDetail] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportFeedback, setReportFeedback] = useState("");
+  const [hasReportedEvent, setHasReportedEvent] = useState(false);
+  const [reportStatus, setReportStatus] = useState(null);
 
   const [user, setUser] = useState(null);
   const role = user?.role;
@@ -232,6 +299,33 @@ export default function Eventdetails() {
       .then(data => setUser(data.user))
       .catch(console.error);
   }, [token]);
+
+  useEffect(() => {
+    setShowReportModal(false);
+    setReportDetail("");
+    setReportFeedback("");
+  }, [id]);
+
+  useEffect(() => {
+    if (!token || role !== "user" || user?.organizer_id) {
+      setHasReportedEvent(false);
+      setReportStatus(null);
+      return;
+    }
+
+    fetch(apiUrl(`/reports/events/${id}/mine`), {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Failed to fetch report status");
+        setHasReportedEvent(Boolean(data.hasReported));
+        setReportStatus(data.report?.status || null);
+      })
+      .catch((err) => {
+        console.error("Report status error:", err);
+      });
+  }, [id, token, role, user?.organizer_id]);
 
   // ---------------- LOAD PRODUCTS ----------------
   useEffect(() => {
@@ -397,6 +491,70 @@ export default function Eventdetails() {
     }
   };
 
+  const handleOpenReportModal = () => {
+    if (!token) {
+      openLogin?.();
+      return;
+    }
+
+    if (hasReportedEvent) {
+      setReportFeedback("You already reported this event");
+      return;
+    }
+
+    setReportDetail("");
+    setReportFeedback("");
+    setShowReportModal(true);
+  };
+
+  const handleSubmitReport = async () => {
+    const trimmedDetail = String(reportDetail || "").trim();
+
+    if (!trimmedDetail) {
+      alert("Please enter report detail");
+      return;
+    }
+
+    setReportSubmitting(true);
+    try {
+      const res = await fetch(apiUrl("/reports"), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          event_id: event.event_id,
+          report_type: "event",
+          report_detail: trimmedDetail,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        if (res.status === 409) {
+          setHasReportedEvent(true);
+          setReportStatus("pending");
+          setShowReportModal(false);
+          setReportFeedback("You already reported this event");
+          return;
+        }
+        throw new Error(data.message || "Failed to submit report");
+      }
+
+      setHasReportedEvent(true);
+      setReportStatus(data.status || "pending");
+      setReportDetail("");
+      setShowReportModal(false);
+      setReportFeedback("Report submitted and sent to admin for review");
+    } catch (err) {
+      alert(err.message || "Failed to submit report");
+    } finally {
+      setReportSubmitting(false);
+    }
+  };
+
   if (error) return (
     <div className="min-h-screen bg-[#F5F3E9]">
       <SiteNavbar active="events" />
@@ -419,6 +577,14 @@ export default function Eventdetails() {
     default:  { label: "Send Sponsor", cls: "bg-[#485B3B] text-white hover:bg-[#394A31]" },
   };
   const sBtn = sponsorBtnConfig[sponsorStatus ?? "default"] || sponsorBtnConfig.default;
+  const canOpenEventReview =
+    (role === "user" || role === "organizer") && registrationStatus === "confirmed";
+  const canReportEvent = role === "user" && !user?.organizer_id;
+  const reportButtonLabel = hasReportedEvent ? "Reported" : "Report";
+  const isPastEvent = new Date(event.event_date) < new Date();
+  const eventOverallRating = event.event_overall_rating_avg
+    ? `${Number(event.event_overall_rating_avg).toFixed(1)} / 5`
+    : "-";
 
   return (
     <div className="min-h-screen bg-[#F5F3E9] font-sans">
@@ -458,6 +624,11 @@ export default function Eventdetails() {
               <p className="mb-2 text-xs text-[#879A78]">
                 Sponsor Shop : {event.sponsor_shop_names || "-"}
               </p>
+              {isPastEvent && (
+                <p className="mb-2 text-xs text-[#879A78]">
+                  Overall Rating : {eventOverallRating}
+                </p>
+              )}
               <h1 className="text-2xl lg:text-3xl font-semibold text-[#253621] leading-snug">
                 {event.title}
               </h1>
@@ -511,18 +682,45 @@ export default function Eventdetails() {
               </button>
 
               {/* Review — circular icon badge button */}
-              <Link
-                to={`/review/${event.event_id}`}
-                title="Write a review"
-                className="w-10 h-10 rounded-full border border-[#253621]/25 bg-[#F5F3E9] flex items-center justify-center hover:border-[#485B3B] hover:bg-[#EEF3E9] transition"
-              >
-                <IconStar />
-              </Link>
+              {canOpenEventReview && (
+                <Link
+                  to={`/review/${event.event_id}`}
+                  title="Write a review"
+                  className="w-10 h-10 rounded-full border border-[#253621]/25 bg-[#F5F3E9] flex items-center justify-center hover:border-[#485B3B] hover:bg-[#EEF3E9] transition"
+                >
+                  <IconStar />
+                </Link>
+              )}
+
+              {canReportEvent && (
+                <button
+                  type="button"
+                  onClick={handleOpenReportModal}
+                  disabled={hasReportedEvent}
+                  title="Report this event"
+                  className={`rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] transition ${
+                    hasReportedEvent
+                      ? "cursor-not-allowed border-[#dfd7cb] bg-[#f5f3ee] text-[#9b9388]"
+                      : "border-[#d9cfc2] bg-[#FFF6F4] text-[#B55252] hover:border-[#B55252] hover:bg-[#FFEDEA]"
+                  }`}
+                >
+                  {reportButtonLabel}
+                </button>
+              )}
 
               <span className="text-xs text-[#879A78] ml-1">
                 {isInterested ? "You're interested in this event" : "Interested? Let us know"}
               </span>
             </div>
+
+            {reportFeedback && (
+              <p className="text-xs font-medium text-[#7B9A67]">{reportFeedback}</p>
+            )}
+            {canReportEvent && hasReportedEvent && (
+              <p className="text-xs text-[#879A78]">
+                Report status: {reportStatus || "pending"}
+              </p>
+            )}
 
             {/* ── SPONSOR PRODUCT PICKER (shop only) ───────────── */}
             {role === "shop" && (
@@ -630,6 +828,19 @@ export default function Eventdetails() {
         processing={confirmingPromptPay}
         onConfirm={handleConfirmPromptPay}
         onClose={() => setShowPromptPay(false)}
+      />
+
+      <EventReportModal
+        open={showReportModal}
+        title={event?.title}
+        detail={reportDetail}
+        submitting={reportSubmitting}
+        onChange={setReportDetail}
+        onClose={() => {
+          if (reportSubmitting) return;
+          setShowReportModal(false);
+        }}
+        onSubmit={handleSubmitReport}
       />
     </div>
   );

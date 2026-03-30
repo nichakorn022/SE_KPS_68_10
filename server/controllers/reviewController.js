@@ -11,6 +11,19 @@ function getUserIdFromToken(token) {
   }
 }
 
+function normalizeSingleEventRating(payload = {}) {
+  const overall = Number(payload.overall_rating);
+  if (!Number.isNaN(overall) && overall >= 1 && overall <= 5) {
+    return overall;
+  }
+
+  const fallback = [payload.location_rating, payload.atmosphere_rating, payload.value_rating]
+    .map((value) => Number(value))
+    .find((value) => !Number.isNaN(value) && value >= 1 && value <= 5);
+
+  return fallback ?? null;
+}
+
 exports.getReviews = async (req, res) => {
   try {
     const { product_id } = req.params;
@@ -404,12 +417,8 @@ exports.getAdminReviews = async (req, res) => {
         er.review_id,
         er.registration_id,
         er.overall_rating,
-        er.location_rating,
-        er.atmosphere_rating,
-        er.value_rating,
         er.comment,
         er.created_at,
-        er.updated_at,
         reg.event_id,
         reg.user_id,
         reg.registration_status,
@@ -487,12 +496,12 @@ exports.getAdminReviews = async (req, res) => {
         registration_status: review.registration_status || null,
         rating: Number(review.overall_rating || 0),
         overall_rating: Number(review.overall_rating || 0),
-        location_rating: Number(review.location_rating || 0),
-        atmosphere_rating: Number(review.atmosphere_rating || 0),
-        value_rating: Number(review.value_rating || 0),
+        location_rating: Number(review.overall_rating || 0),
+        atmosphere_rating: Number(review.overall_rating || 0),
+        value_rating: Number(review.overall_rating || 0),
         comment: repairLikelyMojibake(review.comment),
         created_at: review.created_at,
-        updated_at: review.updated_at,
+        updated_at: review.created_at,
       })),
     ]
       .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
@@ -547,9 +556,6 @@ exports.getEventReviews = async (req, res) => {
          er.review_id,
          er.registration_id,
          er.overall_rating,
-         er.location_rating,
-         er.atmosphere_rating,
-         er.value_rating,
          er.comment,
          er.created_at,
          reg.user_id,
@@ -571,9 +577,9 @@ exports.getEventReviews = async (req, res) => {
         name: review.username,
         rating: Number(review.overall_rating || 0),
         overallRating: Number(review.overall_rating || 0),
-        locationRating: Number(review.location_rating || 0),
-        atmosphereRating: Number(review.atmosphere_rating || 0),
-        valueRating: Number(review.value_rating || 0),
+        locationRating: Number(review.overall_rating || 0),
+        atmosphereRating: Number(review.overall_rating || 0),
+        valueRating: Number(review.overall_rating || 0),
         text: repairLikelyMojibake(review.comment),
         date: new Date(review.created_at).toLocaleDateString("en-US", {
           year: "numeric",
@@ -592,12 +598,13 @@ exports.getEventReviews = async (req, res) => {
 exports.createEventReview = async (req, res) => {
   try {
     const { event_id } = req.params;
-    const { overall_rating, location_rating, atmosphere_rating, value_rating, comment } = req.body;
+    const { comment } = req.body;
     const userId = req.user?.user_id;
+    const resolvedRating = normalizeSingleEventRating(req.body);
 
     if (!userId) return res.status(401).json({ message: "Authentication required" });
-    if (!event_id || !overall_rating || !location_rating || !atmosphere_rating || !value_rating || !comment) {
-      return res.status(400).json({ message: "Event ID, ratings, and comment are required" });
+    if (!event_id || !resolvedRating || !comment) {
+      return res.status(400).json({ message: "Event ID, overall rating, and comment are required" });
     }
 
     const eventRows = await query(`SELECT event_date FROM event WHERE event_id = ? LIMIT 1`, [event_id]);
@@ -614,18 +621,14 @@ exports.createEventReview = async (req, res) => {
       `SELECT registration_id
        FROM event_registration
        WHERE event_id = ? AND user_id = ?
+         AND LOWER(COALESCE(registration_status, '')) = 'confirmed'
        ORDER BY registration_id DESC
        LIMIT 1`,
       [event_id, userId]
     );
 
     if (registrationRows.length === 0) {
-      return res.status(400).json({ message: "You must register for this event before reviewing it" });
-    }
-
-    const ratings = [overall_rating, location_rating, atmosphere_rating, value_rating].map((value) => Number(value));
-    if (ratings.some((value) => Number.isNaN(value) || value < 1 || value > 5)) {
-      return res.status(400).json({ message: "Ratings must be between 1 and 5" });
+      return res.status(400).json({ message: "You must complete registration for this event before reviewing it" });
     }
 
     const registrationId = registrationRows[0].registration_id;
@@ -636,9 +639,9 @@ exports.createEventReview = async (req, res) => {
 
     await query(
       `INSERT INTO event_review
-       (registration_id, overall_rating, location_rating, atmosphere_rating, value_rating, comment, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())`,
-      [registrationId, ratings[0], ratings[1], ratings[2], ratings[3], comment]
+       (registration_id, overall_rating, comment, created_at)
+       VALUES (?, ?, ?, NOW())`,
+      [registrationId, resolvedRating, comment]
     );
 
     res.json({ message: "Event review submitted successfully" });
@@ -651,17 +654,13 @@ exports.createEventReview = async (req, res) => {
 exports.updateEventReview = async (req, res) => {
   try {
     const { event_id, review_id } = req.params;
-    const { overall_rating, location_rating, atmosphere_rating, value_rating, comment } = req.body;
+    const { comment } = req.body;
     const userId = req.user?.user_id;
+    const resolvedRating = normalizeSingleEventRating(req.body);
 
     if (!userId) return res.status(401).json({ message: "Authentication required" });
-    if (!event_id || !review_id || !overall_rating || !location_rating || !atmosphere_rating || !value_rating || !comment) {
-      return res.status(400).json({ message: "Event ID, review ID, ratings, and comment are required" });
-    }
-
-    const ratings = [overall_rating, location_rating, atmosphere_rating, value_rating].map((value) => Number(value));
-    if (ratings.some((value) => Number.isNaN(value) || value < 1 || value > 5)) {
-      return res.status(400).json({ message: "Ratings must be between 1 and 5" });
+    if (!event_id || !review_id || !resolvedRating || !comment) {
+      return res.status(400).json({ message: "Event ID, review ID, overall rating, and comment are required" });
     }
 
     const existing = await query(
@@ -679,9 +678,9 @@ exports.updateEventReview = async (req, res) => {
 
     await query(
       `UPDATE event_review
-       SET overall_rating = ?, location_rating = ?, atmosphere_rating = ?, value_rating = ?, comment = ?, updated_at = NOW()
+       SET overall_rating = ?, comment = ?
        WHERE review_id = ?`,
-      [ratings[0], ratings[1], ratings[2], ratings[3], comment, review_id]
+      [resolvedRating, comment, review_id]
     );
 
     res.json({ message: "Event review updated successfully" });

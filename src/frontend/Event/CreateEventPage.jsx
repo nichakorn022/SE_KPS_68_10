@@ -219,6 +219,7 @@ export default function CreateEventPage() {
                 name="event_date"
                 value={formData.event_date}
                 onChange={handleChange}
+                 min={new Date().toISOString().slice(0,16)} // 🔥 ตรงนี้
                 className="w-full border border-[#DFE6D6] rounded-[1rem] px-4 py-3 text-sm text-[#253621] bg-white focus:outline-none focus:ring-2 focus:ring-[#6f8b5d]/30"
               />
             </div>

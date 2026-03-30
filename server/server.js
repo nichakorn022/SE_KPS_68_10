@@ -86,12 +86,8 @@ const { query } = require("./utils/dbHelpers");
           review_id INT AUTO_INCREMENT PRIMARY KEY,
           registration_id INT NOT NULL,
           overall_rating INT NOT NULL,
-          location_rating INT NOT NULL,
-          atmosphere_rating INT NOT NULL,
-          value_rating INT NOT NULL,
           comment TEXT,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           CONSTRAINT fk_event_review_registration
             FOREIGN KEY (registration_id) REFERENCES event_registration(registration_id) ON DELETE CASCADE,
           UNIQUE KEY unique_registration_review (registration_id)

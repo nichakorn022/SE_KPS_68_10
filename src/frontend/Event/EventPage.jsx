@@ -110,9 +110,22 @@ function EventPage() {
   }, [token]);
 
   const normalizedSearch = search.trim().toLowerCase();
+  const isUpcomingEvent = (eventDate) => {
+    const parsedDate = new Date(eventDate);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return true;
+    }
+
+    return parsedDate.getTime() >= Date.now();
+  };
 
   const filteredEvents = events
     .filter((event) => {
+      if (!isUpcomingEvent(event.event_date)) {
+        return false;
+      }
+
       const matchesSearch =
         !normalizedSearch ||
         String(event.title || "").toLowerCase().includes(normalizedSearch) ||
@@ -157,11 +170,11 @@ function EventPage() {
       </div>
 
       <div className="mx-auto mt-10 max-w-[1100px] px-5">
-        {role && (
+        {/* {role && (
           <p className="mb-3 text-center text-sm text-gray-500">
             Logged in as: {role}
           </p>
-        )}
+        )} */}
 
         {role === "shop" && (
           <div className="mb-6 flex justify-center gap-4">
@@ -190,7 +203,13 @@ function EventPage() {
             )}
 
             {organizerStatus === 0 && (
-              <span className="text-yellow-600">Waiting for admin approval...</span>
+              <button
+                type="button"
+                disabled
+                className="cursor-not-allowed rounded-full border border-amber-300 bg-amber-50 px-5 py-2 font-semibold text-amber-700"
+              >
+                Pending Approval
+              </button>
             )}
 
             {organizerStatus === 1 && (

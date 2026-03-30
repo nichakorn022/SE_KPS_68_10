@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import SiteNavbar from "../components/SiteNavbar";
-import { apiUrl } from "../../lib/api";
+import { apiUrl, assetUrl } from "../../lib/api";
 import {
   getAvatarStorageKey,
   getStoredAvatar,
@@ -181,7 +181,8 @@ export default function UserProfile() {
     user?.username || user?.name || tokenPayload?.username || tokenPayload?.name || "User";
   const displayBio = user?.bio || tokenPayload?.bio || EMPTY_STATE.bio;
 
-  const avatarSrc = previewUrl || user?.avatar || getStoredAvatar() || tokenPayload?.avatar || "/Pictrue/default-avatar.png";
+  const rawAvatar = previewUrl || user?.avatar || getStoredAvatar() || tokenPayload?.avatar || "";
+  const avatarSrc = rawAvatar ? (previewUrl ? rawAvatar : assetUrl(rawAvatar)) : "";
 
   useEffect(() => {
     if (!avatarSrc) return;
@@ -302,11 +303,14 @@ export default function UserProfile() {
             <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:gap-8">
               {/* Avatar */}
               <div className="h-36 w-36 overflow-hidden rounded-full border-[6px] border-white bg-white shadow-[0_20px_50px_rgba(61,47,31,0.20)] sm:h-44 sm:w-44">
-                <img
-                  src={avatarSrc}
-                  alt="avatar"
-                  className="h-full w-full object-cover"
-                />
+                {avatarSrc ? (
+                  <img
+                    src={avatarSrc}
+                    alt="avatar"
+                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.style.display = 'none'; }}
+                    className="h-full w-full object-cover"
+                  />
+                ) : null}
               </div>
 
               {/* Name + bio + buttons */}

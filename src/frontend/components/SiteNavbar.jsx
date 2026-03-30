@@ -56,6 +56,8 @@ function itemClass(isActive) {
   return "rounded-full px-4 py-2 transition-all hover:bg-[#485B3B]/12 hover:text-[#485B3B]";
 }
 
+const DEFAULT_AVATAR = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='white'/%3E%3C/svg%3E";
+
 function ProfileDropdown({ navbarAvatar, profileLink, onLogout }) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -78,9 +80,10 @@ function ProfileDropdown({ navbarAvatar, profileLink, onLogout }) {
         className="flex items-center rounded-full p-1 transition-all hover:ring-2 hover:ring-[#485B3B]/30 focus:outline-none"
       >
         <img
-          src={navbarAvatar}
+          src={navbarAvatar || DEFAULT_AVATAR}
           alt="avatar"
-          className="h-9 w-9 rounded-full object-cover"
+          onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_AVATAR; }}
+          className="h-9 w-9 rounded-full object-cover border border-gray-200 bg-white"
         />
       </button>
 
@@ -190,10 +193,11 @@ export default function SiteNavbar({ active, showCart = false, cartCount = 0, on
   };
 
   const profileLink = userRole === "shop" && ownedShopId ? `/shop/${ownedShopId}` : "/profile";
+  const rawUserAvatar = getStoredAvatar() || getTokenPayload()?.avatar || "";
   const navbarAvatar =
     userRole === "shop"
-      ? shopAvatar || "/Pictrue/default-avatar.png"
-      : getStoredAvatar() || getTokenPayload()?.avatar || "/Pictrue/default-avatar.png";
+      ? shopAvatar || DEFAULT_AVATAR
+      : rawUserAvatar ? assetUrl(rawUserAvatar) : DEFAULT_AVATAR;
 
   return (
     <>
